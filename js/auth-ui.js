@@ -1,4 +1,5 @@
 import { getSession, signInWithOAuth, signOut } from './auth.js';
+import { isAdminConfigured, isAdminEmail, isAdminMode, deactivateAdminMode, showAdminPassphraseModal } from './admin.js';
 
 const LOGGED_OUT_BANNER_TEXT = 'Log in to add wins, players and games!';
 const SELECT_PLAYGROUP_BANNER_TEXT = 'Select a campaign to add wins, players and games!';
@@ -66,8 +67,23 @@ export function updateAuthUI(isLoggedIn, hasInviteToken) {
             if (authEmail && session?.user?.email) {
                 authEmail.textContent = session.user.email;
             }
+            _updateAdminControls(session?.user?.email || null);
         });
+    } else {
+        _updateAdminControls(null);
     }
+
+    // About page hero CTA
+    const aboutGetStartedBtn = document.getElementById('aboutGetStartedBtn');
+    const aboutHeroLoggedInBtns = document.getElementById('aboutHeroLoggedInBtns');
+    if (aboutGetStartedBtn) aboutGetStartedBtn.style.display = isLoggedIn ? 'none' : 'inline-block';
+    if (aboutHeroLoggedInBtns) aboutHeroLoggedInBtns.style.display = isLoggedIn ? 'flex' : 'none';
+
+    // About page bottom CTA
+    const aboutBottomLoggedOut = document.getElementById('aboutBottomLoggedOut');
+    const aboutBottomLoggedIn = document.getElementById('aboutBottomLoggedIn');
+    if (aboutBottomLoggedOut) aboutBottomLoggedOut.style.display = isLoggedIn ? 'none' : 'block';
+    if (aboutBottomLoggedIn) aboutBottomLoggedIn.style.display = isLoggedIn ? 'block' : 'none';
 }
 
 export function updateEditability(canEdit) {
@@ -79,6 +95,53 @@ export function updateEditability(canEdit) {
 
 export function showLoginPrompt() {
     alert('Please log in with Google to add wins, players and games!');
+}
+
+/**
+ * Update the admin button/badge in the auth area.
+ * Called whenever auth state or admin mode changes.
+ * @param {string|null} email - current user's email, or null if logged out
+ * @param {Function} [onAdminActivated] - callback fired after admin mode is activated
+ */
+export function updateAdminUI(email, onAdminActivated) {
+    _updateAdminControls(email, onAdminActivated);
+}
+
+function _updateAdminControls(email, onAdminActivated) {
+    const btn = document.getElementById('adminModeBtn');
+    if (!btn) return;
+
+    if (!email || !isAdminConfigured() || !isAdminEmail(email)) {
+        btn.style.display = 'none';
+        return;
+    }
+
+    btn.style.display = 'inline-flex';
+    btn.onclick = null;
+
+    if (isAdminMode()) {
+        btn.textContent = 'ADMIN ✕';
+        btn.classList.add('admin-mode-active');
+        btn.title = 'Exit admin mode';
+        btn.onclick = () => {
+            if (confirm('Exit admin mode? You will only see your own campaigns.')) {
+                deactivateAdminMode();
+                window.location.reload();
+            }
+        };
+    } else {
+        btn.textContent = '🛡 Admin';
+        btn.classList.remove('admin-mode-active');
+        btn.title = 'Enter admin mode';
+        btn.onclick = () => {
+            showAdminPassphraseModal(
+                () => {
+                    if (onAdminActivated) onAdminActivated();
+                },
+                null
+            );
+        };
+    }
 }
 
 export function syncReadOnlyBanner(canEdit, isLoggedIn, hasInviteToken, guestCampaignName = null) {

@@ -951,6 +951,17 @@ function _renderScoreTableBody() {
             _tallyState.scores[ri][ci] = parseFloat(input.value) || 0;
             _updateTotals();
         });
+        input.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const ri = parseInt(input.dataset.ri);
+            const ci = parseInt(input.dataset.ci);
+            const current = parseFloat(input.value) || 0;
+            const delta = e.deltaY < 0 ? 1 : -1;
+            const newVal = current + delta;
+            input.value = newVal;
+            _tallyState.scores[ri][ci] = newVal;
+            _updateTotals();
+        }, { passive: false });
     });
 
     body.querySelectorAll('.score-round-name').forEach(input => {

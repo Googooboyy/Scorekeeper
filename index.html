@@ -32,6 +32,7 @@
                         <p id="googleLoginNote" style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">More sign-in options coming soon..</p>
                         <div class="auth-user" id="authUser" style="display: none;">
                             <span class="auth-email" id="authEmail"></span>
+                            <button class="btn-auth btn-admin-mode" id="adminModeBtn" style="display:none;" type="button">🛡 Admin</button>
                             <button class="btn-auth logout" id="logoutBtn">Log out</button>
                         </div>
                     </div>
@@ -222,10 +223,16 @@
 
             <!-- Hero -->
             <div class="about-hero">
-                <div class="about-beta-pill">🧪 Public Beta · v0.9 — Free while we build</div>
+                <div class="about-beta-pill">🧪 Public Beta · v0.9.1 — Free while we build</div>
                 <h2 class="about-hero-title">The Scorekeeper</h2>
                 <p class="about-hero-sub">The friendly rivalry tracker for your board game nights, tabletop campaigns, and game-obsessed friend groups.</p>
+                <!-- Logged-out CTA -->
                 <button class="about-cta-btn" id="aboutGetStartedBtn">Sign in to start tracking</button>
+                <!-- Logged-in CTA -->
+                <div id="aboutHeroLoggedInBtns" class="about-logged-in-btns" style="display:none;">
+                    <button class="about-cta-btn" id="aboutHeroAddWinBtn">+ Add a Win</button>
+                    <button class="about-cta-btn about-cta-btn--ghost" id="aboutHeroHistoryBtn">View History</button>
+                </div>
             </div>
 
             <div class="gold-divider" style="margin: 32px 0;"></div>
@@ -348,8 +355,19 @@
 
             <!-- Bottom CTA -->
             <div class="about-bottom-cta">
-                <p>Ready to settle the score?</p>
-                <button class="about-cta-btn" id="aboutGetStartedBtn2">Get started — it's free</button>
+                <!-- Logged-out -->
+                <div id="aboutBottomLoggedOut">
+                    <p>Ready to settle the score?</p>
+                    <button class="about-cta-btn" id="aboutGetStartedBtn2">Get started — it's free</button>
+                </div>
+                <!-- Logged-in -->
+                <div id="aboutBottomLoggedIn" style="display:none;">
+                    <p>Where do you want to go?</p>
+                    <div class="about-logged-in-btns">
+                        <button class="about-cta-btn" id="aboutBottomAddWinBtn">+ Add a Win</button>
+                        <button class="about-cta-btn about-cta-btn--ghost" id="aboutBottomHistoryBtn">View History</button>
+                    </div>
+                </div>
             </div>
 
         </section>
@@ -737,6 +755,31 @@
                     <button class="btn btn-secondary" id="tallyBackToScoresBtn" type="button">← Back</button>
                     <button class="btn tally-record-btn" id="tallySaveWinBtn" type="button">Save Win 🎉</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Passphrase Modal -->
+    <div class="modal-overlay" id="adminPassphraseModal">
+        <div class="modal admin-passphrase-modal">
+            <div class="admin-passphrase-icon">🛡</div>
+            <h3 class="admin-passphrase-title">Admin Mode</h3>
+            <p class="admin-passphrase-desc">Enter the secret phrase to unlock full access to all campaigns.</p>
+            <input
+                type="password"
+                id="adminPassphraseInput"
+                class="input-field admin-passphrase-input"
+                placeholder="Secret phrase…"
+                autocomplete="off"
+                autocorrect="off"
+                spellcheck="false"
+            >
+            <div class="admin-passphrase-error" id="adminPassphraseError" style="display:none;">
+                Incorrect phrase. Try again.
+            </div>
+            <div class="admin-passphrase-actions">
+                <button class="btn btn-secondary" id="adminPassphraseSkip" type="button">Continue without admin</button>
+                <button class="btn admin-passphrase-btn" id="adminPassphraseSubmit" type="button">Enter Admin Mode</button>
             </div>
         </div>
     </div>

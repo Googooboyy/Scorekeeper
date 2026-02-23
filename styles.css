@@ -757,6 +757,18 @@ html { overflow-x: hidden; }
     letter-spacing: 0.02em;
 }
 .about-cta-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+.about-cta-btn--ghost {
+    background: transparent;
+    border: 2px solid var(--accent-gold);
+    color: var(--accent-gold);
+}
+.about-cta-btn--ghost:hover { background: rgba(212,175,55,0.08); opacity: 1; }
+.about-logged-in-btns {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
 
 .about-section { margin-bottom: 8px; }
 .about-section-title {
@@ -1478,3 +1490,102 @@ html { overflow-x: hidden; }
     .score-input { max-width: 60px; }
     .score-round-name { width: 52px; }
 }
+
+/* ── Admin mode ──────────────────────────────────────────────────────────────── */
+
+/* Admin button in the auth area */
+.btn-admin-mode {
+    background: rgba(239, 68, 68, 0.12);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.btn-admin-mode:hover {
+    background: rgba(239, 68, 68, 0.22);
+    border-color: rgba(239, 68, 68, 0.55);
+    color: #fca5a5;
+}
+/* Active admin mode — glowing red badge */
+.btn-admin-mode.admin-mode-active {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+    color: #fca5a5;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.35);
+    animation: admin-pulse 2.5s ease-in-out infinite;
+}
+@keyframes admin-pulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(239, 68, 68, 0.3); }
+    50%       { box-shadow: 0 0 14px rgba(239, 68, 68, 0.6); }
+}
+
+/* Admin passphrase modal */
+.admin-passphrase-modal {
+    max-width: 380px;
+    text-align: center;
+    padding: 32px 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+.admin-passphrase-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+.admin-passphrase-title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.admin-passphrase-desc {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+.admin-passphrase-input {
+    width: 100%;
+    text-align: center;
+    letter-spacing: 0.08em;
+    font-size: 1rem;
+}
+.admin-passphrase-error {
+    color: #f87171;
+    font-size: 0.82rem;
+    font-weight: 500;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 6px;
+    padding: 6px 12px;
+    width: 100%;
+}
+.admin-passphrase-actions {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.admin-passphrase-btn {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+}
+.admin-passphrase-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+.admin-passphrase-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }

@@ -1,9 +1,47 @@
 import { getSupabase } from './auth.js';
+import { isAdminMode } from './admin.js';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { SUPABASE_URL } from './config.js';
+
+let _adminClient = null;
+
+/** Returns a Supabase client with the service role key (bypasses all RLS).
+ *  persistSession/autoRefreshToken must be false so the client never picks up
+ *  the logged-in user's JWT from localStorage and overrides the service role key. */
+function getAdminClient() {
+    const serviceKey = (typeof window !== 'undefined' && window.SCOREKEEPER_SERVICE_ROLE_KEY) || null;
+    if (!serviceKey) return null;
+    if (!_adminClient) {
+        _adminClient = createClient(SUPABASE_URL, serviceKey, {
+            auth: { autoRefreshToken: false, persistSession: false }
+        });
+    }
+    return _adminClient;
+}
+
+/** Returns the admin client when in admin mode, otherwise the regular authenticated client. */
+function getActiveClient() {
+    if (isAdminMode()) {
+        const ac = getAdminClient();
+        if (ac) return ac;
+    }
+    return getSupabase();
+}
 
 /**
- * Fetch all playgroups the current user is a member of (with role)
+ * Fetch playgroups. In admin mode, returns ALL campaigns in the system.
+ * Otherwise returns only campaigns the current user is a member of.
  */
 export async function fetchPlaygroups() {
+    if (isAdminMode()) {
+        const { data, error } = await getActiveClient()
+            .from('playgroups')
+            .select('*')
+            .order('name', { ascending: true });
+        if (error) throw error;
+        return (data || []).map(pg => ({ ...pg, role: 'admin' }));
+    }
+
     const supabase = getSupabase();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
@@ -32,7 +70,7 @@ export async function fetchPlaygroups() {
  * Create an invite token for a playgroup. Returns the token string.
  */
 export async function createInviteToken(playgroupId, expiresHours = 168, maxUses = 10) {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getActiveClient()
         .rpc('create_invite_token', {
             p_playgroup_id: playgroupId,
             p_expires_hours: expiresHours,
@@ -46,7 +84,7 @@ export async function createInviteToken(playgroupId, expiresHours = 168, maxUses
  * Redeem an invite token. Adds current user to playgroup. Returns { playgroup_id, playgroup_name }.
  */
 export async function redeemInviteToken(token) {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getActiveClient()
         .rpc('redeem_invite_token', { p_token: token });
     if (error) throw error;
     return data?.[0] || null;
@@ -56,7 +94,7 @@ export async function redeemInviteToken(token) {
  * Create a new playgroup and add the creator as owner
  */
 export async function createPlaygroup(name) {
-    const supabase = getSupabase();
+    const supabase = getActiveClient();
     const { data: playgroup, error } = await supabase
         .rpc('create_playgroup_with_owner', { p_name: name });
 
@@ -68,7 +106,7 @@ export async function createPlaygroup(name) {
  * Fetch games for a playgroup
  */
 export async function fetchGames(playgroupId) {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getActiveClient()
         .from('games')
         .select('id, name')
         .eq('playgroup_id', playgroupId)
@@ -82,7 +120,7 @@ export async function fetchGames(playgroupId) {
  * Fetch players for a playgroup
  */
 export async function fetchPlayers(playgroupId) {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getActiveClient()
         .from('players')
         .select('id, name, user_id')
         .eq('playgroup_id', playgroupId)
@@ -96,7 +134,7 @@ export async function fetchPlayers(playgroupId) {
  * Fetch a single player by ID (includes user_id for profile linking)
  */
 export async function fetchPlayerById(playerId) {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getActiveClient()
         .from('players')
         .select('id, name, playgroup_id, user_id')
         .eq('id', playerId)
@@ -112,7 +150,7 @@ export async function fetchPlayerById(playerId) {
  * The DB unique index also enforces one claim per campaign per user.
  */
 export async function claimPlayer(playerId) {
-    const supabase = getSupabase();
+    const supabase = getActiveClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
@@ -133,7 +171,7 @@ export async function claimPlayer(playerId) {
  * Only the user who originally linked it can unlink it (user_id = auth.uid()).
  */
 export async function unclaimPlayer(playerId) {
-    const supabase = getSupabase();
+    const supabase = getActiveClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
@@ -154,7 +192,7 @@ export async function unclaimPlayer(playerId) {
  * Returns per-campaign summary rows.
  */
 export async function fetchCrossCampaignStats(userId) {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getActiveClient()
         .rpc('get_cross_campaign_player_stats', { p_user_id: userId });
 
     if (error) throw error;
@@ -165,7 +203,7 @@ export async function fetchCrossCampaignStats(userId) {
  * Fetch a user's profile (e.g. favourite game). Returns { favourite_game } or null.
  */
 export async function fetchUserProfile(userId) {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getActiveClient()
         .from('user_profile')
         .select('favourite_game')
         .eq('user_id', userId)
@@ -179,7 +217,7 @@ export async function fetchUserProfile(userId) {
  * Set or clear a user's favourite game. Only the current user can update their own profile.
  */
 export async function upsertUserProfile(userId, favouriteGame) {
-    const { error } = await getSupabase()
+    const { error } = await getActiveClient()
         .from('user_profile')
         .upsert(
             { user_id: userId, favourite_game: favouriteGame || null },
@@ -193,7 +231,7 @@ export async function upsertUserProfile(userId, favouriteGame) {
  * Fetch cross-campaign game breakdown for a linked player (by their user_id).
  */
 export async function fetchCrossCampaignGameBreakdown(userId) {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getActiveClient()
         .rpc('get_cross_campaign_game_breakdown', { p_user_id: userId });
 
     if (error) throw error;
@@ -205,7 +243,7 @@ export async function fetchCrossCampaignGameBreakdown(userId) {
  * Returns the 20 most recent win entries.
  */
 export async function fetchPlayerRecentEntries(userId, limit = 20) {
-    const supabase = getSupabase();
+    const supabase = getActiveClient();
     // First get all player IDs for this user
     const { data: players, error: plErr } = await supabase
         .from('players')
@@ -245,7 +283,7 @@ export async function fetchPlayerRecentEntries(userId, limit = 20) {
  * Fetch entries for a playgroup (with game and player names joined, including audit fields)
  */
 export async function fetchEntries(playgroupId) {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getActiveClient()
         .from('entries')
         .select(`
             id,
@@ -279,7 +317,7 @@ export async function fetchEntries(playgroupId) {
  */
 export async function fetchGameMetadata(gameIds) {
     if (!gameIds?.length) return {};
-    const { data, error } = await getSupabase()
+    const { data, error } = await getActiveClient()
         .from('game_metadata')
         .select('game_id, image')
         .in('game_id', gameIds);
@@ -295,7 +333,7 @@ export async function fetchGameMetadata(gameIds) {
  */
 export async function fetchPlayerMetadata(playerIds) {
     if (!playerIds?.length) return {};
-    const { data, error } = await getSupabase()
+    const { data, error } = await getActiveClient()
         .from('player_metadata')
         .select('player_id, image, color')
         .in('player_id', playerIds);
@@ -360,7 +398,7 @@ export async function loadPlaygroupData(playgroupId) {
  * Insert a new game
  */
 export async function insertGame(playgroupId, name) {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getActiveClient()
         .from('games')
         .insert({ playgroup_id: playgroupId, name })
         .select()
@@ -374,7 +412,7 @@ export async function insertGame(playgroupId, name) {
  * Insert a new player
  */
 export async function insertPlayer(playgroupId, name) {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getActiveClient()
         .from('players')
         .insert({ playgroup_id: playgroupId, name })
         .select()
@@ -389,7 +427,7 @@ export async function insertPlayer(playgroupId, name) {
  * Uses Google full_name if available, falls back to email.
  */
 async function getCurrentUserName() {
-    const supabase = getSupabase();
+    const supabase = getActiveClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
     return user.user_metadata?.full_name || user.email || null;
@@ -400,7 +438,7 @@ async function getCurrentUserName() {
  */
 export async function insertEntry(playgroupId, gameId, playerId, date) {
     const createdByName = await getCurrentUserName();
-    const { data, error } = await getSupabase()
+    const { data, error } = await getActiveClient()
         .from('entries')
         .insert({
             playgroup_id: playgroupId,
@@ -421,7 +459,7 @@ export async function insertEntry(playgroupId, gameId, playerId, date) {
  */
 export async function updateEntry(entryId, gameId, playerId, date) {
     const updatedByName = await getCurrentUserName();
-    const { data, error } = await getSupabase()
+    const { data, error } = await getActiveClient()
         .from('entries')
         .update({
             game_id: gameId,
@@ -442,7 +480,7 @@ export async function updateEntry(entryId, gameId, playerId, date) {
  * Delete an entry
  */
 export async function deleteEntry(entryId) {
-    const { error } = await getSupabase().from('entries').delete().eq('id', entryId);
+    const { error } = await getActiveClient().from('entries').delete().eq('id', entryId);
     if (error) throw error;
 }
 
@@ -450,7 +488,7 @@ export async function deleteEntry(entryId) {
  * Delete a game (cascades to entries and game_metadata)
  */
 export async function deleteGameById(gameId) {
-    const { error } = await getSupabase().from('games').delete().eq('id', gameId);
+    const { error } = await getActiveClient().from('games').delete().eq('id', gameId);
     if (error) throw error;
 }
 
@@ -458,7 +496,7 @@ export async function deleteGameById(gameId) {
  * Delete a player
  */
 export async function deletePlayerById(playerId) {
-    const { error } = await getSupabase().from('players').delete().eq('id', playerId);
+    const { error } = await getActiveClient().from('players').delete().eq('id', playerId);
     if (error) throw error;
 }
 
@@ -466,7 +504,7 @@ export async function deletePlayerById(playerId) {
  * Upsert game metadata
  */
 export async function upsertGameMetadata(gameId, image) {
-    const { error } = await getSupabase()
+    const { error } = await getActiveClient()
         .from('game_metadata')
         .upsert({ game_id: gameId, image }, { onConflict: 'game_id' });
 
@@ -477,7 +515,7 @@ export async function upsertGameMetadata(gameId, image) {
  * Upsert player metadata
  */
 export async function upsertPlayerMetadata(playerId, image, color) {
-    const { error } = await getSupabase()
+    const { error } = await getActiveClient()
         .from('player_metadata')
         .upsert({ player_id: playerId, image: image || null, color: color || '#6366f1' }, { onConflict: 'player_id' });
 
@@ -489,7 +527,7 @@ export async function upsertPlayerMetadata(playerId, image, color) {
  * Used to show the campaign name in the guest banner.
  */
 export async function fetchPlaygroupName(playgroupId) {
-    const { data, error } = await getSupabase()
+    const { data, error } = await getActiveClient()
         .from('playgroups')
         .select('name')
         .eq('id', playgroupId)
@@ -503,7 +541,7 @@ export async function fetchPlaygroupName(playgroupId) {
  * Leave a playgroup (removes current user from playgroup_members)
  */
 export async function leavePlaygroup(playgroupId) {
-    const supabase = getSupabase();
+    const supabase = getActiveClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
     const { error } = await supabase
@@ -518,7 +556,7 @@ export async function leavePlaygroup(playgroupId) {
  * Clear all data for a playgroup (entries, games, players - metadata cascades)
  */
 export async function clearPlaygroupData(playgroupId) {
-    const supabase = getSupabase();
+    const supabase = getActiveClient();
     await supabase.from('entries').delete().eq('playgroup_id', playgroupId);
     await supabase.from('games').delete().eq('playgroup_id', playgroupId);
     await supabase.from('players').delete().eq('playgroup_id', playgroupId);

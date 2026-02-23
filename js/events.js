@@ -292,11 +292,25 @@ export function setupEventListeners() {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                     setTimeout(() => loginBtn.click(), 400);
                 } else {
-                    // Already logged in — go to dashboard
                     showSection('dashboard');
                 }
             });
         }
+    });
+
+    // About page logged-in action buttons
+    ['aboutHeroAddWinBtn', 'aboutBottomAddWinBtn'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.addEventListener('click', () => {
+            showSection('add');
+            document.body.classList.add('tally-add-game-mode');
+            showNewGameInput();
+        });
+    });
+
+    ['aboutHeroHistoryBtn', 'aboutBottomHistoryBtn'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.addEventListener('click', () => showSection('history'));
     });
 
     // Close player profile panel on Escape key

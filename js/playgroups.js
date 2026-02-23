@@ -1,5 +1,6 @@
 import { fetchPlaygroups, createPlaygroup, createInviteToken, leavePlaygroup } from './supabase.js';
 import { showNotification, showModal } from './modals.js';
+import { isAdminMode } from './admin.js';
 
 let activePlaygroup = null;
 let playgroups = [];
@@ -63,11 +64,12 @@ function updatePlaygroupActionButtons() {
     if (shareBtn) shareBtn.style.display = activePlaygroup ? 'inline-flex' : 'none';
     if (leaveBtn) leaveBtn.style.display = activePlaygroup ? 'inline-flex' : 'none';
 
-    // Disable campaign creation once the user already owns 2 (limit: 2 per account)
+    // Admins are exempt from campaign creation limits
     const ownedCount = playgroups.filter(pg => pg.role === 'owner').length;
     if (createBtn) {
-        createBtn.disabled = ownedCount >= 2;
-        createBtn.title = ownedCount >= 2 ? 'You can only own 2 campaigns on the current plan' : '';
+        const atLimit = !isAdminMode() && ownedCount >= 2;
+        createBtn.disabled = atLimit;
+        createBtn.title = atLimit ? 'You can only own 2 campaigns on the current plan' : '';
     }
 }
 
@@ -212,7 +214,7 @@ export function setupPlaygroupUI() {
     async function doCreate() {
         const name = input.value?.trim();
         if (!name) return;
-        if (playgroups.filter(pg => pg.role === 'owner').length >= 2) {
+        if (!isAdminMode() && playgroups.filter(pg => pg.role === 'owner').length >= 2) {
             showModal('Campaign limit reached', 'You can only own 2 campaigns on the current plan.', () => {});
             return;
         }
