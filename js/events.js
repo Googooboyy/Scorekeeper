@@ -93,6 +93,9 @@ function setupFooterLinks() {
 }
 
 export function showSection(sectionName) {
+    // Clear any special UI modes when switching sections
+    document.body.classList.remove('tally-add-game-mode');
+
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
     document.getElementById(sectionName).classList.add('active');
@@ -120,6 +123,7 @@ export function setupEventListeners() {
     document.getElementById('tallyLaunchBtn').addEventListener('click', () => openScoreTabulator());
     document.addEventListener('scorekeeper:openAddGame', function onOpenAddGame() {
         showSection('add');
+        document.body.classList.add('tally-add-game-mode');
         showNewGameInput();
     });
 
@@ -212,6 +216,14 @@ export function setupEventListeners() {
     document.getElementById('gameImageFileInput').addEventListener('change', function (e) {
         handleImageFileSelect(e.target.files[0], 'gameImagePreview', function (result) {
             uiState.tempGameImage = result;
+            document.getElementById('gameImageUrlInput').value = '';
+        });
+    });
+
+    document.getElementById('gameImageUrlInput').addEventListener('input', function () {
+        _handleImageUrl(this.value.trim(), 'gameImagePreview', function (url) {
+            uiState.tempGameImage = url;
+            document.getElementById('gameImageFileInput').value = '';
         });
     });
 
@@ -324,7 +336,14 @@ async function addNewGame() {
         document.getElementById('newGameImagePreview').style.display = 'none';
         document.getElementById('newGameImageUrl').value = '';
         uiState.tempGameImage = null;
-        selectGame(name);
+
+        // If we came here from Tally Scores, return to the tabulator with the new game pre-selected
+        if (document.body.classList.contains('tally-add-game-mode')) {
+            document.body.classList.remove('tally-add-game-mode');
+            openScoreTabulator(name);
+        } else {
+            selectGame(name);
+        }
     } catch (err) {
         alert('Error adding game: ' + (err.message || err));
     }

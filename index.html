@@ -538,11 +538,15 @@
 
             <div class="image-upload-section">
                 <label class="image-upload-label">Game Image</label>
-                <div class="file-input-wrapper">
-                    <input type="file" id="gameImageFileInput" accept="image/*">
-                    <label for="gameImageFileInput" class="file-input-label">
-                        <span>📁</span> Choose New Image
-                    </label>
+                <div class="image-source-row">
+                    <div class="file-input-wrapper">
+                        <input type="file" id="gameImageFileInput" accept="image/*">
+                        <label for="gameImageFileInput" class="file-input-label">
+                            <span>📁</span> Choose File
+                        </label>
+                    </div>
+                    <span class="image-or-sep">or</span>
+                    <input type="url" id="gameImageUrlInput" class="input-field image-url-input" placeholder="Paste image URL…">
                 </div>
                 <img id="gameImagePreview" class="image-preview" alt="Preview" style="display: none;">
             </div>
@@ -659,6 +663,7 @@
                         <select id="tallyGameSelect" class="input-field tally-select">
                             <option value="">Select a game…</option>
                         </select>
+                        <button type="button" class="tally-add-new-game-link" id="tallyAddNewGameBtn">+ Add new game</button>
                     </div>
                     <div id="tallyGameEmptyState" class="tally-empty-state" hidden>
                         <p class="tally-empty-state-text">You don't have any games yet. Add your first game to start tallying scores.</p>

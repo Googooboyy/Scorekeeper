@@ -23,6 +23,7 @@ import {
     insertPlayer
 } from './supabase.js';
 import { getSupabase } from './auth.js';
+import { renderGames, renderGameSelection } from './render.js';
 
 export function showModal(title, message, onConfirm, confirmLabel = 'OK') {
     setModalCallback(onConfirm);
@@ -51,6 +52,8 @@ export function openGameImageModal(game) {
     }
 
     uiState.tempGameImage = currentImage;
+    const urlInput = document.getElementById('gameImageUrlInput');
+    if (urlInput) urlInput.value = '';
     const saveBtn = document.getElementById('gameImageSave');
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
     document.getElementById('gameImageModal').classList.add('active');
@@ -60,6 +63,8 @@ export function closeGameImageModal() {
     document.getElementById('gameImageModal').classList.remove('active');
     const saveBtn = document.getElementById('gameImageSave');
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
+    const urlInput = document.getElementById('gameImageUrlInput');
+    if (urlInput) urlInput.value = '';
     uiState.currentGameForImage = null;
     uiState.tempGameImage = null;
 }
@@ -84,6 +89,8 @@ export async function saveGameImage() {
             showNotification('Image removed from "' + uiState.currentGameForImage + '"');
         }
         saveData();
+        renderGames();
+        renderGameSelection();
     } catch (err) {
         if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
         alert('Error saving image: ' + (err.message || err));
@@ -394,6 +401,7 @@ export async function openPlayerProfileModal(playerName) {
                 if (!data.playerData[playerName]) data.playerData[playerName] = {};
                 const { data: { user: me } } = await getSupabase().auth.getUser();
                 data.playerData[playerName].userId = me?.id || null;
+                saveData(); // refresh player cards so "YOU" badge appears
                 showNotification('Meeple linked to your account!');
                 closePlayerProfileModal();
                 await openPlayerProfileModal(playerName);
@@ -414,6 +422,7 @@ export async function openPlayerProfileModal(playerName) {
                 if (data.playerData[playerName]) {
                     data.playerData[playerName].userId = null;
                 }
+                saveData(); // refresh player cards so "YOU" badge disappears
                 showNotification('Account unlinked from this meeple.');
                 closePlayerProfileModal();
                 await openPlayerProfileModal(playerName);
@@ -645,12 +654,12 @@ function _renderRecentHistoryHtml(entries, showCampaign) {
 let _tallyState = null;
 let _tallyCleanup = null;
 
-export function openScoreTabulator() {
+export function openScoreTabulator(preselectGame = null) {
     const modal = document.getElementById('scoreTallyModal');
     if (!modal) return;
 
     _tallyState = {
-        game: null,
+        game: preselectGame || null,
         participants: [], // { name, isTemp }
         roundCount: 0,
         roundNames: [],   // editable label per round
@@ -664,7 +673,7 @@ export function openScoreTabulator() {
     const games = data.games || [];
     gameSelect.innerHTML = '<option value="">Select a game…</option>' +
         games.map(g => '<option value="' + escapeHtml(g) + '">' + escapeHtml(g) + '</option>').join('');
-    gameSelect.value = '';
+    gameSelect.value = preselectGame && games.includes(preselectGame) ? preselectGame : '';
 
     if (games.length === 0) {
         if (gameSelectWrap) gameSelectWrap.hidden = true;
@@ -773,6 +782,7 @@ export function openScoreTabulator() {
     const cancelBtn         = document.getElementById('tallyCancelBtn');
     const startBtn          = document.getElementById('tallyStartBtn');
     const addFirstGameBtn   = document.getElementById('tallyAddFirstGameBtn');
+    const addNewGameBtn     = document.getElementById('tallyAddNewGameBtn');
     const addTempBtn        = document.getElementById('tallyAddTempBtn');
     const tempNameIn        = document.getElementById('tallyTempName');
     const backBtn           = document.getElementById('tallyBackBtn');
@@ -787,6 +797,7 @@ export function openScoreTabulator() {
     cancelBtn.addEventListener('click', onClose);
     gameSelect.addEventListener('change', onGameChange);
     if (addFirstGameBtn) addFirstGameBtn.addEventListener('click', onAddFirstGame);
+    if (addNewGameBtn) addNewGameBtn.addEventListener('click', onAddFirstGame);
     addTempBtn.addEventListener('click', onAddTemp);
     tempNameIn.addEventListener('keypress', onTempKey);
     startBtn.addEventListener('click', onStart);
@@ -804,6 +815,7 @@ export function openScoreTabulator() {
         cancelBtn.removeEventListener('click', onClose);
         gameSelect.removeEventListener('change', onGameChange);
         if (addFirstGameBtn) addFirstGameBtn.removeEventListener('click', onAddFirstGame);
+        if (addNewGameBtn) addNewGameBtn.removeEventListener('click', onAddFirstGame);
         addTempBtn.removeEventListener('click', onAddTemp);
         tempNameIn.removeEventListener('keypress', onTempKey);
         startBtn.removeEventListener('click', onStart);

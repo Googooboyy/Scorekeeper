@@ -215,9 +215,23 @@ h1.logo {
     margin-left: 8px; border: 2px solid var(--border);
 }
 .player-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.player-info-section { display: flex; align-items: center; gap: 12px; flex: 1; }
-.player-name-section { flex: 1; }
+.player-info-section { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.player-name-section { flex: 1; min-width: 0; }
 .player-name { font-size: 1.1rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; }
+.meeple-unclaimed-badge {
+    margin-left: 6px;
+    padding: 1px 5px;
+    border-radius: 999px;
+    font-size: 0.58rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: rgba(148, 163, 184, 0.1);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
 .win-count-section { text-align: right; margin-right: 12px; }
 .win-count { font-size: 1.5rem; font-weight: 700; color: var(--accent-success); }
 .win-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
@@ -478,7 +492,8 @@ body.read-only .add-new-btn { pointer-events: none; opacity: 0.5; }
 }
 .history-card:hover::before { opacity: 1; }
 .history-card-info { flex: 1; min-width: 0; }
-.history-card-game { font-weight: 600; font-size: 1rem; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history-card-game { font-weight: 600; font-size: 1rem; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+.history-card-game-thumb { width: 28px; height: 28px; border-radius: 5px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--border); }
 .history-card-details { color: var(--text-secondary); font-size: 0.85rem; }
 .history-card-actions { display: flex; gap: 6px; opacity: 0; transform: translateX(8px); transition: all 0.3s ease; }
 .history-card:hover .history-card-actions { opacity: 1; transform: translateX(0); }
@@ -500,6 +515,15 @@ body.read-only .add-new-btn { pointer-events: none; opacity: 0.5; }
 /* New Item Input */
 .new-item-input { background: var(--bg-secondary); border: 2px solid var(--border); border-radius: 12px; padding: 16px; margin-top: 12px; display: none; }
 .new-item-input.active { display: block; animation: slideIn 0.3s ease; }
+
+/* Focused add-game flow when launched from Tally Scores */
+body.tally-add-game-mode #gameSelection {
+    display: none;
+}
+body.tally-add-game-mode #step2,
+body.tally-add-game-mode #step3 {
+    display: none;
+}
 
 /* Image Upload */
 .image-upload-section { margin-top: 16px; padding: 16px; background: var(--bg-tertiary); border-radius: 8px; border: 1px solid var(--border); }
@@ -1258,7 +1282,13 @@ html { overflow-x: hidden; }
 .tally-label { font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); }
 .tally-label-hint { font-weight: 400; color: var(--text-muted); }
 .tally-select { width: 100%; padding: 12px; }
-.tally-game-select-wrap { display: block; }
+.tally-game-select-wrap { display: flex; flex-direction: column; gap: 8px; }
+.tally-add-new-game-link {
+    background: none; border: none; padding: 0; cursor: pointer;
+    font-size: 0.85rem; color: var(--accent-primary); text-align: left;
+    transition: color 0.15s, opacity 0.15s;
+}
+.tally-add-new-game-link:hover { color: var(--accent-gold); opacity: 0.9; }
 .tally-empty-state {
     display: flex; flex-direction: column; gap: 12px; padding: 16px;
     background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 10px;

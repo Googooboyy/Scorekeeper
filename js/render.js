@@ -108,6 +108,10 @@ export function renderPlayers() {
         const isFirst = index === 0;
         const crownHtml = isFirst ? '<div class="player-crown">👑</div>' : '';
         const youBadge = isMyAccount ? '<span class="player-you-badge" title="Your linked account">You</span>' : '';
+        const isUnclaimedMeeple = !!currentUserId && !stat.userId;
+        const meepleUnclaimedBadge = isUnclaimedMeeple
+            ? '<span class="meeple-unclaimed-badge" title="This meeple hasn&#39;t been claimed yet">Unclaimed</span>'
+            : '';
         const imageHtml = stat.image ?
             '<div class="player-card-image-container">' + crownHtml + '<img src="' + escapeHtml(stat.image) + '" alt="' + escapeHtml(stat.player) + '" class="player-card-image" onerror="this.style.display=\'none\'; this.parentElement.querySelector(\'.player-card-image-placeholder\').style.display=\'flex\';"><div class="player-card-image-placeholder" style="display: none;">👤</div></div>' :
             '<div class="player-card-image-container">' + crownHtml + '<div class="player-card-image-placeholder">👤</div></div>';
@@ -117,7 +121,7 @@ export function renderPlayers() {
             '<div class="player-header">' +
             '<div class="player-info-section player-profile-trigger" data-player="' + escapeHtml(stat.player) + '" title="View profile" style="cursor:pointer;">' + imageHtml +
             '<div class="player-name-section">' +
-            '<div class="player-name">' + escapeHtml(stat.player) + colorIndicator + youBadge + '</div>' +
+            '<div class="player-name">' + escapeHtml(stat.player) + colorIndicator + youBadge + meepleUnclaimedBadge + '</div>' +
             '<div class="win-label">Rank #' + (index + 1) + ' <span class="player-profile-hint"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span></div>' +
             '</div>' +
             '</div>' +
@@ -394,9 +398,15 @@ export function renderHistory() {
             ? '<div class="history-card-audit">' + escapeHtml(auditText) + '</div>'
             : '';
 
+        const gameImage = data.gameData && data.gameData[entry.game] && data.gameData[entry.game].image
+            ? data.gameData[entry.game].image : null;
+        const gameThumbHtml = gameImage
+            ? '<img src="' + escapeHtml(gameImage) + '" alt="" class="history-card-game-thumb" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline\'"><span style="display:none">🎲</span>'
+            : '<span>🎲</span>';
+
         return '<div class="history-card" data-id="' + entry.id + '">' +
             '<div class="history-card-info">' +
-            '<div class="history-card-game">🎲 ' + escapeHtml(entry.game) + '</div>' +
+            '<div class="history-card-game">' + gameThumbHtml + ' ' + escapeHtml(entry.game) + '</div>' +
             '<div class="history-card-details">🏆 ' + escapeHtml(entry.player) + ' • 📅 ' + formatDate(entry.date) + '</div>' +
             auditHtml +
             '</div>' +
