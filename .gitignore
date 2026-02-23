@@ -1,9 +1,16 @@
 # Supabase credentials - keep secrets out of version control
 js/config.supabase.js
 
-# Google OAuth client secrets
-google stuffs while creating OAuth/client_secret*.json
+# Google OAuth (verification files, client secrets)
+google stuffs while creating OAuth/
 **/client_secret*.json
+
+# App-irrelevant assets and docs (keep local only)
+images-boardgames/
+images-player-avatars/
+screeshots/
+CONTACT_SETUP.md
+TIER.md
 
 # Local exports, env files, OS/editor cruft
 exports-gamedata/
