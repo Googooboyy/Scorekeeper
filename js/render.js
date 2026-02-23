@@ -68,7 +68,13 @@ export function renderPlayers() {
     const toggleIcon = document.getElementById('playersToggleIcon');
 
     if (data.players.length === 0) {
-        container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-state-icon">👥</div><h3>No Meeples Yet</h3><p>Add meeples in the "Add a Game Win" section</p></div>';
+        if (!data.currentUserId) {
+            container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><button class="about-cta-btn" id="dashboardSignInBtn">Log in to add wins, players and games!</button></div>';
+            const signInBtn = document.getElementById('dashboardSignInBtn');
+            if (signInBtn) signInBtn.addEventListener('click', () => document.getElementById('loginBtn')?.click());
+        } else {
+            container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-state-icon">👥</div><h3>No Meeples Yet</h3><p>Add meeples in the "Add a Game Win" section</p></div>';
+        }
         if (toggleBtn) toggleBtn.style.display = 'none';
         return;
     }

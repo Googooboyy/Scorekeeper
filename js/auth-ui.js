@@ -58,7 +58,7 @@ export function updateAuthUI(isLoggedIn, hasInviteToken) {
             readOnlyBanner.style.display = 'none';
         } else {
             inviteBanner.style.display = 'none';
-            readOnlyBanner.style.display = isLoggedIn ? 'none' : 'block';
+            readOnlyBanner.style.display = 'none';
         }
     }
 
@@ -161,6 +161,10 @@ export function syncReadOnlyBanner(canEdit, isLoggedIn, hasInviteToken, guestCam
     }
 
     banner.classList.remove('guest-banner');
-    banner.textContent = isLoggedIn ? SELECT_PLAYGROUP_BANNER_TEXT : LOGGED_OUT_BANNER_TEXT;
+    if (!isLoggedIn) {
+        banner.style.display = 'none';
+        return;
+    }
+    banner.textContent = SELECT_PLAYGROUP_BANNER_TEXT;
     banner.style.display = 'block';
 }

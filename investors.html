@@ -25,6 +25,49 @@
         }
         .legal-back:hover { color: var(--accent-primary); }
 
+        /* ── Page footer ── */
+        .page-footer {
+            margin-top: 64px;
+            padding: 32px 0 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+        .page-footer-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+        .page-footer-nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        .page-footer-nav a:hover { color: var(--text-primary); }
+        .page-footer-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--accent-primary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+        .page-footer-back:hover { opacity: 0.8; }
+        .page-footer-copy {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        @media (max-width: 500px) {
+            .page-footer { flex-direction: column; align-items: flex-start; }
+        }
+
         /* ── Hero ── */
         .inv-hero {
             text-align: center;
@@ -312,13 +355,26 @@
                     <a href="https://calendly.com/googooboyy" class="inv-cta-primary" target="_blank" rel="noopener noreferrer">
                         Book a 30‑min call
                     </a>
-                    <a href="contact.html?subject=Investor" class="inv-cta-secondary">Or reach out via contact form</a>
+                    <a href="contact.html?subject=Investor" class="inv-cta-secondary" style="color: var(--accent-primary); text-decoration: underline; text-underline-offset: 3px;">Or reach out via contact form</a>
                 </div>
             </div>
 
             <p class="inv-note">
                 📌 This page is for potential investors. For product feedback, feature requests, or general questions, please <a href="contact.html">contact us</a>.
             </p>
+
+            <!-- Page footer -->
+            <footer class="page-footer">
+                <a href="index.html" class="page-footer-back">← Back to app</a>
+                <nav class="page-footer-nav">
+                    <a href="ethos.html">Our Ethos</a>
+                    <a href="roadmap.html">Roadmap</a>
+                    <a href="contact.html">Contact</a>
+                    <a href="terms.html">Terms</a>
+                    <a href="privacy.html">Privacy</a>
+                </nav>
+                <span class="page-footer-copy">© 2026 Googoodevv</span>
+            </footer>
         </main>
     </div>
 </body>
