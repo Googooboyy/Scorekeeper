@@ -293,9 +293,11 @@ export function togglePlayersDisplay() {
 
 export function renderGameSelection() {
     const container = document.getElementById('gameSelection');
-    const addBtn = container.querySelector('.add-new-btn');
+    const addBtn   = container.querySelector('.add-new-btn');
+    const tallyBtn = container.querySelector('.tally-grid-btn');
     container.innerHTML = '';
     container.appendChild(addBtn);
+    if (tallyBtn) container.appendChild(tallyBtn);
 
     if (data.games.length === 0) {
         return;
@@ -459,6 +461,10 @@ export function resetEntryFlow() {
     document.getElementById('newPlayerName').value = '';
     document.getElementById('newGameImagePreview').style.display = 'none';
     document.getElementById('newPlayerImagePreview').style.display = 'none';
+    const _giUrl = document.getElementById('newGameImageUrl');
+    const _piUrl = document.getElementById('newPlayerImageUrl');
+    if (_giUrl) _giUrl.value = '';
+    if (_piUrl) _piUrl.value = '';
     uiState.tempGameImage = null;
     uiState.tempPlayerImage = null;
     renderGameSelection();

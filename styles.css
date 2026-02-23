@@ -506,9 +506,13 @@ body.read-only .add-new-btn { pointer-events: none; opacity: 0.5; }
 .image-upload-label { display: block; margin-bottom: 8px; color: var(--text-secondary); font-size: 0.9rem; }
 .image-preview { width: 100px; height: 100px; border-radius: 8px; object-fit: cover; margin-top: 8px; border: 2px solid var(--border); display: none; }
 .image-preview.active { display: block; }
+.image-source-row { display: flex; align-items: center; gap: 10px; }
+.image-source-row .file-input-wrapper { flex-shrink: 0; width: auto; min-width: 140px; }
+.image-or-sep { flex-shrink: 0; color: var(--text-muted); font-size: 0.8rem; }
+.image-url-input { flex: 1; margin: 0 !important; padding: 12px 14px !important; font-size: 0.88rem !important; }
 .file-input-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
 .file-input-wrapper input[type=file] { position: absolute; left: -9999px; }
-.file-input-label { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; background: var(--bg-card); border: 2px dashed var(--border); border-radius: 8px; cursor: pointer; transition: all 0.3s ease; color: var(--text-secondary); }
+.file-input-label { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; background: var(--bg-card); border: 2px dashed var(--border); border-radius: 8px; cursor: pointer; transition: all 0.3s ease; color: var(--text-secondary); white-space: nowrap; }
 .file-input-label:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
 
 /* Modal */
@@ -1189,47 +1193,38 @@ html { overflow-x: hidden; }
 }
 
 /* ── Score Tabulator launch button ────────────────────────────────────────── */
-.tally-launch-btn {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    width: 100%;
-    margin-bottom: 20px;
-    padding: 16px 20px;
-    border-radius: 14px;
-    border: 1px solid var(--accent-gold-dark);
-    background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(184,134,11,0.06));
-    cursor: pointer;
-    text-align: left;
-    transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
-    position: relative;
-    overflow: hidden;
+/* ── Tally Scores grid button (sits inside the game selection grid) ─────────── */
+.tally-grid-btn {
+    border-style: dashed;
+    border-color: var(--accent-gold-dark);
+    color: var(--accent-gold);
+    font-weight: 600;
+    grid-column: 1 / -1;
+    margin-bottom: 8px;
+    letter-spacing: 0.02em;
 }
-.tally-launch-btn::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent 30%, rgba(255,215,0,0.07) 50%, transparent 70%);
-    background-size: 200% 100%;
-    animation: goldShimmer 3s linear infinite;
-    pointer-events: none;
+.tally-grid-btn:hover {
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
+    background: rgba(245, 158, 11, 0.08);
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.12);
 }
-.tally-launch-btn:hover {
-    background: linear-gradient(135deg, rgba(255,215,0,0.14), rgba(184,134,11,0.10));
-    box-shadow: 0 4px 20px rgba(255,215,0,0.12);
-    transform: translateY(-1px);
+
+/* ── Fanfare pop-in when tally modal opens ──────────────────────────────────── */
+@keyframes tallyGrandOpen {
+    0%   { box-shadow: 0 0 0 0 rgba(245,158,11,0.75), 0 20px 60px rgba(0,0,0,0.5); transform: scale(0.91); }
+    45%  { box-shadow: 0 0 0 28px rgba(245,158,11,0.14), 0 20px 60px rgba(0,0,0,0.5); transform: scale(1.025); }
+    100% { box-shadow: 0 0 0 54px rgba(245,158,11,0), 0 20px 60px rgba(0,0,0,0.5); transform: scale(1); }
 }
-.tally-launch-icon { font-size: 1.8rem; flex-shrink: 0; }
-.tally-launch-text { display: flex; flex-direction: column; flex: 1; gap: 2px; }
-.tally-launch-title { font-size: 1rem; font-weight: 700; color: var(--accent-gold); }
-.tally-launch-sub { font-size: 0.78rem; color: var(--text-muted); }
-.tally-launch-arrow { font-size: 1.2rem; color: var(--accent-gold-dark); flex-shrink: 0; }
+.tally-modal.tally-grand-open {
+    animation: tallyGrandOpen 0.55s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
 
 /* ── Tally modal shell ─────────────────────────────────────────────────────── */
 .tally-overlay { align-items: center; justify-content: center; }
 .tally-modal {
     width: 100%;
-    max-width: 600px;
+    max-width: min(860px, 95vw);
     max-height: 90vh;
     overflow-y: auto;
     border-radius: 16px;
@@ -1263,6 +1258,15 @@ html { overflow-x: hidden; }
 .tally-label { font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); }
 .tally-label-hint { font-weight: 400; color: var(--text-muted); }
 .tally-select { width: 100%; padding: 12px; }
+.tally-game-select-wrap { display: block; }
+.tally-empty-state {
+    display: flex; flex-direction: column; gap: 12px; padding: 16px;
+    background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 10px;
+    text-align: center;
+}
+.tally-empty-state[hidden] { display: none !important; }
+.tally-empty-state-text { margin: 0; font-size: 0.9rem; color: var(--text-muted); line-height: 1.4; }
+.tally-add-first-game-btn { align-self: center; }
 .tally-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
 
 /* ── Meeple chips ──────────────────────────────────────────────────────────── */
@@ -1312,19 +1316,27 @@ html { overflow-x: hidden; }
 
 /* ── Score table ───────────────────────────────────────────────────────────── */
 .tally-table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
-.score-table { width: 100%; border-collapse: collapse; min-width: 280px; }
+.score-table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 320px; }
 .score-table th, .score-table td { padding: 8px 10px; text-align: center; }
-.score-th-round { text-align: left; font-size: 0.75rem; color: var(--text-muted); width: 60px; }
+.score-th-round { text-align: left; font-size: 0.75rem; color: var(--text-muted); width: 72px; }
 .score-th-player {
     font-size: 0.82rem; color: var(--text-secondary); font-weight: 600;
-    border-bottom: 2px solid var(--border); white-space: nowrap;
+    border-bottom: 2px solid var(--border); overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
 }
 .score-th-player.is-temp { color: var(--accent-warning); }
 .score-td-round { font-size: 0.75rem; color: var(--text-muted); text-align: left; white-space: nowrap; }
+.score-round-name {
+    width: 64px; background: transparent; border: none;
+    border-bottom: 1px dashed rgba(255,255,255,0.15);
+    color: var(--text-muted); font-size: 0.74rem; text-align: left;
+    padding: 2px 3px; outline: none; cursor: text; transition: border-color 0.2s, color 0.2s;
+}
+.score-round-name:focus { border-bottom-color: var(--accent-gold); color: var(--text-primary); }
 .score-td { border-top: 1px solid rgba(255,255,255,0.04); }
 .score-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
 .score-input {
-    width: 64px; padding: 6px 8px; text-align: center; border-radius: 6px;
+    width: 100%; max-width: 90px; padding: 6px 8px; text-align: center; border-radius: 6px;
     border: 1px solid var(--border); background: var(--bg-tertiary);
     color: var(--text-primary); font-size: 0.9rem;
     transition: border-color 0.15s;
@@ -1339,7 +1351,70 @@ html { overflow-x: hidden; }
 .score-table tfoot tr { background: var(--bg-secondary); }
 
 /* ── Add round / record buttons ────────────────────────────────────────────── */
-.tally-add-round-btn { align-self: flex-start; font-size: 0.85rem; }
+/* ── Round-type picker (always visible on Stage 2) ─────────────────────────── */
+.tally-round-picker {
+    margin: 8px 0 4px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    display: flex; flex-direction: column; gap: 10px;
+}
+.tally-round-picker-title {
+    font-size: 0.78rem; color: var(--text-muted); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em; margin: 0;
+}
+.tally-round-picker-options {
+    display: flex; flex-wrap: wrap; gap: 8px;
+}
+.tally-round-others-row {
+    padding-top: 6px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+}
+.tally-round-opt {
+    padding: 7px 14px; border-radius: 20px; font-size: 0.86rem; font-weight: 500;
+    border: 1px solid var(--border); background: var(--bg-card);
+    color: var(--text-primary); cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, transform 0.1s;
+}
+.tally-round-opt:hover { border-color: var(--accent-gold); background: rgba(245,158,11,0.08); transform: translateY(-1px); }
+.tally-round-opt--others { color: var(--text-muted); font-size: 0.82rem; }
+.tally-round-custom {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+}
+.tally-round-custom .input-field { margin: 0; flex: 1; min-width: 120px; padding: 10px 14px; font-size: 0.9rem; }
+.tally-round-confirm-btn {
+    background: linear-gradient(135deg, var(--accent-gold-dark), var(--accent-gold));
+    color: #000; font-weight: 700; padding: 10px 16px; border-radius: 8px;
+    border: none; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.tally-round-cancel-btn { font-size: 0.82rem; padding: 6px 12px; flex-shrink: 0; }
+
+/* ── Stage 3: Celebration ──────────────────────────────────────────────────── */
+.tally-celebrate {
+    text-align: center; padding: 24px 16px 20px;
+}
+.tally-celebrate-crown {
+    font-size: 3rem; line-height: 1; margin-bottom: 10px;
+    animation: celebCrown 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+.tally-celebrate-name {
+    font-size: 2rem; font-weight: 800; color: var(--accent-gold);
+    animation: celebName 0.5s 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+.tally-celebrate-sub {
+    font-size: 0.95rem; color: var(--text-secondary); margin-top: 6px;
+    animation: celebName 0.5s 0.25s ease both;
+}
+@keyframes celebCrown {
+    0%   { transform: scale(0.3) rotate(-20deg); opacity: 0; }
+    60%  { transform: scale(1.15) rotate(6deg); }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+@keyframes celebName {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
 .tally-record-btn {
     background: linear-gradient(135deg, var(--accent-gold-dark), var(--accent-gold));
     color: #000; font-weight: 700; padding: 10px 22px; border-radius: 8px;
@@ -1370,6 +1445,6 @@ html { overflow-x: hidden; }
 @media (max-width: 500px) {
     .tally-modal { max-height: 95vh; border-radius: 12px 12px 0 0; }
     .tally-overlay { align-items: flex-end; }
-    .tally-launch-sub { display: none; }
-    .score-input { width: 52px; }
+    .score-input { max-width: 60px; }
+    .score-round-name { width: 52px; }
 }

@@ -96,14 +96,6 @@
 
         <!-- Add Entry Section -->
         <section id="add" class="section">
-            <button class="tally-launch-btn" id="tallyLaunchBtn" type="button">
-                <span class="tally-launch-icon">📊</span>
-                <span class="tally-launch-text">
-                    <span class="tally-launch-title">Tally Scores</span>
-                    <span class="tally-launch-sub">Multi-round score calculator — find the winner, then record it</span>
-                </span>
-                <span class="tally-launch-arrow">→</span>
-            </button>
             <div class="entry-flow">
                 <!-- Step 1: Select Game -->
                 <div id="step1" class="step active">
@@ -117,16 +109,23 @@
                         <div class="selection-item add-new-btn" id="showNewGameBtn">
                             + Add New Game
                         </div>
+                        <div class="selection-item tally-grid-btn" id="tallyLaunchBtn" role="button" tabindex="0">
+                            🏆 Tally Scores
+                        </div>
                     </div>
                     <div id="newGameInput" class="new-item-input">
                         <input type="text" id="newGameName" class="input-field" placeholder="Enter game name...">
                         <div class="image-upload-section">
                             <label class="image-upload-label">Game Image (Optional)</label>
-                            <div class="file-input-wrapper">
-                                <input type="file" id="newGameImage" accept="image/*">
-                                <label for="newGameImage" class="file-input-label">
-                                    <span>📁</span> Choose Image
-                                </label>
+                            <div class="image-source-row">
+                                <div class="file-input-wrapper">
+                                    <input type="file" id="newGameImage" accept="image/*">
+                                    <label for="newGameImage" class="file-input-label">
+                                        <span>📁</span> Choose File
+                                    </label>
+                                </div>
+                                <span class="image-or-sep">or</span>
+                                <input type="url" id="newGameImageUrl" class="input-field image-url-input" placeholder="Paste image URL…">
                             </div>
                             <img id="newGameImagePreview" class="image-preview" alt="Preview">
                         </div>
@@ -149,11 +148,15 @@
                         <input type="text" id="newPlayerName" class="input-field" placeholder="Enter meeple name...">
                         <div class="image-upload-section">
                             <label class="image-upload-label">Meeple Image (Optional)</label>
-                            <div class="file-input-wrapper">
-                                <input type="file" id="newPlayerImage" accept="image/*">
-                                <label for="newPlayerImage" class="file-input-label">
-                                    <span>📁</span> Choose Image
-                                </label>
+                            <div class="image-source-row">
+                                <div class="file-input-wrapper">
+                                    <input type="file" id="newPlayerImage" accept="image/*">
+                                    <label for="newPlayerImage" class="file-input-label">
+                                        <span>📁</span> Choose File
+                                    </label>
+                                </div>
+                                <span class="image-or-sep">or</span>
+                                <input type="url" id="newPlayerImageUrl" class="input-field image-url-input" placeholder="Paste image URL…">
                             </div>
                             <img id="newPlayerImagePreview" class="image-preview" alt="Preview">
                         </div>
@@ -411,7 +414,7 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <span class="footer-copy">© 2026 Googoodevv &nbsp;·&nbsp; <span class="footer-version">v0.9 Beta</span></span>
+                <span class="footer-copy">© 2026 Googoodevv &nbsp;·&nbsp; <span class="footer-version">v0.9.1 Beta</span></span>
                 <div class="footer-social">
                     <a href="#" class="footer-social-link" aria-label="X (Twitter)" title="X (Twitter)">𝕏</a>
                     <a href="#" class="footer-social-link" aria-label="Instagram" title="Instagram">
@@ -640,7 +643,6 @@
         <div class="modal tally-modal">
             <div class="tally-header">
                 <div class="tally-header-left">
-                    <span class="tally-header-icon">📊</span>
                     <div>
                         <h3 class="tally-title" id="tallyTitle">Tally Scores</h3>
                         <p class="tally-subtitle" id="tallySubtitle">Set up your game</p>
@@ -651,11 +653,17 @@
 
             <!-- Stage 1: Setup -->
             <div id="tallyStage1" class="tally-stage active">
-                <div class="tally-field">
+                <div class="tally-field tally-field-game">
                     <label class="tally-label">Game</label>
-                    <select id="tallyGameSelect" class="input-field tally-select">
-                        <option value="">Select a game…</option>
-                    </select>
+                    <div id="tallyGameSelectWrap" class="tally-game-select-wrap">
+                        <select id="tallyGameSelect" class="input-field tally-select">
+                            <option value="">Select a game…</option>
+                        </select>
+                    </div>
+                    <div id="tallyGameEmptyState" class="tally-empty-state" hidden>
+                        <p class="tally-empty-state-text">You don't have any games yet. Add your first game to start tallying scores.</p>
+                        <button type="button" class="btn btn-primary tally-add-first-game-btn" id="tallyAddFirstGameBtn">+ Add your first game</button>
+                    </div>
                 </div>
                 <div class="tally-field">
                     <label class="tally-label">Who's playing? <span class="tally-label-hint">(pick 2 or more)</span></label>
@@ -681,11 +689,48 @@
                         <tfoot id="scoreTableFoot"></tfoot>
                     </table>
                 </div>
-                <button class="btn btn-secondary tally-add-round-btn" id="tallyAddRoundBtn" type="button">+ Add Round</button>
+                <!-- Round type picker — always visible on Stage 2 -->
+                <div id="tallyRoundPicker" class="tally-round-picker">
+                    <p class="tally-round-picker-title">What are you scoring?</p>
+                    <div class="tally-round-picker-options">
+                        <button class="tally-round-opt" data-type="Objectives" type="button">🎯 Objectives</button>
+                        <button class="tally-round-opt" data-type="Cards" type="button">🃏 Cards</button>
+                        <button class="tally-round-opt" data-type="Player Board" type="button">🗂️ Player Board</button>
+                        <button class="tally-round-opt" data-type="VP" type="button">🏆 VP</button>
+                        <button class="tally-round-opt" data-type="Resources" type="button">🌾 Resources</button>
+                        <button class="tally-round-opt" data-type="Coins" type="button">🪙 Coins</button>
+                    </div>
+                    <div class="tally-round-others-row">
+                        <button class="tally-round-opt tally-round-opt--others" data-type="__custom__" type="button">✏️ Others…</button>
+                    </div>
+                    <div id="tallyRoundCustom" class="tally-round-custom" hidden>
+                        <input type="text" id="tallyRoundCustomName" class="input-field" placeholder="Name this round…" maxlength="20">
+                        <button class="btn tally-round-confirm-btn" id="tallyRoundConfirmBtn" type="button">Add →</button>
+                        <button class="btn btn-secondary tally-round-cancel-btn" id="tallyRoundCancelBtn" type="button">Cancel</button>
+                    </div>
+                </div>
+
                 <div id="tallyWinnerBar" class="tally-winner-bar"></div>
                 <div class="tally-actions">
                     <button class="btn btn-secondary" id="tallyBackBtn" type="button">← Back</button>
                     <button class="btn tally-record-btn" id="tallyRecordBtn" type="button">Record This Win 🎉</button>
+                </div>
+            </div>
+
+            <!-- Stage 3: Celebrate & confirm date -->
+            <div id="tallyStage3" class="tally-stage">
+                <div class="tally-celebrate">
+                    <div class="tally-celebrate-crown">👑</div>
+                    <div class="tally-celebrate-name" id="tallyCelebName"></div>
+                    <div class="tally-celebrate-sub" id="tallyCelebSub"></div>
+                </div>
+                <div class="tally-field">
+                    <label class="tally-label">When was this played?</label>
+                    <input type="date" id="tallyWinDate" class="input-field">
+                </div>
+                <div class="tally-actions">
+                    <button class="btn btn-secondary" id="tallyBackToScoresBtn" type="button">← Back</button>
+                    <button class="btn tally-record-btn" id="tallySaveWinBtn" type="button">Save Win 🎉</button>
                 </div>
             </div>
         </div>

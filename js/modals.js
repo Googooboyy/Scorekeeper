@@ -652,15 +652,27 @@ export function openScoreTabulator() {
     _tallyState = {
         game: null,
         participants: [], // { name, isTemp }
-        roundCount: 3,
+        roundCount: 0,
+        roundNames: [],   // editable label per round
         scores: []        // [roundIndex][participantIndex]
     };
 
-    // Populate game dropdown
+    // Populate game dropdown and show empty state when no games
     const gameSelect = document.getElementById('tallyGameSelect');
+    const gameSelectWrap = document.getElementById('tallyGameSelectWrap');
+    const gameEmptyState = document.getElementById('tallyGameEmptyState');
+    const games = data.games || [];
     gameSelect.innerHTML = '<option value="">Select a game…</option>' +
-        (data.games || []).map(g => '<option value="' + escapeHtml(g) + '">' + escapeHtml(g) + '</option>').join('');
+        games.map(g => '<option value="' + escapeHtml(g) + '">' + escapeHtml(g) + '</option>').join('');
     gameSelect.value = '';
+
+    if (games.length === 0) {
+        if (gameSelectWrap) gameSelectWrap.hidden = true;
+        if (gameEmptyState) gameEmptyState.hidden = false;
+    } else {
+        if (gameSelectWrap) gameSelectWrap.hidden = false;
+        if (gameEmptyState) gameEmptyState.hidden = true;
+    }
 
     // Render meeple chips from campaign
     _renderTallyChips();
@@ -668,6 +680,10 @@ export function openScoreTabulator() {
     // Clear temp fields
     document.getElementById('tallyTempList').innerHTML = '';
     document.getElementById('tallyTempName').value = '';
+    const _rc = document.getElementById('tallyRoundCustom');
+    if (_rc) { _rc.hidden = true; }
+    const _rci = document.getElementById('tallyRoundCustomName');
+    if (_rci) { _rci.value = ''; }
 
     // Show stage 1
     _tallyShowStage(1);
@@ -677,12 +693,16 @@ export function openScoreTabulator() {
     _updateTallyStartBtn();
 
     // ── Event handlers ──
-    const onClose    = () => closeScoreTabulator();
-    const onOverlay  = (e) => { if (e.target === modal) closeScoreTabulator(); };
+    const onClose = () => closeScoreTabulator();
 
     const onGameChange = () => {
         _tallyState.game = gameSelect.value || null;
         _updateTallyStartBtn();
+    };
+
+    const onAddFirstGame = () => {
+        closeScoreTabulator();
+        document.dispatchEvent(new CustomEvent('scorekeeper:openAddGame'));
     };
 
     const onAddTemp = () => _tallyAddTempMeeple();
@@ -702,49 +722,103 @@ export function openScoreTabulator() {
         document.getElementById('tallySubtitle').textContent = 'Set up your game';
     };
 
-    const onAddRound = () => {
+    // ── Round-type picker (always visible on Stage 2) ─────────────────────────
+    const customWrap  = document.getElementById('tallyRoundCustom');
+    const customInput = document.getElementById('tallyRoundCustomName');
+
+    const _commitRound = (name) => {
+        customWrap.hidden = true;
+        customInput.value = '';
         _tallyState.roundCount++;
+        _tallyState.roundNames.push(name || ('Rnd ' + _tallyState.roundCount));
         _tallyState.scores.push(new Array(_tallyState.participants.length).fill(null));
         _renderScoreTableBody();
         _updateTotals();
+        const wrap = document.querySelector('.tally-table-wrap');
+        if (wrap) setTimeout(() => { wrap.scrollTop = wrap.scrollHeight; }, 30);
     };
+
+    const onRoundOptClick = (e) => {
+        const btn = e.target.closest('.tally-round-opt');
+        if (!btn) return;
+        const type = btn.dataset.type;
+        if (type === '__custom__') {
+            customWrap.hidden = false;
+            customInput.focus();
+        } else {
+            _commitRound(type);
+        }
+    };
+
+    const onRoundConfirm = () => {
+        const name = customInput.value.trim();
+        _commitRound(name || 'Others');
+    };
+
+    const onRoundCustomKey = (e) => { if (e.key === 'Enter') onRoundConfirm(); };
+    const onRoundCancel    = () => { customWrap.hidden = true; customInput.value = ''; };
+
+    // ── Stage 3 (confirm date & save) ─────────────────────────────────────────
+    const onBackToScores = () => {
+        _tallyShowStage(2);
+        document.getElementById('tallyTitle').textContent = _tallyState.game;
+        document.getElementById('tallySubtitle').textContent = 'Enter scores for each round';
+    };
+
+    const onSaveWin = () => _tallySaveWin();
 
     const onRecord = () => _tallyRecordWin();
 
-    const closeBtn    = document.getElementById('tallyClose');
-    const cancelBtn   = document.getElementById('tallyCancelBtn');
-    const startBtn    = document.getElementById('tallyStartBtn');
-    const addTempBtn  = document.getElementById('tallyAddTempBtn');
-    const tempNameIn  = document.getElementById('tallyTempName');
-    const backBtn     = document.getElementById('tallyBackBtn');
-    const addRoundBtn = document.getElementById('tallyAddRoundBtn');
-    const recordBtn   = document.getElementById('tallyRecordBtn');
+    const closeBtn          = document.getElementById('tallyClose');
+    const cancelBtn         = document.getElementById('tallyCancelBtn');
+    const startBtn          = document.getElementById('tallyStartBtn');
+    const addFirstGameBtn   = document.getElementById('tallyAddFirstGameBtn');
+    const addTempBtn        = document.getElementById('tallyAddTempBtn');
+    const tempNameIn        = document.getElementById('tallyTempName');
+    const backBtn           = document.getElementById('tallyBackBtn');
+    const roundOptContainer = document.getElementById('tallyRoundPicker');
+    const roundConfirmBtn   = document.getElementById('tallyRoundConfirmBtn');
+    const roundCancelBtn    = document.getElementById('tallyRoundCancelBtn');
+    const recordBtn         = document.getElementById('tallyRecordBtn');
+    const backToScoresBtn   = document.getElementById('tallyBackToScoresBtn');
+    const saveWinBtn        = document.getElementById('tallySaveWinBtn');
 
     closeBtn.addEventListener('click', onClose);
     cancelBtn.addEventListener('click', onClose);
     gameSelect.addEventListener('change', onGameChange);
+    if (addFirstGameBtn) addFirstGameBtn.addEventListener('click', onAddFirstGame);
     addTempBtn.addEventListener('click', onAddTemp);
     tempNameIn.addEventListener('keypress', onTempKey);
     startBtn.addEventListener('click', onStart);
     backBtn.addEventListener('click', onBack);
-    addRoundBtn.addEventListener('click', onAddRound);
+    roundOptContainer.addEventListener('click', onRoundOptClick);
+    roundConfirmBtn.addEventListener('click', onRoundConfirm);
+    customInput.addEventListener('keypress', onRoundCustomKey);
+    roundCancelBtn.addEventListener('click', onRoundCancel);
     recordBtn.addEventListener('click', onRecord);
-    modal.addEventListener('click', onOverlay);
+    backToScoresBtn.addEventListener('click', onBackToScores);
+    saveWinBtn.addEventListener('click', onSaveWin);
 
     _tallyCleanup = () => {
         closeBtn.removeEventListener('click', onClose);
         cancelBtn.removeEventListener('click', onClose);
         gameSelect.removeEventListener('change', onGameChange);
+        if (addFirstGameBtn) addFirstGameBtn.removeEventListener('click', onAddFirstGame);
         addTempBtn.removeEventListener('click', onAddTemp);
         tempNameIn.removeEventListener('keypress', onTempKey);
         startBtn.removeEventListener('click', onStart);
         backBtn.removeEventListener('click', onBack);
-        addRoundBtn.removeEventListener('click', onAddRound);
+        roundOptContainer.removeEventListener('click', onRoundOptClick);
+        roundConfirmBtn.removeEventListener('click', onRoundConfirm);
+        customInput.removeEventListener('keypress', onRoundCustomKey);
+        roundCancelBtn.removeEventListener('click', onRoundCancel);
         recordBtn.removeEventListener('click', onRecord);
-        modal.removeEventListener('click', onOverlay);
+        backToScoresBtn.removeEventListener('click', onBackToScores);
+        saveWinBtn.removeEventListener('click', onSaveWin);
     };
 
     modal.classList.add('active');
+    _playTallyFanfare();
 }
 
 export function closeScoreTabulator() {
@@ -818,9 +892,21 @@ function _updateTallyStartBtn() {
     btn.disabled = !(_tallyState?.game && _tallyState?.participants.length >= 2);
 }
 
+function _playTallyFanfare() {
+    const modal = document.getElementById('scoreTallyModal');
+    if (!modal) return;
+    const m = modal.querySelector('.tally-modal');
+    if (!m) return;
+    m.classList.remove('tally-grand-open');
+    void m.offsetWidth; // force reflow so animation replays
+    m.classList.add('tally-grand-open');
+    m.addEventListener('animationend', () => m.classList.remove('tally-grand-open'), { once: true });
+}
+
 function _initScoreTable() {
-    const n = _tallyState.participants.length;
-    _tallyState.scores = Array.from({ length: _tallyState.roundCount }, () => new Array(n).fill(null));
+    _tallyState.roundCount = 0;
+    _tallyState.roundNames = [];
+    _tallyState.scores = [];
     _renderScoreTableHead();
     _renderScoreTableBody();
     _updateTotals();
@@ -832,7 +918,6 @@ function _renderScoreTableHead() {
         _tallyState.participants.map(p =>
             '<th class="score-th-player' + (p.isTemp ? ' is-temp' : '') + '">' +
             escapeHtml(p.name) +
-            (p.isTemp ? ' <span class="tally-guest-badge">guest</span>' : '') +
             '</th>'
         ).join('') + '</tr>';
 }
@@ -840,9 +925,10 @@ function _renderScoreTableHead() {
 function _renderScoreTableBody() {
     const body = document.getElementById('scoreTableBody');
     body.innerHTML = _tallyState.scores.map((row, ri) =>
-        '<tr><td class="score-td-round">Rnd ' + (ri + 1) + '</td>' +
+        '<tr>' +
+        '<td class="score-td-round"><input class="score-round-name" type="text" data-ri="' + ri + '" value="' + escapeHtml(_tallyState.roundNames[ri] || ('Rnd ' + (ri + 1))) + '" maxlength="18" placeholder="Rnd ' + (ri + 1) + '"></td>' +
         row.map((val, ci) =>
-            '<td class="score-td"><input type="number" class="score-input" data-ri="' + ri + '" data-ci="' + ci + '" value="' + (val !== null ? val : '') + '" min="0" placeholder="0" inputmode="decimal"></td>'
+            '<td class="score-td"><input type="number" class="score-input" data-ri="' + ri + '" data-ci="' + ci + '" value="' + (val !== null ? val : '') + '" placeholder="0" inputmode="decimal"></td>'
         ).join('') + '</tr>'
     ).join('');
 
@@ -852,6 +938,12 @@ function _renderScoreTableBody() {
             const ci = parseInt(input.dataset.ci);
             _tallyState.scores[ri][ci] = parseFloat(input.value) || 0;
             _updateTotals();
+        });
+    });
+
+    body.querySelectorAll('.score-round-name').forEach(input => {
+        input.addEventListener('input', () => {
+            _tallyState.roundNames[parseInt(input.dataset.ri)] = input.value;
         });
     });
 }
@@ -958,10 +1050,41 @@ async function _tallyRecordWin() {
         }
     }
 
+    // ── "Recording…" feedback, then advance to Stage 3 ───────────────────────
+    const recordBtn = document.getElementById('tallyRecordBtn');
+    recordBtn.disabled = true;
+    recordBtn.textContent = 'Recording…';
+
+    // Store for Stage 3
+    const winnerIdx = winnerIdxs[0];
+    _tallyState._pendingWinner = winner;
+    _tallyState._pendingGame   = gameName;
+    _tallyState._pendingPts    = totals[winnerIdx];
+
+    setTimeout(() => {
+        if (!_tallyState) return; // modal was closed in the meantime
+        document.getElementById('tallyCelebName').textContent = winner.name;
+        document.getElementById('tallyCelebSub').textContent =
+            'wins ' + gameName + ' with ' + _tallyState._pendingPts + ' pts';
+        document.getElementById('tallyWinDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('tallyTitle').textContent = '🎉 Winner!';
+        document.getElementById('tallySubtitle').textContent = 'Confirm and save the win';
+        recordBtn.disabled = false;
+        recordBtn.textContent = 'Record This Win 🎉';
+        _tallyShowStage(3);
+    }, 1400);
+}
+
+function _tallySaveWin() {
+    if (!_tallyState) return;
+    const date = document.getElementById('tallyWinDate').value;
+    if (!date) { showNotification('Please pick a date'); return; }
+    const game   = _tallyState._pendingGame || _tallyState.game;
+    const winner = _tallyState._pendingWinner;
     closeScoreTabulator();
-    // Bridge to events.js via custom event (avoids circular import with render.js)
+    // Bridge to events.js via custom event — now carries date too
     window.dispatchEvent(new CustomEvent('tallyComplete', {
-        detail: { game: gameName, winner: winner.name }
+        detail: { game, winner: winner.name, date }
     }));
 }
 

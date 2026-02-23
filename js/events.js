@@ -32,6 +32,29 @@ import {
     togglePlayersDisplay
 } from './render.js';
 
+// Validates an image URL, shows a preview, and calls callback(url) on success.
+// Uses debounce so it only fires 600 ms after the user stops typing.
+const _imgUrlTimers = {};
+function _handleImageUrl(url, previewId, callback) {
+    clearTimeout(_imgUrlTimers[previewId]);
+    const preview = document.getElementById(previewId);
+    if (!url) {
+        if (preview) { preview.src = ''; preview.style.display = 'none'; }
+        callback(null);
+        return;
+    }
+    _imgUrlTimers[previewId] = setTimeout(() => {
+        if (!url.startsWith('http://') && !url.startsWith('https://')) return;
+        const tester = new Image();
+        tester.onload = () => {
+            if (preview) { preview.src = url; preview.style.display = 'block'; }
+            callback(url);
+        };
+        tester.onerror = () => { /* silently ignore while user is still typing */ };
+        tester.src = url;
+    }, 600);
+}
+
 export function setupNavigation() {
     document.querySelectorAll('.nav-tab').forEach(tab => {
         tab.addEventListener('click', function () {
@@ -95,14 +118,51 @@ export function setupEventListeners() {
 
     // Score Tabulator launch
     document.getElementById('tallyLaunchBtn').addEventListener('click', () => openScoreTabulator());
-
-    // tallyComplete — fired by modals.js when a winner is confirmed; bridge to render flow
-    window.addEventListener('tallyComplete', (e) => {
-        const { game, winner } = e.detail;
+    document.addEventListener('scorekeeper:openAddGame', function onOpenAddGame() {
         showSection('add');
-        // selectGame advances to step 2, selectPlayer advances to step 3
-        setTimeout(() => selectGame(game), 80);
-        setTimeout(() => selectPlayer(winner), 320);
+        showNewGameInput();
+    });
+
+    // tallyComplete — fired by modals.js when Stage 3 "Save Win" is confirmed
+    window.addEventListener('tallyComplete', async (e) => {
+        const { game, winner, date } = e.detail;
+        const pg = getActivePlaygroup();
+        if (!pg) { showLoginPrompt(); return; }
+
+        const gameId   = data._gameIdByName[game];
+        const playerId = data._playerIdByName[winner];
+        if (!gameId || !playerId) {
+            showNotification('Could not save win — invalid game or meeple.');
+            return;
+        }
+
+        try {
+            const row = await insertEntry(pg.id, gameId, playerId, date);
+            data.entries.push({
+                id: row.id,
+                game,
+                player: winner,
+                date,
+                created_at: row.created_at || new Date().toISOString(),
+                created_by_name: row.created_by_name || null,
+                updated_at: row.updated_at || null,
+                updated_by_name: row.updated_by_name || null
+            });
+            saveData();
+            showNotification('🎉 ' + winner + ' won at ' + game + '!');
+            showSection('dashboard');
+            fireConfetti();
+            requestAnimationFrame(() => {
+                document.querySelectorAll('.game-card-wrapper').forEach(w => {
+                    if (w.dataset.game === game) {
+                        const num = w.querySelector('.game-card-number');
+                        if (num) num.classList.add('win-flash');
+                    }
+                });
+            });
+        } catch (err) {
+            showNotification('Could not save win: ' + (err.message || err));
+        }
     });
 
     document.getElementById('showNewGameBtn').addEventListener('click', showNewGameInput);
@@ -179,12 +239,28 @@ export function setupEventListeners() {
     document.getElementById('newGameImage').addEventListener('change', function (e) {
         handleImageFileSelect(e.target.files[0], 'newGameImagePreview', function (result) {
             uiState.tempGameImage = result;
+            document.getElementById('newGameImageUrl').value = ''; // clear URL input
+        });
+    });
+
+    document.getElementById('newGameImageUrl').addEventListener('input', function () {
+        _handleImageUrl(this.value.trim(), 'newGameImagePreview', function (url) {
+            uiState.tempGameImage = url;
+            document.getElementById('newGameImage').value = ''; // clear file input
         });
     });
 
     document.getElementById('newPlayerImage').addEventListener('change', function (e) {
         handleImageFileSelect(e.target.files[0], 'newPlayerImagePreview', function (result) {
             uiState.tempPlayerImage = result;
+            document.getElementById('newPlayerImageUrl').value = ''; // clear URL input
+        });
+    });
+
+    document.getElementById('newPlayerImageUrl').addEventListener('input', function () {
+        _handleImageUrl(this.value.trim(), 'newPlayerImagePreview', function (url) {
+            uiState.tempPlayerImage = url;
+            document.getElementById('newPlayerImage').value = ''; // clear file input
         });
     });
 
@@ -246,6 +322,7 @@ async function addNewGame() {
         input.value = '';
         document.getElementById('newGameInput').classList.remove('active');
         document.getElementById('newGameImagePreview').style.display = 'none';
+        document.getElementById('newGameImageUrl').value = '';
         uiState.tempGameImage = null;
         selectGame(name);
     } catch (err) {
@@ -287,6 +364,7 @@ async function addNewPlayer() {
         input.value = '';
         document.getElementById('newPlayerInput').classList.remove('active');
         document.getElementById('newPlayerImagePreview').style.display = 'none';
+        document.getElementById('newPlayerImageUrl').value = '';
         uiState.tempPlayerImage = null;
         selectPlayer(name);
     } catch (err) {
