@@ -8,12 +8,44 @@ function hasInviteToken() {
 }
 import { loadPlaygroups, setActivePlaygroup, setOnPlaygroupChange, setupPlaygroupUI, getActivePlaygroup } from './playgroups.js';
 import { setupAuthButtons, updateAuthUI, updateEditability, syncReadOnlyBanner, updateAdminUI } from './auth-ui.js';
-import { redeemInviteToken, fetchPlaygroupName } from './supabase.js';
+import { redeemInviteToken, fetchPlaygroupName, fetchActiveAnnouncement, fetchAppConfig } from './supabase.js';
 import { showNotification, fireConfetti } from './modals.js';
 import { isAdminConfigured, isAdminEmail, isAdminMode, activateAdminMode, deactivateAdminMode, showAdminPassphraseModal } from './admin.js';
 
 // Expose toggleVictoryRoster for onclick handlers in player cards
 window.toggleVictoryRoster = toggleVictoryRoster;
+
+async function loadAnnouncement() {
+    try {
+        const ann = await fetchActiveAnnouncement();
+        const banner = document.getElementById('announcementBanner');
+        const text = document.getElementById('announcementText');
+        const closeBtn = document.getElementById('announcementClose');
+        if (!banner || !text) return;
+        if (ann?.message) {
+            const dismissed = sessionStorage.getItem('scorekeeper_dismiss_announce');
+            if (dismissed === ann.id) return;
+            text.textContent = ann.message;
+            banner.style.display = 'block';
+            closeBtn?.addEventListener('click', () => {
+                banner.style.display = 'none';
+                try { sessionStorage.setItem('scorekeeper_dismiss_announce', ann.id); } catch {}
+            }, { once: true });
+        }
+    } catch {}
+}
+
+async function loadBetaLimits() {
+    try {
+        const config = await fetchAppConfig();
+        if (config.max_meeples_per_campaign) {
+            window._scorekeeperMaxMeeples = parseInt(config.max_meeples_per_campaign, 10) || 4;
+        }
+        if (config.max_campaigns_per_user) {
+            window._scorekeeperMaxCampaigns = parseInt(config.max_campaigns_per_user, 10) || 2;
+        }
+    } catch {}
+}
 
 const INVITE_STORAGE_KEY = 'scorekeeper_invite_token';
 
@@ -73,6 +105,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     setupAuthButtons();
     setRenderCallback(renderAll);
     setupEventListeners();
+    loadAnnouncement();
+    loadBetaLimits();
 
     const urlToken = getInviteTokenFromUrl();
     if (urlToken) {

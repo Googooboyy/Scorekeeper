@@ -52,8 +52,12 @@
                     </div>
                 </div>
             </div>
-            <div class="header-banners">
-                <div id="readOnlyBanner" class="read-only-banner">
+        <div class="header-banners">
+            <div id="announcementBanner" class="announcement-banner" style="display:none;">
+                <span id="announcementText"></span>
+                <button class="announcement-banner-close" id="announcementClose" aria-label="Dismiss">✕</button>
+            </div>
+            <div id="readOnlyBanner" class="read-only-banner">
                     Log in to add wins, meeples and games!
                 </div>
                 <div id="inviteBanner" class="invite-banner" style="display: none;">
@@ -115,7 +119,11 @@
                         </div>
                     </div>
                     <div id="newGameInput" class="new-item-input">
-                        <input type="text" id="newGameName" class="input-field" placeholder="Enter game name...">
+                        <div style="position:relative;">
+                            <input type="text" id="newGameName" class="input-field" placeholder="Enter game name..." autocomplete="off">
+                            <div id="bggSuggestions" class="bgg-suggestions" style="display:none;"></div>
+                        </div>
+                        <input type="hidden" id="newGameGlobalId" value="">
                         <div class="image-upload-section">
                             <label class="image-upload-label">Game Image (Optional)</label>
                             <div class="image-source-row">

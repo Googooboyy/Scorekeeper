@@ -19,6 +19,10 @@ function getAdminClient() {
     return _adminClient;
 }
 
+export function resetAdminClient() {
+    _adminClient = null;
+}
+
 /** Returns the admin client when in admin mode, otherwise the regular authenticated client. */
 function getActiveClient() {
     if (isAdminMode()) {
@@ -397,10 +401,12 @@ export async function loadPlaygroupData(playgroupId) {
 /**
  * Insert a new game
  */
-export async function insertGame(playgroupId, name) {
+export async function insertGame(playgroupId, name, globalGameId = null) {
+    const row = { playgroup_id: playgroupId, name };
+    if (globalGameId) row.global_game_id = globalGameId;
     const { data, error } = await getActiveClient()
         .from('games')
-        .insert({ playgroup_id: playgroupId, name })
+        .insert(row)
         .select()
         .single();
 
@@ -596,4 +602,207 @@ export async function importPlaygroupData(playgroupId, imported) {
             await insertEntry(playgroupId, gid, pid, entry.date);
         }
     }
+}
+
+// ── Admin Dashboard helpers ──────────────────────────────────────────────────
+
+export async function fetchAllUsers() {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { data: { users }, error } = await ac.auth.admin.listUsers({ perPage: 1000 });
+    if (error) throw error;
+    return users || [];
+}
+
+export async function fetchAllPlaygroupMembers() {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { data, error } = await ac.from('playgroup_members').select('*');
+    if (error) throw error;
+    return data || [];
+}
+
+export async function fetchAppConfig() {
+    const { data, error } = await getActiveClient()
+        .from('app_config').select('key, value');
+    if (error) throw error;
+    return Object.fromEntries((data || []).map(r => [r.key, r.value]));
+}
+
+export async function setAppConfig(key, value) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { error } = await ac.from('app_config').upsert(
+        { key, value: String(value), updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+    );
+    if (error) throw error;
+}
+
+export async function fetchActiveAnnouncement() {
+    const { data, error } = await getActiveClient()
+        .from('announcements')
+        .select('id, message, active, created_at')
+        .eq('active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    if (error) throw error;
+    return data;
+}
+
+export async function fetchAllAnnouncements() {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { data, error } = await ac.from('announcements')
+        .select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+}
+
+export async function publishAnnouncement(message) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    await ac.from('announcements').update({ active: false }).eq('active', true);
+    const { error } = await ac.from('announcements')
+        .insert({ message, active: true });
+    if (error) throw error;
+}
+
+export async function clearAnnouncement() {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { error } = await ac.from('announcements')
+        .update({ active: false }).eq('active', true);
+    if (error) throw error;
+}
+
+export async function deleteAnnouncement(id) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { error } = await ac.from('announcements').delete().eq('id', id);
+    if (error) throw error;
+}
+
+export async function reactivateAnnouncement(id) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    await ac.from('announcements').update({ active: false }).eq('active', true);
+    const { error } = await ac.from('announcements').update({ active: true }).eq('id', id);
+    if (error) throw error;
+}
+
+export async function fetchAllGames() {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { data, error } = await ac.from('games')
+        .select('id, name, playgroup_id, global_game_id');
+    if (error) throw error;
+    return data || [];
+}
+
+export async function fetchAllPlayers() {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { data, error } = await ac.from('players')
+        .select('id, name, playgroup_id, user_id');
+    if (error) throw error;
+    return data || [];
+}
+
+export async function fetchAllEntries() {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { data, error } = await ac.from('entries')
+        .select('id, date, created_at, updated_at, created_by_name, updated_by_name, game_id, player_id, playgroup_id')
+        .order('date', { ascending: false });
+    if (error) throw error;
+    return data || [];
+}
+
+export async function fetchAllInviteTokens() {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { data, error } = await ac.from('invite_tokens')
+        .select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+}
+
+export async function deleteInviteToken(tokenId) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { error } = await ac.from('invite_tokens').delete().eq('id', tokenId);
+    if (error) throw error;
+}
+
+export async function deletePlaygroupAdmin(playgroupId) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    await ac.from('entries').delete().eq('playgroup_id', playgroupId);
+    await ac.from('games').delete().eq('playgroup_id', playgroupId);
+    await ac.from('players').delete().eq('playgroup_id', playgroupId);
+    await ac.from('playgroup_members').delete().eq('playgroup_id', playgroupId);
+    await ac.from('invite_tokens').delete().eq('playgroup_id', playgroupId);
+    const { error } = await ac.from('playgroups').delete().eq('id', playgroupId);
+    if (error) throw error;
+}
+
+export async function fetchGlobalGames() {
+    const { data, error } = await getActiveClient()
+        .from('global_games').select('*').order('name');
+    if (error) throw error;
+    return data || [];
+}
+
+export async function upsertGlobalGame(bggId, name, yearPublished, thumbnailUrl) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { data, error } = await ac.from('global_games')
+        .upsert({ bgg_id: bggId, name, year_published: yearPublished, thumbnail_url: thumbnailUrl },
+            { onConflict: 'bgg_id' })
+        .select().single();
+    if (error) throw error;
+    return data;
+}
+
+export async function linkGameToGlobal(gameId, globalGameId) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { error } = await ac.from('games')
+        .update({ global_game_id: globalGameId })
+        .eq('id', gameId);
+    if (error) throw error;
+}
+
+export async function fetchUnlinkedGames() {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { data, error } = await ac.from('games')
+        .select('id, name, playgroup_id')
+        .is('global_game_id', null)
+        .order('name');
+    if (error) throw error;
+    return data || [];
+}
+
+export async function adminDeleteEntry(entryId) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { error } = await ac.from('entries').delete().eq('id', entryId);
+    if (error) throw error;
+}
+
+export async function adminDeleteGame(gameId) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { error } = await ac.from('games').delete().eq('id', gameId);
+    if (error) throw error;
+}
+
+export async function adminDeletePlayer(playerId) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { error } = await ac.from('players').delete().eq('id', playerId);
+    if (error) throw error;
 }

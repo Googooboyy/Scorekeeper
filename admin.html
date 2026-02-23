@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard — The Scorekeeper</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&display=swap">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-row">
+                <div>
+                    <div class="logo-row">
+                        <a href="index.html" style="text-decoration:none;">
+                            <h1 class="logo" style="font-size:1.6rem; margin-bottom:4px;">The Scorekeeper</h1>
+                        </a>
+                        <span class="beta-badge" style="background:rgba(239,68,68,0.14); color:#f87171; border-color:rgba(239,68,68,0.45);">ADMIN</span>
+                    </div>
+                    <p class="subtitle">System Administration</p>
+                </div>
+                <div class="header-actions">
+                    <div class="auth-area">
+                        <div class="auth-user" id="authUser" style="display:none;">
+                            <span class="auth-email" id="authEmail"></span>
+                            <button class="btn-auth logout" id="logoutBtn">Log out</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Access gate: shown while verifying -->
+        <div id="adminGate" class="admin-gate">
+            <div class="admin-gate-icon">🛡</div>
+            <p class="admin-gate-text">Verifying admin access...</p>
+        </div>
+
+        <!-- Access denied -->
+        <div id="adminDenied" class="admin-gate" style="display:none;">
+            <div class="admin-gate-icon">🚫</div>
+            <p class="admin-gate-text">Access Denied</p>
+            <p style="color:var(--text-muted); margin-top:8px;">Your account does not have admin privileges.</p>
+            <a href="index.html" class="btn btn-primary" style="margin-top:20px;">← Back to App</a>
+        </div>
+
+        <!-- Dashboard: hidden until admin mode is active -->
+        <div id="adminDashboard" style="display:none;">
+            <nav class="admin-tabs">
+                <button class="admin-tab active" data-tab="overview">Overview</button>
+                <button class="admin-tab" data-tab="campaigns">Campaigns</button>
+                <button class="admin-tab" data-tab="users">Users</button>
+                <button class="admin-tab" data-tab="entries">Entries</button>
+                <button class="admin-tab" data-tab="games">Games & Players</button>
+                <button class="admin-tab" data-tab="linking">BGG Linking</button>
+                <button class="admin-tab" data-tab="invites">Invites</button>
+                <button class="admin-tab" data-tab="config">Config</button>
+                <button class="admin-tab" data-tab="announcements">Announce</button>
+            </nav>
+
+            <!-- Overview -->
+            <div id="tab-overview" class="admin-panel active">
+                <h2 class="admin-panel-title">Overview</h2>
+                <div class="admin-stats-grid" id="statsGrid">
+                    <div class="admin-stat-card"><div class="admin-stat-number" id="statCampaigns">—</div><div class="admin-stat-label">Campaigns</div></div>
+                    <div class="admin-stat-card"><div class="admin-stat-number" id="statUsers">—</div><div class="admin-stat-label">Users</div></div>
+                    <div class="admin-stat-card"><div class="admin-stat-number" id="statEntries">—</div><div class="admin-stat-label">Entries</div></div>
+                    <div class="admin-stat-card"><div class="admin-stat-number" id="statGames">—</div><div class="admin-stat-label">Games</div></div>
+                    <div class="admin-stat-card"><div class="admin-stat-number" id="statPlayers">—</div><div class="admin-stat-label">Players</div></div>
+                    <div class="admin-stat-card"><div class="admin-stat-number" id="statLinked">—</div><div class="admin-stat-label">BGG Linked</div></div>
+                </div>
+                <div class="gold-divider" style="margin:24px 0;"></div>
+                <h3 class="admin-section-subtitle">Top 5 Games (by wins across all campaigns)</h3>
+                <div id="topGamesChart" class="admin-bar-chart"></div>
+                <div class="gold-divider" style="margin:24px 0;"></div>
+                <h3 class="admin-section-subtitle">Recent Activity (last 30 days)</h3>
+                <div id="activityChart" class="admin-bar-chart admin-activity-chart"></div>
+            </div>
+
+            <!-- Campaigns -->
+            <div id="tab-campaigns" class="admin-panel">
+                <h2 class="admin-panel-title">Campaigns</h2>
+                <input type="text" id="campaignSearch" class="admin-search" placeholder="Search campaigns...">
+                <div class="admin-bulk-bar" id="campaignsBulkBar" style="display:none;">
+                    <span id="campaignsBulkCount">0 selected</span>
+                    <button class="admin-action-btn admin-action-danger" id="campaignsBulkDelete">Delete Selected</button>
+                    <button class="admin-action-btn" id="campaignsBulkClear">Clear</button>
+                </div>
+                <div class="admin-table-wrap">
+                    <table class="admin-table" id="campaignsTable">
+                        <thead><tr><th><input type="checkbox" class="admin-select-all" data-table="campaigns"></th><th>Name</th><th>Owner</th><th>Members</th><th>Entries</th><th>Created</th><th>Actions</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Users -->
+            <div id="tab-users" class="admin-panel">
+                <h2 class="admin-panel-title">Users</h2>
+                <input type="text" id="userSearch" class="admin-search" placeholder="Search users...">
+                <div class="admin-table-wrap">
+                    <table class="admin-table" id="usersTable">
+                        <thead><tr><th>Email</th><th>Name</th><th>Owns</th><th>Member Of</th><th>Joined</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Entries -->
+            <div id="tab-entries" class="admin-panel">
+                <h2 class="admin-panel-title">Entries</h2>
+                <div class="admin-filter-row">
+                    <select id="entryCampaignFilter" class="admin-search" style="max-width:300px;">
+                        <option value="">All campaigns</option>
+                    </select>
+                </div>
+                <div class="admin-bulk-bar" id="entriesBulkBar" style="display:none;">
+                    <span id="entriesBulkCount">0 selected</span>
+                    <button class="admin-action-btn admin-action-danger" id="entriesBulkDelete">Delete Selected</button>
+                    <button class="admin-action-btn" id="entriesBulkClear">Clear</button>
+                </div>
+                <div class="admin-table-wrap">
+                    <table class="admin-table" id="entriesTable">
+                        <thead><tr><th><input type="checkbox" class="admin-select-all" data-table="entries"></th><th>Campaign</th><th>Game</th><th>Player</th><th>Date</th><th>Created By</th><th>Actions</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Games & Players -->
+            <div id="tab-games" class="admin-panel">
+                <div class="admin-sub-tabs">
+                    <button class="admin-sub-tab active" data-subtab="games-list">Games</button>
+                    <button class="admin-sub-tab" data-subtab="players-list">Players</button>
+                </div>
+                <div id="subtab-games-list" class="admin-sub-panel active">
+                    <h2 class="admin-panel-title">Games</h2>
+                    <div class="admin-bulk-bar" id="gamesBulkBar" style="display:none;">
+                        <span id="gamesBulkCount">0 selected</span>
+                        <button class="admin-action-btn admin-action-danger" id="gamesBulkDelete">Delete Selected</button>
+                        <button class="admin-action-btn" id="gamesBulkClear">Clear</button>
+                    </div>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table" id="gamesTable">
+                            <thead><tr><th><input type="checkbox" class="admin-select-all" data-table="games"></th><th>Name</th><th>Campaign</th><th>Wins</th><th>BGG</th><th>Actions</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="subtab-players-list" class="admin-sub-panel">
+                    <h2 class="admin-panel-title">Players</h2>
+                    <div class="admin-bulk-bar" id="playersBulkBar" style="display:none;">
+                        <span id="playersBulkCount">0 selected</span>
+                        <button class="admin-action-btn admin-action-danger" id="playersBulkDelete">Delete Selected</button>
+                        <button class="admin-action-btn" id="playersBulkClear">Clear</button>
+                    </div>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table" id="playersTable">
+                            <thead><tr><th><input type="checkbox" class="admin-select-all" data-table="players"></th><th>Name</th><th>Campaign</th><th>Linked User</th><th>Wins</th><th>Actions</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BGG Linking -->
+            <div id="tab-linking" class="admin-panel">
+                <h2 class="admin-panel-title">Global Games Linking</h2>
+                <div class="admin-linking-progress">
+                    <span id="linkingProgress">Loading...</span>
+                    <div class="admin-progress-bar"><div class="admin-progress-fill" id="linkingProgressBar"></div></div>
+                </div>
+                <div id="linkingList" class="admin-linking-list"></div>
+            </div>
+
+            <!-- Invites -->
+            <div id="tab-invites" class="admin-panel">
+                <h2 class="admin-panel-title">Invite Tokens</h2>
+                <div class="admin-bulk-bar" id="invitesBulkBar" style="display:none;">
+                    <span id="invitesBulkCount">0 selected</span>
+                    <button class="admin-action-btn admin-action-danger" id="invitesBulkDelete">Revoke Selected</button>
+                    <button class="admin-action-btn" id="invitesBulkClear">Clear</button>
+                </div>
+                <div class="admin-table-wrap">
+                    <table class="admin-table" id="invitesTable">
+                        <thead><tr><th><input type="checkbox" class="admin-select-all" data-table="invites"></th><th>Campaign</th><th>Token</th><th>Created By</th><th>Expires</th><th>Uses / Max</th><th>Actions</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Config -->
+            <div id="tab-config" class="admin-panel">
+                <h2 class="admin-panel-title">Beta Limits</h2>
+                <div class="admin-config-form">
+                    <div class="admin-config-field">
+                        <label>Max campaigns per user</label>
+                        <input type="number" id="cfgMaxCampaigns" class="admin-config-input" min="1" max="100">
+                    </div>
+                    <div class="admin-config-field">
+                        <label>Max meeples per campaign</label>
+                        <input type="number" id="cfgMaxMeeples" class="admin-config-input" min="1" max="100">
+                    </div>
+                    <button class="btn btn-primary" id="saveConfigBtn">Save Config</button>
+                    <span id="configStatus" class="admin-config-status"></span>
+                </div>
+            </div>
+
+            <!-- Announcements -->
+            <div id="tab-announcements" class="admin-panel">
+                <h2 class="admin-panel-title">Announcements</h2>
+                <div class="admin-announce-form">
+                    <textarea id="announceMessage" class="admin-announce-input" rows="3" placeholder="Write an announcement visible to all users..."></textarea>
+                    <div class="admin-announce-actions">
+                        <button class="btn btn-primary" id="publishAnnounceBtn">Publish</button>
+                        <button class="btn btn-secondary" id="clearAnnounceBtn">Clear Active</button>
+                    </div>
+                </div>
+                <div class="gold-divider" style="margin:20px 0;"></div>
+                <h3 class="admin-section-subtitle">Announcement History</h3>
+                <div class="admin-table-wrap" style="margin-top:12px;">
+                    <table class="admin-table" id="announcementsTable">
+                        <thead>
+                            <tr>
+                                <th>Message</th>
+                                <th>Status</th>
+                                <th>Published</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Passphrase Modal (same as index.html) -->
+    <div class="modal-overlay" id="adminPassphraseModal">
+        <div class="modal admin-passphrase-modal">
+            <div class="admin-passphrase-icon">🛡</div>
+            <h3 class="admin-passphrase-title">Admin Mode</h3>
+            <p class="admin-passphrase-desc">Enter the secret phrase to unlock the admin dashboard.</p>
+            <input type="password" id="adminPassphraseInput" class="input-field admin-passphrase-input"
+                placeholder="Secret phrase…" autocomplete="off" autocorrect="off" spellcheck="false">
+            <div class="admin-passphrase-error" id="adminPassphraseError" style="display:none;">
+                Incorrect phrase. Try again.
+            </div>
+            <div class="admin-passphrase-actions">
+                <button class="btn btn-secondary" id="adminPassphraseSkip" type="button">Back to App</button>
+                <button class="btn admin-passphrase-btn" id="adminPassphraseSubmit" type="button">Enter Admin Mode</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.supabase.js"></script>
+    <script type="module" src="js/admin-page.js"></script>
+</body>
+</html>

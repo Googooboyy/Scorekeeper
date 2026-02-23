@@ -44,6 +44,7 @@ export function activateAdminMode() {
 /** Deactivate admin mode */
 export function deactivateAdminMode() {
     try { sessionStorage.removeItem(ADMIN_SESSION_KEY); } catch { /* ignore */ }
+    import('./supabase.js').then(m => m.resetAdminClient()).catch(() => {});
 }
 
 /** Returns true if the entered phrase exactly matches the configured passphrase */

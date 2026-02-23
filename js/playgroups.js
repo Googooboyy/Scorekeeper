@@ -64,12 +64,12 @@ function updatePlaygroupActionButtons() {
     if (shareBtn) shareBtn.style.display = activePlaygroup ? 'inline-flex' : 'none';
     if (leaveBtn) leaveBtn.style.display = activePlaygroup ? 'inline-flex' : 'none';
 
-    // Admins are exempt from campaign creation limits
+    const maxCampaigns = window._scorekeeperMaxCampaigns || 2;
     const ownedCount = playgroups.filter(pg => pg.role === 'owner').length;
     if (createBtn) {
-        const atLimit = !isAdminMode() && ownedCount >= 2;
+        const atLimit = !isAdminMode() && ownedCount >= maxCampaigns;
         createBtn.disabled = atLimit;
-        createBtn.title = atLimit ? 'You can only own 2 campaigns on the current plan' : '';
+        createBtn.title = atLimit ? `You can only own ${maxCampaigns} campaigns on the current plan` : '';
     }
 }
 
@@ -214,8 +214,9 @@ export function setupPlaygroupUI() {
     async function doCreate() {
         const name = input.value?.trim();
         if (!name) return;
-        if (!isAdminMode() && playgroups.filter(pg => pg.role === 'owner').length >= 2) {
-            showModal('Campaign limit reached', 'You can only own 2 campaigns on the current plan.', () => {});
+        const maxC = window._scorekeeperMaxCampaigns || 2;
+        if (!isAdminMode() && playgroups.filter(pg => pg.role === 'owner').length >= maxC) {
+            showModal('Campaign limit reached', `You can only own ${maxC} campaigns on the current plan.`, () => {});
             return;
         }
         const exists = playgroups.some(pg => pg.name.toLowerCase() === name.toLowerCase());

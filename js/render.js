@@ -73,7 +73,18 @@ export function renderPlayers() {
             const signInBtn = document.getElementById('dashboardSignInBtn');
             if (signInBtn) signInBtn.addEventListener('click', () => document.getElementById('loginBtn')?.click());
         } else {
-            container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-state-icon">👥</div><h3>No Meeples Yet</h3><p>Add meeples in the "Add a Game Win" section</p></div>';
+            container.innerHTML = '' +
+                '<div class="empty-state" style="grid-column: 1/-1;">' +
+                '<div class="empty-state-icon">👥</div>' +
+                '<p style="margin-bottom: 10px;">No meeples yet for this campaign.</p>' +
+                '<button class="about-cta-btn about-cta-btn--ghost about-cta-btn--small" id="emptyAddWinBtn">+ Add a game win</button>' +
+                '</div>';
+            const addWinBtn = document.getElementById('emptyAddWinBtn');
+            if (addWinBtn) {
+                addWinBtn.addEventListener('click', () => {
+                    document.dispatchEvent(new Event('scorekeeper:openAddGame'));
+                });
+            }
         }
         if (toggleBtn) toggleBtn.style.display = 'none';
         return;
@@ -183,7 +194,22 @@ export function renderGames() {
     const toggleIcon = document.getElementById('gamesToggleIcon');
 
     if (data.games.length === 0) {
-        container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-state-icon">🎲</div><h3>No Games Yet</h3><p>Add games in the "Add a Game Win" section</p></div>';
+        if (!data.currentUserId) {
+            container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-state-icon">🎲</div><h3>No Games Yet</h3><p>Add games in the "Add a Game Win" section</p></div>';
+        } else {
+            container.innerHTML = '' +
+                '<div class="empty-state" style="grid-column: 1/-1;">' +
+                '<div class="empty-state-icon">🎲</div>' +
+                '<p style="margin-bottom: 10px;">No games yet for this campaign.</p>' +
+                '<button class="about-cta-btn about-cta-btn--ghost about-cta-btn--small" id="emptyAddGameBtn">+ Add a game win</button>' +
+                '</div>';
+            const addGameBtn = document.getElementById('emptyAddGameBtn');
+            if (addGameBtn) {
+                addGameBtn.addEventListener('click', () => {
+                    document.dispatchEvent(new Event('scorekeeper:openAddGame'));
+                });
+            }
+        }
         toggleBtn.style.display = 'none';
         return;
     }
