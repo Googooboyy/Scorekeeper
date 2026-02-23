@@ -52,6 +52,11 @@ function renderPlaygroupSelect() {
         activePlaygroup = null;
         if (onPlaygroupChangeCallback) onPlaygroupChangeCallback(null);
     }
+    const countEl = document.getElementById('playgroupCount');
+    if (countEl) {
+        const max = window._scorekeeperMaxCampaigns || 2;
+        countEl.textContent = playgroups.length + ' of ' + max + ' campaigns';
+    }
     updatePlaygroupActionButtons();
 }
 

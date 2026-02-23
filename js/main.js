@@ -1,6 +1,6 @@
 import { setRenderCallback, loadData, resetData, data } from './data.js';
 import { renderAll, toggleVictoryRoster } from './render.js';
-import { setupEventListeners } from './events.js';
+import { setupEventListeners, showSection } from './events.js';
 import { onAuthStateChange, getSession, getInviteTokenFromStorage, saveInviteTokenToStorage, clearInviteTokenFromStorage } from './auth.js';
 
 function hasInviteToken() {
@@ -10,7 +10,7 @@ import { loadPlaygroups, setActivePlaygroup, setOnPlaygroupChange, setupPlaygrou
 import { setupAuthButtons, updateAuthUI, updateEditability, syncReadOnlyBanner, updateAdminUI } from './auth-ui.js';
 import { redeemInviteToken, fetchPlaygroupName, fetchActiveAnnouncement, fetchAppConfig } from './supabase.js';
 import { showNotification, fireConfetti } from './modals.js';
-import { isAdminConfigured, isAdminEmail, isAdminMode, activateAdminMode, deactivateAdminMode, showAdminPassphraseModal } from './admin.js';
+import { isAdminConfigured, isAdminEmail, isAdminMode, activateAdminMode, deactivateAdminMode, showAdminPassphraseModal, hasAdminPromptDismissed, clearAdminPromptDismissed } from './admin.js';
 
 // Expose toggleVictoryRoster for onclick handlers in player cards
 window.toggleVictoryRoster = toggleVictoryRoster;
@@ -132,6 +132,10 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (session) {
             const userEmail = session.user?.email || null;
             updateAdminUI(userEmail, () => doActivateAdmin(userEmail));
+            // Ensure logged-in users see dashboard (handles session arriving via callback after null getSession)
+            if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                showSection('dashboard');
+            }
             setupPlaygroupUI();
             const redeemed = await tryRedeemInvite(session);
             if (!redeemed) {
@@ -146,14 +150,17 @@ document.addEventListener('DOMContentLoaded', async function () {
                 resetData();
                 renderAll();
             }
-            // Show passphrase prompt on sign-in and on page load (INITIAL_SESSION), but not on token refreshes
+            // Show passphrase prompt on sign-in and on page load (INITIAL_SESSION), but not on token refreshes.
+            // Skip if user already chose "Continue without admin" this session.
             const shouldPrompt = (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')
-                && isAdminConfigured() && isAdminEmail(userEmail) && !isAdminMode();
+                && isAdminConfigured() && isAdminEmail(userEmail) && !isAdminMode()
+                && !hasAdminPromptDismissed();
             if (shouldPrompt) {
                 showAdminPassphraseModal(() => doActivateAdmin(userEmail), null);
             }
         } else {
             data.currentUserId = null;
+            clearAdminPromptDismissed();
             deactivateAdminMode();
             updateAdminUI(null);
             resetData();
@@ -196,6 +203,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         const canEdit = !!pg;
         updateEditability(canEdit);
         syncReadOnlyBanner(canEdit, true, hasInviteToken());
+        // Logged-in users always land on dashboard; guests with #dashboard (Back to App) also get dashboard
+        const wantDashboard = !!sess || (typeof location !== 'undefined' && location.hash === '#dashboard');
+        showSection(wantDashboard ? 'dashboard' : 'about');
     } else {
         data.currentUserId = null;
         updateAdminUI(null);
@@ -208,6 +218,10 @@ document.addEventListener('DOMContentLoaded', async function () {
             await loadGuestCampaign(shareId);
         } else {
             syncReadOnlyBanner(false, false, hasInviteToken());
+        }
+        // Guests coming from "Back to App" (#dashboard) land on dashboard (empty state)
+        if (typeof location !== 'undefined' && location.hash === '#dashboard') {
+            showSection('dashboard');
         }
     }
 });

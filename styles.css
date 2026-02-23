@@ -52,6 +52,7 @@ header {
 .playgroup-select-row { display: flex; align-items: center; gap: 10px; }
 .playgroup-actions-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
 .playgroup-label { font-size: 0.85rem; color: var(--text-secondary); }
+.playgroup-count { font-size: 0.8rem; color: var(--text-muted); margin-left: 6px; }
 .playgroup-select {
     min-width: 180px; padding: 10px 14px; background: var(--bg-secondary);
     border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);
@@ -360,7 +361,8 @@ h1.logo {
 
 /* Data Management */
 .data-management { background: var(--bg-card); border: 2px solid var(--border); border-radius: 16px; padding: 24px; margin-top: 40px; }
-.data-management h2 { font-size: 1.2rem; margin-bottom: 20px; color: var(--text-secondary); display: flex; align-items: center; gap: 10px; }
+.data-management h2 { font-size: 1.2rem; margin-bottom: 4px; color: var(--text-secondary); display: flex; align-items: center; gap: 10px; }
+.data-management-coming-soon { font-size: 0.75rem; color: var(--text-muted); margin: 0 0 16px 0; font-style: italic; }
 .data-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
 .data-btn {
     display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px 20px;
@@ -853,6 +855,12 @@ html { overflow-x: hidden; }
     color: var(--text-secondary);
     line-height: 1.6;
     margin: 0;
+}
+.about-feature-coming-soon {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--accent-gold);
+    opacity: 0.9;
 }
 
 /* FAQ inside about */

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google-site-verification" content="L6qndWRGRXnro5ZDDHTrEwXOVDEPJha7dn_znKxewL4" />
     <title>The Scorekeeper</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&display=swap">
     <link rel="stylesheet" href="styles.css">
@@ -43,6 +44,7 @@
                             <select id="playgroupSelect" class="playgroup-select">
                                 <option value="">Select campaign...</option>
                             </select>
+                            <span id="playgroupCount" class="playgroup-count" aria-live="polite"></span>
                         </div>
                         <div class="playgroup-actions-row">
                             <button class="btn-auth invite-playgroup" id="invitePlaygroupBtn" title="Invite others to this campaign">Copy Invite Link</button>
@@ -70,15 +72,15 @@
         </header>
 
         <nav class="nav-tabs">
-            <button class="nav-tab nav-tab-about" data-section="about" title="About The Scorekeeper">About</button>
-            <button class="nav-tab active" data-section="dashboard">Dashboard</button>
+            <button class="nav-tab nav-tab-about active" data-section="about" title="About The Scorekeeper">About</button>
+            <button class="nav-tab" data-section="dashboard">Dashboard</button>
             <button class="nav-tab" data-section="add">Add a Game Win</button>
             <button class="nav-tab" data-section="history">History</button>
             <button class="nav-tab nav-tab-data" data-section="data">Data</button>
         </nav>
 
         <!-- Dashboard Section -->
-        <section id="dashboard" class="section active">
+        <section id="dashboard" class="section">
             <div class="gold-divider"></div>
             <div class="games-section-header">
                 <h2 class="games-section-title">👑 Leaderboard</h2>
@@ -200,6 +202,7 @@
                 <h2>
                     <span>💾</span> Data Management
                 </h2>
+                <p class="data-management-coming-soon">Coming soon</p>
                 <div class="data-actions">
                     <button class="data-btn export" id="exportBtn">
                         <span>📥</span> Export Data
@@ -228,7 +231,7 @@
         </section>
 
         <!-- About Section -->
-        <section id="about" class="section">
+        <section id="about" class="section active">
 
             <!-- Hero -->
             <div class="about-hero">
@@ -298,7 +301,7 @@
                     <div class="about-feature-card">
                         <span class="about-feature-icon">📥</span>
                         <div>
-                            <h4>Export &amp; Import</h4>
+                            <h4>Export &amp; Import <span class="about-feature-coming-soon">Coming soon</span></h4>
                             <p>Download a full JSON backup of your campaign data whenever you like, and restore it just as easily.</p>
                         </div>
                     </div>
@@ -314,6 +317,20 @@
                         <div>
                             <h4>Private by Default</h4>
                             <p>Your campaign data is only visible to members you've invited. No data is public. Sign in with Google — no passwords to manage.</p>
+                        </div>
+                    </div>
+                    <div class="about-feature-card">
+                        <span class="about-feature-icon">🏆</span>
+                        <div>
+                            <h4>Score Tabulation</h4>
+                            <p>Tally scores round-by-round for games with multiple scoring phases. Track VP, objectives, resources, and more — then record the winner in one tap.</p>
+                        </div>
+                    </div>
+                    <div class="about-feature-card">
+                        <span class="about-feature-icon">🆓</span>
+                        <div>
+                            <h4>Always Free</h4>
+                            <p>Core features are free forever. Upgraded tiers with extra goodies are coming soon — but a free version will always exist. Everyone deserves bragging rights.</p>
                         </div>
                     </div>
                 </div>
@@ -484,6 +501,7 @@
             <h3>Leave Campaign?</h3>
             <p style="margin-bottom: 8px; color: var(--text-secondary);">You're about to leave <strong id="leavePlaygroupName"></strong>.</p>
             <p style="font-size: 0.85rem; color: var(--text-muted);">You'll need a new invite link to rejoin.</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Leaving frees up a campaign slot so you can join or create another.</p>
             <div class="modal-buttons" style="margin-top: 24px;">
                 <button class="modal-btn cancel" id="leavePlaygroupCancel">Cancel</button>
                 <button class="modal-btn confirm" id="leavePlaygroupConfirm" style="background: var(--accent-danger);">Leave</button>
