@@ -1,0 +1,14 @@
+# Supabase credentials - keep secrets out of version control
+js/config.supabase.js
+
+# Google OAuth client secrets
+google stuffs while creating OAuth/client_secret*.json
+**/client_secret*.json
+
+# Local exports, env files, OS/editor cruft
+exports-gamedata/
+.env
+.env.local
+.DS_Store
+Thumbs.db
+node_modules/

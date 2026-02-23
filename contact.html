@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact — The Scorekeeper</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&display=swap">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .legal-page { max-width: 720px; margin: 0 auto; padding: 40px 20px; }
+        .legal-page h1 { font-size: 1.75rem; margin-bottom: 8px; color: var(--text-primary); }
+        .legal-page p { color: var(--text-secondary); font-size: 0.95rem; line-height: 1.7; margin-bottom: 16px; }
+        .legal-page a { color: var(--accent-primary); text-decoration: none; }
+        .legal-page a:hover { text-decoration: underline; }
+        .legal-back { display: inline-flex; align-items: center; gap: 8px; color: var(--text-secondary); text-decoration: none; margin-bottom: 24px; font-size: 0.9rem; }
+        .legal-back:hover { color: var(--accent-primary); }
+        .contact-form { margin-top: 24px; }
+        .contact-form label { display: block; color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 6px; }
+        .contact-form input, .contact-form textarea, .contact-form select {
+            width: 100%; padding: 12px 14px; margin-bottom: 16px; box-sizing: border-box;
+            background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px;
+            color: var(--text-primary); font-size: 1rem; font-family: inherit;
+        }
+        .contact-form input:focus, .contact-form textarea:focus, .contact-form select:focus {
+            outline: none; border-color: var(--accent-primary);
+        }
+        .contact-form select {
+            appearance: none; -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238888aa' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px;
+            cursor: pointer;
+        }
+        .contact-form select option { background: var(--bg-secondary); }
+        .contact-form textarea { min-height: 140px; resize: vertical; }
+        .contact-form button {
+            padding: 12px 24px; background: var(--accent-primary); color: white; border: none;
+            border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s;
+        }
+        .contact-form button:hover { opacity: 0.9; }
+        .contact-form button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .form-success { display: none; color: var(--accent-success); margin-top: 16px; }
+        .form-success.visible { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-row">
+                <div>
+                    <h1 class="logo">The Scorekeeper</h1>
+                    <p class="subtitle">Track your <span class="strikethrough">victories</span> bragging rights!</p>
+                </div>
+            </div>
+        </header>
+
+        <main class="legal-page">
+            <a href="index.html" class="legal-back">← Back to app</a>
+
+            <h1>Contact Us</h1>
+            <p>Have a question or feedback? Fill out the form below and we'll get back to you.</p>
+
+            <!-- Replace YOUR_FORM_ID with your Formspree form ID from https://formspree.io -->
+            <form class="contact-form" action="https://formspree.io/f/YOUR_FORM_ID" method="POST" id="contactForm">
+                <label for="email">Your email</label>
+                <input type="email" name="email" id="email" placeholder="you@example.com" required>
+
+                <label for="topic">What's this about?</label>
+                <select name="subject" id="topic" required>
+                    <option value="" disabled selected>Select a topic…</option>
+                    <option value="General Question">General question</option>
+                    <option value="Bug Report">Bug report</option>
+                    <option value="Feature Request">Feature request</option>
+                    <option value="Account Help">Account help</option>
+                    <option value="Billing">Billing</option>
+                    <option value="Investor Inquiry">Investor inquiry</option>
+                    <option value="Other">Other</option>
+                </select>
+
+                <label for="message">Message</label>
+                <textarea name="message" id="message" placeholder="Your message..." required></textarea>
+
+                <button type="submit" id="submitBtn">Send message</button>
+            </form>
+
+            <p class="form-success" id="formSuccess">Thanks! Your message has been sent. We'll be in touch soon.</p>
+
+            <p style="margin-top: 40px;"><a href="index.html">← Back to The Scorekeeper</a></p>
+        </main>
+    </div>
+
+    <script>
+        (function() {
+            var params = new URLSearchParams(window.location.search);
+            if (params.get('subject') === 'Investor') {
+                var topic = document.getElementById('topic');
+                if (topic) topic.value = 'Investor Inquiry';
+            }
+        })();
+        document.getElementById('contactForm').addEventListener('submit', function(e) {
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+            fetch(this.action, { method: 'POST', body: new FormData(this), headers: { 'Accept': 'application/json' } })
+                .then(r => r.json())
+                .then(() => {
+                    document.getElementById('contactForm').style.display = 'none';
+                    document.getElementById('formSuccess').classList.add('visible');
+                })
+                .catch(() => {
+                    btn.disabled = false;
+                    btn.textContent = 'Send message';
+                    alert('Something went wrong. Please try again.');
+                });
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html>

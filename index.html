@@ -1,0 +1,697 @@
+<!-- <!DOCTYPE html> -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Scorekeeper</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&display=swap">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="read-only">
+    <div class="container">
+        <header>
+            <div class="header-row">
+                <div>
+                    <div class="logo-row">
+                        <h1 class="logo">The Scorekeeper</h1>
+                        <span class="beta-badge" title="The Scorekeeper is currently in public beta">BETA</span>
+                    </div>
+                    <p class="subtitle">Track your <span class="strikethrough">victories</span> bragging rights!</p>
+                </div>
+                <div class="header-actions">
+                    <div id="authArea" class="auth-area">
+                        <button class="btn-auth btn-google-black" id="loginBtn" type="button">
+                            <svg class="google-g" width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                                <path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/>
+                                <path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/>
+                                <path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/>
+                                <path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.3z"/>
+                            </svg>
+                            Sign in with Google
+                        </button>
+                        <p id="googleLoginNote" style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">More sign-in options coming soon..</p>
+                        <div class="auth-user" id="authUser" style="display: none;">
+                            <span class="auth-email" id="authEmail"></span>
+                            <button class="btn-auth logout" id="logoutBtn">Log out</button>
+                        </div>
+                    </div>
+                    <div id="playgroupArea" class="playgroup-area" style="display: none;">
+                        <div class="playgroup-select-row">
+                            <label class="playgroup-label">Campaign:</label>
+                            <select id="playgroupSelect" class="playgroup-select">
+                                <option value="">Select campaign...</option>
+                            </select>
+                        </div>
+                        <div class="playgroup-actions-row">
+                            <button class="btn-auth invite-playgroup" id="invitePlaygroupBtn" title="Invite others to this campaign">Copy Invite Link</button>
+                            <button class="btn-auth share-leaderboard" id="shareLeaderboardBtn" title="Share a view-only leaderboard link">Share Leaderboard</button>
+                            <button class="btn-auth create-playgroup" id="createPlaygroupBtn">+ New</button>
+                            <button class="btn-auth leave-playgroup" id="leavePlaygroupBtn" title="Leave this campaign" style="display: none;">Leave</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="header-banners">
+                <div id="readOnlyBanner" class="read-only-banner">
+                    Log in to add wins, meeples and games!
+                </div>
+                <div id="inviteBanner" class="invite-banner" style="display: none;">
+                    <span class="invite-banner-text">You've been invited to join a campaign!</span>
+                    <p class="invite-banner-sub">Sign in with Google to accept and join.</p>
+                    <button type="button" class="btn-accept-invite" id="acceptInviteBtn">✓ Accept Invite</button>
+                </div>
+            </div>
+        </header>
+
+        <nav class="nav-tabs">
+            <button class="nav-tab nav-tab-about" data-section="about" title="About The Scorekeeper">About</button>
+            <button class="nav-tab active" data-section="dashboard">Dashboard</button>
+            <button class="nav-tab" data-section="add">Add a Game Win</button>
+            <button class="nav-tab" data-section="history">History</button>
+            <button class="nav-tab nav-tab-data" data-section="data">Data</button>
+        </nav>
+
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="section active">
+            <div class="gold-divider"></div>
+            <div class="games-section-header">
+                <h2 class="games-section-title">👑 Leaderboard</h2>
+                <button class="games-toggle-btn" id="playersToggleBtn" style="display: none;">
+                    <span id="playersToggleText">Show All</span>
+                    <span class="games-toggle-icon" id="playersToggleIcon">▶</span>
+                </button>
+            </div>
+            <div id="playersContainer" class="players-grid"></div>
+
+            <div class="gold-divider"></div>
+            <div class="games-section-header">
+                <h2 class="games-section-title">🏅 Top Games</h2>
+                <button class="games-toggle-btn" id="gamesToggleBtn" style="display: none;">
+                    <span id="gamesToggleText">Show All</span>
+                    <span class="games-toggle-icon" id="gamesToggleIcon">▶</span>
+                </button>
+            </div>
+            <div id="gamesContainer" class="games-grid"></div>
+        </section>
+
+        <!-- Add Entry Section -->
+        <section id="add" class="section">
+            <button class="tally-launch-btn" id="tallyLaunchBtn" type="button">
+                <span class="tally-launch-icon">📊</span>
+                <span class="tally-launch-text">
+                    <span class="tally-launch-title">Tally Scores</span>
+                    <span class="tally-launch-sub">Multi-round score calculator — find the winner, then record it</span>
+                </span>
+                <span class="tally-launch-arrow">→</span>
+            </button>
+            <div class="entry-flow">
+                <!-- Step 1: Select Game -->
+                <div id="step1" class="step active">
+                    <div class="step-header">
+                        <div class="step-number">1</div>
+                        <h2>Select Game</h2>
+                        <p>Choose the board game that was played</p>
+                    </div>
+                    <div id="gameSelection" class="selection-grid">
+                        <!-- "+ Add New Game" moved inside grid -->
+                        <div class="selection-item add-new-btn" id="showNewGameBtn">
+                            + Add New Game
+                        </div>
+                    </div>
+                    <div id="newGameInput" class="new-item-input">
+                        <input type="text" id="newGameName" class="input-field" placeholder="Enter game name...">
+                        <div class="image-upload-section">
+                            <label class="image-upload-label">Game Image (Optional)</label>
+                            <div class="file-input-wrapper">
+                                <input type="file" id="newGameImage" accept="image/*">
+                                <label for="newGameImage" class="file-input-label">
+                                    <span>📁</span> Choose Image
+                                </label>
+                            </div>
+                            <img id="newGameImagePreview" class="image-preview" alt="Preview">
+                        </div>
+                        <button class="btn btn-primary" id="addGameBtn" style="width: 100%; margin-top: 12px;">Add Game</button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Select Winner -->
+                <div id="step2" class="step">
+                    <div class="step-header">
+                        <div class="step-number">2</div>
+                        <h2>Select Winner</h2>
+                        <p>Who won this game?</p>
+                    </div>
+                    <div id="playerSelection" class="selection-grid"></div>
+                    <div class="selection-item add-new-btn" id="showNewPlayerBtn">
+                        + Add New Meeple
+                    </div>
+                    <div id="newPlayerInput" class="new-item-input">
+                        <input type="text" id="newPlayerName" class="input-field" placeholder="Enter meeple name...">
+                        <div class="image-upload-section">
+                            <label class="image-upload-label">Meeple Image (Optional)</label>
+                            <div class="file-input-wrapper">
+                                <input type="file" id="newPlayerImage" accept="image/*">
+                                <label for="newPlayerImage" class="file-input-label">
+                                    <span>📁</span> Choose Image
+                                </label>
+                            </div>
+                            <img id="newPlayerImagePreview" class="image-preview" alt="Preview">
+                        </div>
+                        <button class="btn btn-primary" id="addPlayerBtn" style="width: 100%; margin-top: 12px;">Add Meeple</button>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-secondary" id="backToStep1">Back</button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Select Date -->
+                <div id="step3" class="step">
+                    <div class="step-header">
+                        <div class="step-number">3</div>
+                        <h2>Select Date</h2>
+                        <p>When was this game played?</p>
+                    </div>
+                    <input type="date" id="winDate" class="input-field date-input">
+                    <div class="btn-group">
+                        <button class="btn btn-secondary" id="backToStep2">Back</button>
+                        <button class="btn btn-success" id="saveEntryBtn">Save Win 🎉</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Data Management Section -->
+        <section id="data" class="section">
+            <div class="gold-divider"></div>
+            <div class="data-management" id="dataManagementSection">
+                <h2>
+                    <span>💾</span> Data Management
+                </h2>
+                <div class="data-actions">
+                    <button class="data-btn export" id="exportBtn">
+                        <span>📥</span> Export Data
+                    </button>
+                    <button class="data-btn import" id="importBtn">
+                        <span>📤</span> Import Data
+                    </button>
+                    <button class="data-btn clear" id="clearAllBtn">
+                        <span>🗑️</span> Clear All
+                    </button>
+                </div>
+                <input type="file" id="importFileInput" accept=".json">
+            </div>
+        </section>
+
+        <!-- History Section -->
+        <section id="history" class="section">
+            <div class="history-header">
+                <h2 class="history-title">📜 Recent Wins</h2>
+                <button class="games-toggle-btn" id="historyToggleBtn" style="display: none;">
+                    <span id="historyToggleText">Show All</span>
+                    <span class="games-toggle-icon" id="historyToggleIcon">▶</span>
+                </button>
+            </div>
+            <div id="historyContainer" class="history-grid"></div>
+        </section>
+
+        <!-- About Section -->
+        <section id="about" class="section">
+
+            <!-- Hero -->
+            <div class="about-hero">
+                <div class="about-beta-pill">🧪 Public Beta · v0.9 — Free while we build</div>
+                <h2 class="about-hero-title">The Scorekeeper</h2>
+                <p class="about-hero-sub">The friendly rivalry tracker for your board game nights, tabletop campaigns, and game-obsessed friend groups.</p>
+                <button class="about-cta-btn" id="aboutGetStartedBtn">Sign in to start tracking</button>
+            </div>
+
+            <div class="gold-divider" style="margin: 32px 0;"></div>
+
+            <!-- How it works -->
+            <div class="about-section">
+                <h3 class="about-section-title">How it works</h3>
+                <div class="about-steps">
+                    <div class="about-step">
+                        <div class="about-step-icon">🏰</div>
+                        <h4>Create a Campaign</h4>
+                        <p>Start a campaign for your game group. Give it a name, then invite friends with a single link — they join instantly.</p>
+                    </div>
+                    <div class="about-step">
+                        <div class="about-step-icon">🎲</div>
+                        <h4>Record Every Win</h4>
+                        <p>After each game night, log who won what and when. Takes three taps — game, winner, date. That's it.</p>
+                    </div>
+                    <div class="about-step">
+                        <div class="about-step-icon">👑</div>
+                        <h4>See Who Rules</h4>
+                        <p>The Dashboard ranks every meeple by wins and breaks down which games they've dominated. Glory awaits.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="gold-divider" style="margin: 32px 0;"></div>
+
+            <!-- Features -->
+            <div class="about-section">
+                <h3 class="about-section-title">Everything you need</h3>
+                <div class="about-features">
+                    <div class="about-feature-card">
+                        <span class="about-feature-icon">🗂️</span>
+                        <div>
+                            <h4>Multiple Campaigns</h4>
+                            <p>Separate tracking for every group — work colleagues, family, long-running RPG crew. Each campaign is its own leaderboard.</p>
+                        </div>
+                    </div>
+                    <div class="about-feature-card">
+                        <span class="about-feature-icon">🔗</span>
+                        <div>
+                            <h4>Meeple Profiles</h4>
+                            <p>Link your account to your meeple card. Get a personal stats page showing your wins across every campaign you're part of.</p>
+                        </div>
+                    </div>
+                    <div class="about-feature-card">
+                        <span class="about-feature-icon">📜</span>
+                        <div>
+                            <h4>Full History</h4>
+                            <p>Every win is logged with game, meeple, and date. Edit or remove entries at any time, with an audit trail showing who changed what.</p>
+                        </div>
+                    </div>
+                    <div class="about-feature-card">
+                        <span class="about-feature-icon">📥</span>
+                        <div>
+                            <h4>Export &amp; Import</h4>
+                            <p>Download a full JSON backup of your campaign data whenever you like, and restore it just as easily.</p>
+                        </div>
+                    </div>
+                    <div class="about-feature-card">
+                        <span class="about-feature-icon">🎨</span>
+                        <div>
+                            <h4>Personalisation</h4>
+                            <p>Give each meeple a custom photo and colour. Give each game its own image. Make the scoreboard feel like yours.</p>
+                        </div>
+                    </div>
+                    <div class="about-feature-card">
+                        <span class="about-feature-icon">🔒</span>
+                        <div>
+                            <h4>Private by Default</h4>
+                            <p>Your campaign data is only visible to members you've invited. No data is public. Sign in with Google — no passwords to manage.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="gold-divider" style="margin: 32px 0;"></div>
+
+            <!-- FAQ -->
+            <div class="about-section">
+                <h3 class="about-section-title">Common questions</h3>
+                <div class="footer-accordion about-faq">
+                    <details class="footer-accordion-item">
+                        <summary>How do I add a game win?</summary>
+                        <p>Add a Win uses a simple 3-step flow: <strong>1) Select Game</strong> — choose from your campaign's games or click "+ Add New Game" to add one; <strong>2) Select Winner</strong> — pick the meeple who won or add a new meeple; <strong>3) Select Date</strong> — choose when the game was played, then click "Save Win 🎉". You can go back between steps using the Back button.</p>
+                    </details>
+                    <details class="footer-accordion-item">
+                        <summary>Is it free?</summary>
+                        <p>The Scorekeeper is currently in <strong>Beta</strong> — so everything is free, no paywalls, no limits. Paid tier memberships with extra features are on the roadmap, but a free version will always exist. Everyone deserves bragging rights. <a href="roadmap.html">See our roadmap →</a></p>
+                    </details>
+                    <details class="footer-accordion-item">
+                        <summary>Do I need an account to view scores?</summary>
+                        <p>No. Anyone with the page link can see the current leaderboard. You only need to sign in to add or edit wins.</p>
+                    </details>
+                    <details class="footer-accordion-item">
+                        <summary>How do I invite someone to my campaign?</summary>
+                        <p>Select your campaign, click "Copy Invite Link", and share it anywhere. When they open the link and sign in with Google, they're added automatically.</p>
+                    </details>
+                    <details class="footer-accordion-item">
+                        <summary>Can I be in more than one campaign?</summary>
+                        <p>Absolutely. Switch between campaigns using the dropdown in the header. Each one has its own meeples, games, and rankings.</p>
+                    </details>
+                    <details class="footer-accordion-item">
+                        <summary>What is a "Meeple Profile"?</summary>
+                        <p>Click any meeple card to open their profile. If they've linked their Google account to their meeple card, the profile shows their total wins across all shared campaigns — not just the current one.</p>
+                    </details>
+                    <details class="footer-accordion-item">
+                        <summary>Can I edit a win entry after it's been recorded?</summary>
+                        <p>Yes. Go to the History tab, click the ⚙️ icon on any entry, and update the game, meeple, or date. Every edit is automatically stamped with who made the change and when — visible as a small note beneath each history entry.</p>
+                    </details>
+                    <details class="footer-accordion-item">
+                        <summary>Can I delete my data?</summary>
+                        <p>Yes. Use "Clear All" in Data Management to wipe a campaign's records, or delete individual wins from the History tab.</p>
+                    </details>
+                </div>
+            </div>
+
+            <div class="gold-divider" style="margin: 32px 0;"></div>
+
+            <!-- Bottom CTA -->
+            <div class="about-bottom-cta">
+                <p>Ready to settle the score?</p>
+                <button class="about-cta-btn" id="aboutGetStartedBtn2">Get started — it's free</button>
+            </div>
+
+        </section>
+
+        <footer class="app-footer">
+            <div class="gold-divider"></div>
+            <div class="footer-faq" id="faq">
+                <h3 class="footer-faq-title">Questions? We have answers.</h3>
+                <div class="footer-accordion">
+                    <details class="footer-accordion-item">
+                        <summary>How do I add a game win?</summary>
+                        <p>Add a Win uses a simple 3-step flow: <strong>1) Select Game</strong> — choose from your campaign's games or click "+ Add New Game" to add one; <strong>2) Select Winner</strong> — pick the meeple who won or add a new meeple; <strong>3) Select Date</strong> — choose when the game was played, then click "Save Win 🎉". You can go back between steps using the Back button.</p>
+                    </details>
+                    <details class="footer-accordion-item">
+                        <summary>How do I invite others to my campaign?</summary>
+                        <p>Select a campaign, click "Copy Invite Link", and share it. New meeples sign in with Google and join automatically.</p>
+                    </details>
+                    <details class="footer-accordion-item">
+                        <summary>Can I export my data?</summary>
+                        <p>Not yet — export &amp; import is coming soon. <a href="roadmap.html">Check the roadmap</a> for when it's landing.</p>
+                    </details>
+                    <details class="footer-accordion-item">
+                        <summary>What happens if I leave a campaign?</summary>
+                        <p>You'll no longer see or edit that campaign's data. Your wins and games in other campaigns are unaffected.</p>
+                    </details>
+                    <details class="footer-accordion-item">
+                        <summary>How do campaigns work?</summary>
+                        <p>Campaigns let you track wins across different game groups. Create one per board game night, friend group, or game type.</p>
+                    </details>
+                    <details class="footer-accordion-item">
+                        <summary>Can I edit a win entry after it's been recorded?</summary>
+                        <p>Yes. Go to the History tab, click the ⚙️ icon on any entry, and update the game, meeple, or date. Every edit is automatically stamped with who made the change and when — visible as a small note beneath each history entry.</p>
+                    </details>
+                </div>
+            </div>
+            <div class="gold-divider"></div>
+            <div class="footer-main">
+                <div class="footer-links">
+                    <div class="footer-col">
+                        <h4>Product</h4>
+                        <a href="#" data-section="about">About</a>
+                        <a href="#" data-section="dashboard">Dashboard</a>
+                        <a href="#" data-section="add">Add a Win</a>
+                        <a href="#" data-section="history">History</a>
+                        <a href="#" data-section="data">Data Management</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Resources</h4>
+                        <a href="#" data-coming-soon>Help</a>
+                        <a href="ethos.html">Our Ethos</a>
+                        <a href="roadmap.html">Roadmap</a>
+                        <a href="investors.html">Investors</a>
+                        <a href="https://boardgamegeek.com" target="_blank" rel="noopener noreferrer">BoardGameGeek</a>
+                        <a href="contact.html">Contact Us</a>
+                        <a href="#" id="footerExportLink">Export Data</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Legal</h4>
+                        <a href="terms.html">Terms</a>
+                        <a href="privacy.html">Privacy</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <span class="footer-copy">© 2026 Googoodevv &nbsp;·&nbsp; <span class="footer-version">v0.9 Beta</span></span>
+                <div class="footer-social">
+                    <a href="#" class="footer-social-link" aria-label="X (Twitter)" title="X (Twitter)">𝕏</a>
+                    <a href="#" class="footer-social-link" aria-label="Instagram" title="Instagram">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                    </a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Invite Campaign Modal -->
+    <div class="modal-overlay" id="invitePlaygroupModal">
+        <div class="modal invite-modal">
+            <h3>Invite link copied!</h3>
+            <p style="margin-bottom: 12px; color: var(--text-secondary);">The link is on your clipboard — paste it anywhere to share.</p>
+            <p style="margin-bottom: 12px; color: var(--text-secondary);">It expires in <strong>7 days</strong> and can be used up to <strong>10 times</strong>.</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">New meeples: open the link, sign in with Google, and they'll be added to <strong id="invitePlaygroupName"></strong> automatically.</p>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" id="inviteModalClose">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Campaign Modal -->
+    <div class="modal-overlay" id="createPlaygroupModal">
+        <div class="modal" style="max-width: 400px;">
+            <h3>New Campaign</h3>
+            <p style="margin-bottom: 12px; color: var(--text-secondary);">Enter a name for your campaign</p>
+            <input type="text" id="createPlaygroupInput" class="input-field" placeholder="Campaign name..." style="width: 100%; margin-bottom: 20px; padding: 12px; box-sizing: border-box;">
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" id="createPlaygroupCancel">Cancel</button>
+                <button class="modal-btn confirm btn-progress" id="createPlaygroupOk">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leave Campaign Modal -->
+    <div class="modal-overlay" id="leavePlaygroupModal">
+        <div class="modal" style="max-width: 400px;">
+            <h3>Leave Campaign?</h3>
+            <p style="margin-bottom: 8px; color: var(--text-secondary);">You're about to leave <strong id="leavePlaygroupName"></strong>.</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">You'll need a new invite link to rejoin.</p>
+            <div class="modal-buttons" style="margin-top: 24px;">
+                <button class="modal-btn cancel" id="leavePlaygroupCancel">Cancel</button>
+                <button class="modal-btn confirm" id="leavePlaygroupConfirm" style="background: var(--accent-danger);">Leave</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Favourite Game Picker Modal -->
+    <div class="modal-overlay" id="favouriteGameModal">
+        <div class="modal" style="max-width: 400px;">
+            <h3>Set Favourite Game</h3>
+            <p style="margin-bottom: 12px; color: var(--text-secondary);">Choose a game to show on your profile</p>
+            <select id="favouriteGameSelect" class="input-field" style="width: 100%; padding: 12px; margin-bottom: 20px; box-sizing: border-box;">
+                <option value="">Auto (by wins)</option>
+            </select>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" id="favouriteGameCancel">Cancel</button>
+                <button class="modal-btn confirm" id="favouriteGameSave">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal (generic confirm) -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <h3 id="modalTitle">Confirm</h3>
+            <p id="modalMessage">Are you sure?</p>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" id="modalCancel">Cancel</button>
+                <button class="modal-btn confirm" id="modalConfirm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Image Modal -->
+    <div class="modal-overlay" id="playerImageModal">
+        <div class="modal modal-player">
+            <h3>Customize Meeple</h3>
+            <p style="margin-bottom: 16px;">Update image for <strong id="playerImagePlayerName"></strong></p>
+
+            <div class="image-upload-section" style="margin-bottom: 16px;">
+                <label class="image-upload-label">Meeple Image</label>
+                <div class="file-input-wrapper">
+                    <input type="file" id="playerImageFileInput" accept="image/*">
+                    <label for="playerImageFileInput" class="file-input-label">
+                        <span>📁</span> Choose New Image
+                    </label>
+                </div>
+                <img id="playerImagePreview" class="image-preview" alt="Preview" style="display: none;">
+            </div>
+
+            <label style="display: block; margin-bottom: 8px; color: var(--text-secondary); font-size: 0.9rem;">Meeple Color</label>
+            <div class="color-picker" id="colorPicker">
+                <button class="color-option" data-color="#6366f1" style="background: #6366f1;"></button>
+                <button class="color-option" data-color="#8b5cf6" style="background: #8b5cf6;"></button>
+                <button class="color-option" data-color="#ec4899" style="background: #ec4899;"></button>
+                <button class="color-option" data-color="#ef4444" style="background: #ef4444;"></button>
+                <button class="color-option" data-color="#f59e0b" style="background: #f59e0b;"></button>
+                <button class="color-option" data-color="#10b981" style="background: #10b981;"></button>
+                <button class="color-option" data-color="#06b6d4" style="background: #06b6d4;"></button>
+                <button class="color-option" data-color="#3b82f6" style="background: #3b82f6;"></button>
+                <button class="color-option" data-color="#000000" style="background: #000000; border: 2px solid var(--border);"></button>
+                <button class="color-option" data-color="#ffffff" style="background: #ffffff; border: 2px solid var(--border);"></button>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" id="playerImageCancel">Cancel</button>
+                <button class="modal-btn confirm" id="playerImageRemove" style="background: var(--accent-danger);">Reset</button>
+                <button class="modal-btn confirm btn-progress" id="playerImageSave">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Image Modal -->
+    <div class="modal-overlay" id="gameImageModal">
+        <div class="modal">
+            <h3>Set Game Image</h3>
+            <p style="margin-bottom: 16px;">Choose an image for <strong id="gameImageGameName"></strong></p>
+
+            <div class="image-upload-section">
+                <label class="image-upload-label">Game Image</label>
+                <div class="file-input-wrapper">
+                    <input type="file" id="gameImageFileInput" accept="image/*">
+                    <label for="gameImageFileInput" class="file-input-label">
+                        <span>📁</span> Choose New Image
+                    </label>
+                </div>
+                <img id="gameImagePreview" class="image-preview" alt="Preview" style="display: none;">
+            </div>
+
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" id="gameImageCancel">Cancel</button>
+                <button class="modal-btn confirm" id="gameImageRemove" style="background: var(--accent-danger);">Remove Image</button>
+                <button class="modal-btn confirm btn-progress" id="gameImageSave">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Entry Modal -->
+    <div class="modal-overlay" id="editEntryModal">
+        <div class="modal" style="max-width: 450px;">
+            <h3>Edit Win Record</h3>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 6px; color: var(--text-secondary);">Game</label>
+                <select id="editGameSelect" class="input-field" style="padding: 12px;"></select>
+                
+                <label style="display: block; margin: 16px 0 6px; color: var(--text-secondary);">Meeple</label>
+                <select id="editPlayerSelect" class="input-field" style="padding: 12px;"></select>
+                
+                <label style="display: block; margin: 16px 0 6px; color: var(--text-secondary);">Date</label>
+                <input type="date" id="editDateInput" class="input-field date-input">
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" id="editEntryCancel">Cancel</button>
+                <button class="modal-btn confirm btn-progress" id="editEntrySave">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Profile Modal -->
+    <div class="modal-overlay player-profile-overlay" id="playerProfileModal">
+        <div class="player-profile-panel">
+
+            <div class="player-profile-header">
+                <div class="player-profile-avatar-wrap" id="profileAvatarWrap">
+                    <img id="profileAvatarImg" class="player-profile-avatar-img" alt="" style="display:none;">
+                    <div id="profileAvatarPlaceholder" class="player-profile-avatar-placeholder">👤</div>
+                </div>
+                <div class="player-profile-title-area">
+                    <h2 class="player-profile-name" id="profileName">—</h2>
+                    <div class="player-profile-meta" id="profileMeta"></div>
+                    <button class="player-profile-claim-btn" id="profileClaimBtn" style="display:none;">
+                        This is me — link my account
+                    </button>
+                    <button class="player-profile-unlink-btn" id="profileUnlinkBtn" style="display:none;">
+                        Unlink my account
+                    </button>
+                </div>
+                <button class="player-profile-close" id="playerProfileClose" aria-label="Close">✕</button>
+            </div>
+
+            <div class="player-profile-body">
+
+                <!-- Stats summary row -->
+                <div class="profile-stats-row" id="profileStatsRow">
+                    <div class="profile-stat-card">
+                        <div class="profile-stat-number" id="profileTotalWins">—</div>
+                        <div class="profile-stat-label">Total Wins</div>
+                    </div>
+                    <div class="profile-stat-card" id="profileCampaignStatCard">
+                        <div class="profile-stat-number" id="profileCampaignCount">—</div>
+                        <div class="profile-stat-label">Campaigns</div>
+                    </div>
+                    <div class="profile-stat-card" id="profileFaveGameCard">
+                        <div class="profile-stat-number profile-stat-game" id="profileFaveGame">—</div>
+                        <div class="profile-stat-label">Favourite Game</div>
+                    </div>
+                </div>
+
+                <!-- Cross-campaign breakdown (shown when player is linked) -->
+                <div id="profileCampaignSection" style="display:none;">
+                    <h3 class="profile-section-title">Campaign Breakdown</h3>
+                    <div class="profile-campaign-list" id="profileCampaignList"></div>
+                </div>
+
+                <!-- Game breakdown -->
+                <div id="profileGameSection">
+                    <h3 class="profile-section-title" id="profileGameSectionTitle">Wins by Game</h3>
+                    <div class="profile-game-list" id="profileGameList"></div>
+                </div>
+
+                <!-- Recent history -->
+                <div id="profileHistorySection">
+                    <h3 class="profile-section-title">Recent Wins</h3>
+                    <div class="profile-history-list" id="profileHistoryList"></div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Score Tabulator Modal -->
+    <div class="modal-overlay tally-overlay" id="scoreTallyModal">
+        <div class="modal tally-modal">
+            <div class="tally-header">
+                <div class="tally-header-left">
+                    <span class="tally-header-icon">📊</span>
+                    <div>
+                        <h3 class="tally-title" id="tallyTitle">Tally Scores</h3>
+                        <p class="tally-subtitle" id="tallySubtitle">Set up your game</p>
+                    </div>
+                </div>
+                <button class="tally-close" id="tallyClose" aria-label="Close">✕</button>
+            </div>
+
+            <!-- Stage 1: Setup -->
+            <div id="tallyStage1" class="tally-stage active">
+                <div class="tally-field">
+                    <label class="tally-label">Game</label>
+                    <select id="tallyGameSelect" class="input-field tally-select">
+                        <option value="">Select a game…</option>
+                    </select>
+                </div>
+                <div class="tally-field">
+                    <label class="tally-label">Who's playing? <span class="tally-label-hint">(pick 2 or more)</span></label>
+                    <div id="tallyMeepleChips" class="tally-chips"></div>
+                    <div class="tally-temp-add">
+                        <input type="text" id="tallyTempName" class="input-field" placeholder="Add guest meeple…">
+                        <button class="btn btn-secondary tally-add-temp-btn" id="tallyAddTempBtn" type="button">+ Add</button>
+                    </div>
+                    <div id="tallyTempList" class="tally-temp-list"></div>
+                </div>
+                <div class="tally-actions">
+                    <button class="btn btn-secondary" id="tallyCancelBtn" type="button">Cancel</button>
+                    <button class="btn tally-start-btn" id="tallyStartBtn" type="button" disabled>Start Tally →</button>
+                </div>
+            </div>
+
+            <!-- Stage 2: Score Table -->
+            <div id="tallyStage2" class="tally-stage">
+                <div class="tally-table-wrap">
+                    <table class="score-table" id="scoreTable">
+                        <thead id="scoreTableHead"></thead>
+                        <tbody id="scoreTableBody"></tbody>
+                        <tfoot id="scoreTableFoot"></tfoot>
+                    </table>
+                </div>
+                <button class="btn btn-secondary tally-add-round-btn" id="tallyAddRoundBtn" type="button">+ Add Round</button>
+                <div id="tallyWinnerBar" class="tally-winner-bar"></div>
+                <div class="tally-actions">
+                    <button class="btn btn-secondary" id="tallyBackBtn" type="button">← Back</button>
+                    <button class="btn tally-record-btn" id="tallyRecordBtn" type="button">Record This Win 🎉</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.supabase.js"></script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

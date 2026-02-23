@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roadmap — The Scorekeeper</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&display=swap">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* ── Page shell ── */
+        .roadmap-page {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 40px 20px 80px;
+        }
+        .legal-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-bottom: 40px;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        .legal-back:hover { color: var(--accent-primary); }
+
+        /* ── Hero ── */
+        .rm-hero {
+            text-align: center;
+            margin-bottom: 64px;
+            position: relative;
+        }
+        .rm-hero-eyebrow {
+            font-size: 0.78rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--accent-primary);
+            margin-bottom: 12px;
+            opacity: 0;
+            animation: fadeUp 0.6s ease forwards 0.1s;
+        }
+        .rm-hero h1 {
+            font-family: 'Cinzel Decorative', serif;
+            font-size: clamp(1.8rem, 5vw, 2.8rem);
+            background: linear-gradient(135deg, var(--accent-gold-light), var(--accent-gold), var(--accent-primary), var(--accent-secondary));
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 5s ease infinite, fadeUp 0.6s ease forwards 0.2s;
+            opacity: 0;
+            margin: 0 0 16px;
+        }
+        .rm-hero-sub {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            max-width: 480px;
+            margin: 0 auto;
+            line-height: 1.7;
+            opacity: 0;
+            animation: fadeUp 0.6s ease forwards 0.35s;
+        }
+
+        /* ── Decorative stars ── */
+        .rm-stars {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .rm-star {
+            position: absolute;
+            width: 3px; height: 3px;
+            background: var(--accent-gold);
+            border-radius: 50%;
+            animation: twinkle var(--d, 3s) ease-in-out infinite var(--delay, 0s);
+            opacity: 0;
+        }
+
+        /* ── Timeline ── */
+        .rm-timeline {
+            position: relative;
+            padding-left: 48px;
+        }
+        .rm-timeline::before {
+            content: '';
+            position: absolute;
+            left: 15px; top: 8px; bottom: 8px;
+            width: 2px;
+            background: linear-gradient(
+                to bottom,
+                var(--accent-success),
+                var(--accent-primary),
+                var(--accent-secondary),
+                var(--accent-gold),
+                var(--text-muted)
+            );
+            border-radius: 2px;
+        }
+
+        /* ── Era card ── */
+        .rm-era {
+            position: relative;
+            margin-bottom: 40px;
+            opacity: 0;
+            transform: translateY(24px);
+            animation: fadeUp 0.55s ease forwards;
+        }
+        .rm-era:nth-child(1) { animation-delay: 0.4s; }
+        .rm-era:nth-child(2) { animation-delay: 0.55s; }
+        .rm-era:nth-child(3) { animation-delay: 0.7s; }
+        .rm-era:nth-child(4) { animation-delay: 0.85s; }
+
+        /* dot on the timeline */
+        .rm-era-dot {
+            position: absolute;
+            left: -40px;
+            top: 20px;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            border: 3px solid var(--bg-primary);
+            box-shadow: 0 0 12px var(--dot-color, var(--accent-primary)), 0 0 24px var(--dot-color, var(--accent-primary));
+            background: var(--dot-color, var(--accent-primary));
+            z-index: 1;
+        }
+
+        .rm-era-card {
+            border-radius: 16px;
+            padding: 24px 28px;
+            border: 1px solid var(--card-border, var(--border));
+            background: linear-gradient(135deg, var(--card-bg-from, var(--bg-card)), var(--bg-secondary));
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+        .rm-era-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px var(--card-glow, rgba(99,102,241,0.15));
+        }
+
+        /* animated shimmer sweep on hover */
+        .rm-era-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.04) 50%, transparent 60%);
+            transform: translateX(-100%);
+            transition: transform 0.5s ease;
+        }
+        .rm-era-card:hover::after { transform: translateX(100%); }
+
+        /* corner glow blob */
+        .rm-era-card::before {
+            content: '';
+            position: absolute;
+            top: -40px; right: -40px;
+            width: 140px; height: 140px;
+            border-radius: 50%;
+            background: var(--card-glow-blob, rgba(99,102,241,0.12));
+            filter: blur(40px);
+            pointer-events: none;
+        }
+
+        /* ── Card variants ── */
+        .rm-era--now .rm-era-dot   { --dot-color: var(--accent-success); }
+        .rm-era--now .rm-era-card  {
+            --card-border: rgba(16,185,129,0.4);
+            --card-bg-from: rgba(16,185,129,0.06);
+            --card-glow: rgba(16,185,129,0.2);
+            --card-glow-blob: rgba(16,185,129,0.15);
+        }
+
+        .rm-era--q2 .rm-era-dot    { --dot-color: var(--accent-primary); }
+        .rm-era--q2 .rm-era-card   {
+            --card-border: rgba(99,102,241,0.4);
+            --card-bg-from: rgba(99,102,241,0.06);
+            --card-glow: rgba(99,102,241,0.2);
+            --card-glow-blob: rgba(99,102,241,0.15);
+        }
+
+        .rm-era--q3 .rm-era-dot    { --dot-color: var(--accent-secondary); }
+        .rm-era--q3 .rm-era-card   {
+            --card-border: rgba(139,92,246,0.4);
+            --card-bg-from: rgba(139,92,246,0.06);
+            --card-glow: rgba(139,92,246,0.2);
+            --card-glow-blob: rgba(139,92,246,0.15);
+        }
+
+        .rm-era--wip .rm-era-dot   { --dot-color: var(--accent-warning); }
+        .rm-era--wip .rm-era-card  {
+            --card-border: rgba(245,158,11,0.4);
+            --card-bg-from: rgba(245,158,11,0.06);
+            --card-glow: rgba(245,158,11,0.2);
+            --card-glow-blob: rgba(245,158,11,0.14);
+        }
+        .rm-era--wip .rm-card-icon { --dot-color: var(--accent-warning); }
+
+        /* continuous glow pulse on the wip card */
+        .rm-era--wip .rm-era-card {
+            animation: wipGlow 2.8s ease-in-out infinite;
+        }
+        /* continuous shimmer sweep (overrides hover-only version) */
+        .rm-era--wip .rm-era-card::after {
+            background: linear-gradient(105deg, transparent 30%, rgba(245,158,11,0.12) 48%, rgba(255,255,255,0.06) 50%, rgba(245,158,11,0.12) 52%, transparent 70%);
+            animation: wipShimmer 2.4s ease-in-out infinite;
+            transform: none;
+        }
+        @keyframes wipGlow {
+            0%, 100% { box-shadow: 0 0 10px rgba(245,158,11,0.15), 0 0 24px rgba(245,158,11,0.08); }
+            50%       { box-shadow: 0 0 22px rgba(245,158,11,0.4),  0 0 48px rgba(245,158,11,0.18); }
+        }
+        @keyframes wipShimmer {
+            0%   { transform: translateX(-120%); }
+            60%, 100% { transform: translateX(120%); }
+        }
+
+        .rm-badge--wip {
+            background: rgba(245,158,11,0.12);
+            color: var(--accent-warning);
+            border: 1px solid rgba(245,158,11,0.35);
+        }
+        .rm-badge--wip .rm-badge-dot {
+            background: var(--accent-warning);
+            animation: pulseDot 1s ease-in-out infinite;
+            box-shadow: 0 0 6px var(--accent-warning);
+        }
+
+        .rm-era--2026 .rm-era-dot  { --dot-color: var(--accent-primary); }
+        .rm-era--2026 .rm-era-card {
+            --card-border: rgba(99,102,241,0.4);
+            --card-bg-from: rgba(99,102,241,0.06);
+            --card-glow: rgba(99,102,241,0.2);
+            --card-glow-blob: rgba(139,92,246,0.15);
+        }
+        .rm-era--2026 .rm-card-icon { --dot-color: var(--accent-primary); }
+
+        .rm-era--future .rm-era-dot { --dot-color: var(--text-muted); }
+        .rm-era--future .rm-era-card {
+            --card-border: rgba(100,116,139,0.3);
+            --card-bg-from: rgba(100,116,139,0.04);
+            --card-glow: rgba(100,116,139,0.1);
+            --card-glow-blob: rgba(100,116,139,0.08);
+        }
+
+        /* ── Card header ── */
+        .rm-card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .rm-card-title-group { display: flex; align-items: center; gap: 12px; }
+        .rm-card-icon {
+            font-size: 1.8rem;
+            line-height: 1;
+            filter: drop-shadow(0 0 6px var(--dot-color, #6366f1));
+        }
+        .rm-era--now  .rm-card-icon { --dot-color: var(--accent-success); }
+        .rm-era--q2   .rm-card-icon { --dot-color: var(--accent-primary); }
+        .rm-era--q3   .rm-card-icon { --dot-color: var(--accent-secondary); }
+        .rm-era--q4   .rm-card-icon { --dot-color: var(--accent-gold); }
+        .rm-era--future .rm-card-icon { --dot-color: var(--text-muted); }
+
+        .rm-card-label {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+        .rm-card-sublabel {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* ── Status badge ── */
+        .rm-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .rm-badge-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .rm-badge--live {
+            background: rgba(16,185,129,0.15);
+            color: var(--accent-success);
+            border: 1px solid rgba(16,185,129,0.35);
+        }
+        .rm-badge--live .rm-badge-dot {
+            background: var(--accent-success);
+            animation: pulseDot 1.4s ease-in-out infinite;
+            box-shadow: 0 0 6px var(--accent-success);
+        }
+        .rm-badge--planned {
+            background: rgba(99,102,241,0.12);
+            color: var(--accent-primary);
+            border: 1px solid rgba(99,102,241,0.3);
+        }
+        .rm-badge--planned .rm-badge-dot { background: var(--accent-primary); }
+
+        .rm-badge--planned-purple {
+            background: rgba(139,92,246,0.12);
+            color: var(--accent-secondary);
+            border: 1px solid rgba(139,92,246,0.3);
+        }
+        .rm-badge--planned-purple .rm-badge-dot { background: var(--accent-secondary); }
+
+        .rm-badge--gold {
+            background: rgba(255,215,0,0.1);
+            color: var(--accent-gold);
+            border: 1px solid rgba(255,215,0,0.25);
+        }
+        .rm-badge--gold .rm-badge-dot { background: var(--accent-gold); }
+
+        .rm-badge--tbc {
+            background: rgba(100,116,139,0.12);
+            color: var(--text-secondary);
+            border: 1px solid rgba(100,116,139,0.25);
+        }
+        .rm-badge--tbc .rm-badge-dot { background: var(--text-muted); }
+
+        /* ── Feature list ── */
+        .rm-features {
+            list-style: none;
+            padding: 0; margin: 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 10px;
+        }
+        .rm-feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .rm-feature:hover {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,255,255,0.1);
+            color: var(--text-primary);
+        }
+        .rm-feature-icon {
+            font-size: 1.1rem;
+            line-height: 1;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        /* ── Feature request placeholder ── */
+        .rm-feature--request {
+            border-style: dashed;
+            border-color: rgba(255,255,255,0.12);
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* ── TBC mystery block ── */
+        .rm-tbc-body {
+            text-align: center;
+            padding: 12px 0 4px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        .rm-tbc-body .rm-mystery {
+            font-size: 2.2rem;
+            letter-spacing: 0.15em;
+            display: block;
+            margin-bottom: 10px;
+            opacity: 0.4;
+        }
+
+        /* ── Note at bottom ── */
+        .rm-note {
+            margin-top: 48px;
+            padding: 16px 20px;
+            border-radius: 12px;
+            background: rgba(99,102,241,0.07);
+            border: 1px solid rgba(99,102,241,0.2);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            opacity: 0;
+            animation: fadeUp 0.55s ease forwards 0.85s;
+        }
+        .rm-note a { color: var(--accent-primary); text-decoration: none; }
+        .rm-note a:hover { text-decoration: underline; }
+
+        /* ── Animations ── */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes gradientShift {
+            0%   { background-position: 0% 50%; }
+            50%  { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @keyframes pulseDot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%       { opacity: 0.5; transform: scale(0.7); }
+        }
+        @keyframes twinkle {
+            0%, 100% { opacity: 0; transform: scale(0.8); }
+            50%       { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 500px) {
+            .rm-timeline { padding-left: 36px; }
+            .rm-era-dot  { left: -30px; width: 14px; height: 14px; }
+            .rm-card-header { flex-direction: column; gap: 8px; }
+            .rm-features { grid-template-columns: 1fr; }
+            .rm-era-card { padding: 18px 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-row">
+                <div>
+                    <h1 class="logo">The Scorekeeper</h1>
+                    <p class="subtitle">Track your <span class="strikethrough">victories</span> bragging rights!</p>
+                </div>
+            </div>
+        </header>
+
+        <main class="roadmap-page">
+            <a href="index.html" class="legal-back">← Back to app</a>
+
+            <!-- Hero -->
+            <div class="rm-hero">
+                <!-- decorative stars -->
+                <div class="rm-stars" aria-hidden="true">
+                    <span class="rm-star" style="top:10%;left:8%;--d:2.8s;--delay:0.1s"></span>
+                    <span class="rm-star" style="top:20%;left:92%;--d:3.5s;--delay:0.7s"></span>
+                    <span class="rm-star" style="top:60%;left:5%;--d:2.2s;--delay:1.1s"></span>
+                    <span class="rm-star" style="top:75%;left:88%;--d:4s;--delay:0.4s"></span>
+                    <span class="rm-star" style="top:40%;left:95%;--d:3.1s;--delay:1.5s"></span>
+                    <span class="rm-star" style="top:85%;left:15%;--d:2.6s;--delay:0.9s"></span>
+                    <span class="rm-star" style="top:5%;left:55%;--d:3.8s;--delay:0.2s;background:var(--accent-primary)"></span>
+                    <span class="rm-star" style="top:90%;left:65%;--d:2.4s;--delay:1.3s;background:var(--accent-secondary)"></span>
+                </div>
+                <p class="rm-hero-eyebrow">What we're building</p>
+                <h1>Our Roadmap</h1>
+                <p class="rm-hero-sub">A peek at what's live today, and what's coming next. Plans evolve — but this is where we're headed.</p>
+            </div>
+
+            <!-- Timeline -->
+            <div class="rm-timeline">
+
+                <!-- NOW -->
+                <div class="rm-era rm-era--now">
+                    <div class="rm-era-dot" aria-hidden="true"></div>
+                    <div class="rm-era-card">
+                        <div class="rm-card-header">
+                            <div class="rm-card-title-group">
+                                <span class="rm-card-icon">🎲</span>
+                                <div>
+                                    <div class="rm-card-label">Now — Beta</div>
+                                    <div class="rm-card-sublabel">2026 · Available today</div>
+                                </div>
+                            </div>
+                            <span class="rm-badge rm-badge--live">
+                                <span class="rm-badge-dot"></span>Live
+                            </span>
+                        </div>
+                        <ul class="rm-features">
+                            <li class="rm-feature"><span class="rm-feature-icon">✅</span>Free — no paywalls</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">🔐</span>Google Sign-In</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">🏆</span>Up to 2 campaigns</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">🔗</span>Invite links</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">👥</span>Up to 4 meeples</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">🎲</span>Unlimited games</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">📊</span>Score tabulator</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">📜</span>Full win history &amp; editing</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">👁️</span>Share leaderboards (anon)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- IN PROGRESS -->
+                <div class="rm-era rm-era--wip">
+                    <div class="rm-era-dot" aria-hidden="true"></div>
+                    <div class="rm-era-card">
+                        <div class="rm-card-header">
+                            <div class="rm-card-title-group">
+                                <span class="rm-card-icon">⚙️</span>
+                                <div>
+                                    <div class="rm-card-label">In Progress</div>
+                                    <div class="rm-card-sublabel">Currently being built</div>
+                                </div>
+                            </div>
+                            <span class="rm-badge rm-badge--wip">
+                                <span class="rm-badge-dot"></span>In Progress
+                            </span>
+                        </div>
+                        <ul class="rm-features">
+                            <li class="rm-feature"><span class="rm-feature-icon">📧</span>Email login (no Google required)</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">👥</span>Up to 8 meeples per campaign</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">📸</span>Screenshots of games played</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">📱</span>Instagram promo &amp; social presence</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- REST OF 2026 -->
+                <div class="rm-era rm-era--2026">
+                    <div class="rm-era-dot" aria-hidden="true"></div>
+                    <div class="rm-era-card">
+                        <div class="rm-card-header">
+                            <div class="rm-card-title-group">
+                                <span class="rm-card-icon">🚀</span>
+                                <div>
+                                    <div class="rm-card-label">Rest of 2026</div>
+                                    <div class="rm-card-sublabel">April – December 2026</div>
+                                </div>
+                            </div>
+                            <span class="rm-badge rm-badge--planned">
+                                <span class="rm-badge-dot"></span>Planned
+                            </span>
+                        </div>
+                        <ul class="rm-features">
+                            <li class="rm-feature"><span class="rm-feature-icon">🗂️</span>Unlimited campaigns</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">👤</span>Expanded meeple profiles</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">👥</span>Even MORE meeples per campaign</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">💾</span>Export &amp; import data</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">🏅</span>Tiered memberships</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">💳</span>Payments via Stripe</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">🦊</span>Crypto payments via MetaMask</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">🎬</span>Video recording of games played</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 2027 -->
+                <div class="rm-era rm-era--future">
+                    <div class="rm-era-dot" aria-hidden="true"></div>
+                    <div class="rm-era-card">
+                        <div class="rm-card-header">
+                            <div class="rm-card-title-group">
+                                <span class="rm-card-icon">🔮</span>
+                                <div>
+                                    <div class="rm-card-label">2027 &amp; Beyond</div>
+                                    <div class="rm-card-sublabel">The adventure continues…</div>
+                                </div>
+                            </div>
+                            <span class="rm-badge rm-badge--tbc">
+                                <span class="rm-badge-dot"></span>TBC
+                            </span>
+                        </div>
+                        <div class="rm-tbc-body">
+                            <span class="rm-mystery">· · ·</span>
+                            <p style="margin-bottom: 16px;">We're not promising anything… but wouldn't these be awesome? 👀</p>
+                        </div>
+                        <ul class="rm-features" style="opacity: 0.6;">
+                            <li class="rm-feature"><span class="rm-feature-icon">📡</span>Live streaming of game nights</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">💬</span>Live campaign chat</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">🏆</span>Prized competitions</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">🤝</span>Sponsorships</li>
+                            <li class="rm-feature"><span class="rm-feature-icon">🏢</span>Corporate engagement &amp; events</li>
+                            <li class="rm-feature rm-feature--request"><span class="rm-feature-icon">💡</span>&lt;Your Feature Request Here&gt;</li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div><!-- /.rm-timeline -->
+
+            <p class="rm-note">
+                📌 Roadmap items are subject to change. Got a feature request or feedback?
+                <a href="contact.html">Drop us a message</a> — we'd love to hear it.
+                A free version will always exist; paid tiers unlock extra features only.
+            </p>
+
+        </main>
+    </div>
+</body>
+</html>

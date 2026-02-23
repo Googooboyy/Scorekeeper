@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Ethos — The Scorekeeper</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&display=swap">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* ── Page shell ── */
+        .ethos-page {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 40px 20px 80px;
+        }
+        .legal-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-bottom: 40px;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        .legal-back:hover { color: var(--accent-primary); }
+
+        /* ── Hero ── */
+        .ethos-hero {
+            text-align: center;
+            margin-bottom: 64px;
+            position: relative;
+        }
+        .ethos-hero-eyebrow {
+            font-size: 0.78rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--accent-primary);
+            margin-bottom: 12px;
+            opacity: 0;
+            animation: ethosFadeUp 0.6s ease forwards 0.1s;
+        }
+        .ethos-hero h1 {
+            font-family: 'Cinzel Decorative', serif;
+            font-size: clamp(1.8rem, 5vw, 2.8rem);
+            background: linear-gradient(135deg, var(--accent-gold-light), var(--accent-gold), var(--accent-primary), var(--accent-secondary));
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: ethosGradientShift 5s ease infinite, ethosFadeUp 0.6s ease forwards 0.2s;
+            opacity: 0;
+            margin: 0 0 16px;
+        }
+        .ethos-hero-sub {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            max-width: 540px;
+            margin: 0 auto;
+            line-height: 1.8;
+            opacity: 0;
+            animation: ethosFadeUp 0.6s ease forwards 0.35s;
+        }
+        .ethos-mission {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 20px;
+            padding: 20px 24px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.06));
+            border: 1px solid rgba(99,102,241,0.2);
+            line-height: 1.6;
+            opacity: 0;
+            animation: ethosFadeUp 0.6s ease forwards 0.45s;
+        }
+
+        /* ── Decorative stars ── */
+        .ethos-stars {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .ethos-star {
+            position: absolute;
+            width: 3px; height: 3px;
+            background: var(--accent-gold);
+            border-radius: 50%;
+            animation: ethosTwinkle var(--d, 3s) ease-in-out infinite var(--delay, 0s);
+            opacity: 0;
+        }
+
+        /* ── Value cards ── */
+        .ethos-section {
+            margin-bottom: 24px;
+            opacity: 0;
+            transform: translateY(24px);
+            animation: ethosFadeUp 0.55s ease forwards;
+        }
+        .ethos-section:nth-child(1) { animation-delay: 0.5s; }
+        .ethos-section:nth-child(2) { animation-delay: 0.6s; }
+        .ethos-section:nth-child(3) { animation-delay: 0.7s; }
+        .ethos-section:nth-child(4) { animation-delay: 0.8s; }
+        .ethos-section:nth-child(5) { animation-delay: 0.9s; }
+        .ethos-section:nth-child(6) { animation-delay: 1s; }
+
+        .ethos-section-card {
+            border-radius: 16px;
+            padding: 24px 28px;
+            border: 1px solid var(--border);
+            background: linear-gradient(135deg, var(--bg-card), var(--bg-secondary));
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+        .ethos-section-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(99,102,241,0.15);
+        }
+        .ethos-section h3 {
+            font-size: 1.15rem;
+            color: var(--text-primary);
+            margin: 0 0 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .ethos-section h3 .ethos-section-icon {
+            font-size: 1.4rem;
+        }
+        .ethos-section p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.7;
+            margin: 0;
+        }
+
+        /* ── CTA block ── */
+        .ethos-cta {
+            margin-top: 48px;
+            text-align: center;
+            padding: 40px 24px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.06));
+            border: 1px solid rgba(99,102,241,0.25);
+            opacity: 0;
+            animation: ethosFadeUp 0.55s ease forwards 1.1s;
+        }
+        .ethos-cta h3 {
+            font-size: 1.2rem;
+            color: var(--text-primary);
+            margin: 0 0 8px;
+        }
+        .ethos-cta p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin: 0 0 24px;
+            line-height: 1.6;
+        }
+        .ethos-cta-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: center;
+            align-items: center;
+        }
+        .ethos-cta-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 14px 28px;
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        .ethos-cta-primary:hover {
+            opacity: 0.95;
+            transform: translateY(-2px);
+        }
+        .ethos-cta-secondary {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .ethos-cta-secondary:hover { color: var(--accent-primary); }
+
+        /* ── Animations ── */
+        @keyframes ethosFadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes ethosGradientShift {
+            0%   { background-position: 0% 50%; }
+            50%  { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @keyframes ethosTwinkle {
+            0%, 100% { opacity: 0; transform: scale(0.8); }
+            50%       { opacity: 1; transform: scale(1.2); }
+        }
+
+        @media (max-width: 500px) {
+            .ethos-section-card { padding: 18px 16px; }
+            .ethos-cta-buttons { flex-direction: column; }
+            .ethos-cta-primary { width: 100%; max-width: 280px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-row">
+                <div>
+                    <h1 class="logo">The Scorekeeper</h1>
+                    <p class="subtitle">Track your <span class="strikethrough">victories</span> bragging rights!</p>
+                </div>
+            </div>
+        </header>
+
+        <main class="ethos-page">
+            <a href="index.html" class="legal-back">← Back to app</a>
+
+            <!-- Hero -->
+            <div class="ethos-hero">
+                <div class="ethos-stars" aria-hidden="true">
+                    <span class="ethos-star" style="top:10%;left:8%;--d:2.8s;--delay:0.1s"></span>
+                    <span class="ethos-star" style="top:20%;left:92%;--d:3.5s;--delay:0.7s"></span>
+                    <span class="ethos-star" style="top:60%;left:5%;--d:2.2s;--delay:1.1s"></span>
+                    <span class="ethos-star" style="top:75%;left:88%;--d:4s;--delay:0.4s"></span>
+                    <span class="ethos-star" style="top:40%;left:95%;--d:3.1s;--delay:1.5s"></span>
+                    <span class="ethos-star" style="top:5%;left:55%;--d:3.8s;--delay:0.2s;background:var(--accent-primary)"></span>
+                    <span class="ethos-star" style="top:90%;left:65%;--d:2.4s;--delay:1.3s;background:var(--accent-secondary)"></span>
+                </div>
+                <p class="ethos-hero-eyebrow">Our Ethos</p>
+                <h1>Why We Build This</h1>
+                <p class="ethos-hero-sub">The Scorekeeper exists because every game night deserves to be remembered — and everyone deserves a fair shot at glory. Here's what drives us.</p>
+                <p class="ethos-mission">We're determined to make bragging rights easy, inclusive, accessible, fast and friendly./p>
+            </div>
+
+            <!-- Values -->
+            <section class="ethos-section">
+                <div class="ethos-section-card">
+                    <h3><span class="ethos-section-icon">🔥</span> Determination</h3>
+                    <p>We don't give up. Building something people actually use takes persistence — fixing bugs, listening to feedback, iterating until it feels right. The Scorekeeper is the product of that stubborn commitment. We show up, ship, and keep improving.</p>
+                </div>
+            </section>
+
+            <section class="ethos-section">
+                <div class="ethos-section-card">
+                    <h3><span class="ethos-section-icon">🌈</span> Everyone Deserves Something</h3>
+                    <p>Wins matter, but so does being included. Whether you're the reigning champion or the underdog who just got their first victory, The Scorekeeper is for you. A free tier will always exist. Everyone deserves bragging rights — and everyone deserves a seat at the table.</p>
+                </div>
+            </section>
+
+            <section class="ethos-section">
+                <div class="ethos-section-card">
+                    <h3><span class="ethos-section-icon">✨</span> Easy to Use</h3>
+                    <p>Complexity is the enemy of fun. We design for clarity: no jargon, no hidden menus, no "power user" mode. If you can pick a game, pick a winner, and tap save — you're done. The best software gets out of your way.</p>
+                </div>
+            </section>
+
+            <section class="ethos-section">
+                <div class="ethos-section-card">
+                    <h3><span class="ethos-section-icon">⚡</span> The Value of Three</h3>
+                    <p>We hold ourselves to a simple rule: any core action — adding a win, inviting a friend, viewing the leaderboard — should take three taps or fewer. No endless drill-downs, no nested settings. Fast, focused, and friction-free.</p>
+                </div>
+            </section>
+
+            <section class="ethos-section">
+                <div class="ethos-section-card">
+                    <h3><span class="ethos-section-icon">👶👴</span> Friendly to Use</h3>
+                    <p>Game night spans generations. The Scorekeeper should work for a ten-year-old learning Catan and a grandparent who's never used an app. Clear labels, big buttons, plain language. If it's not accessible to both, we're not done.</p>
+                </div>
+            </section>
+
+            <!-- CTA block -->
+            <div class="ethos-cta">
+                <h3>Ready to settle the score?</h3>
+                <p>Try The Scorekeeper — it's free, and it's built with these values at its core.</p>
+                <div class="ethos-cta-buttons">
+                    <a href="index.html" class="ethos-cta-primary">Get started free</a>
+                    <a href="investors.html" class="ethos-cta-secondary">For investors →</a>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
