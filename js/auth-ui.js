@@ -109,11 +109,19 @@ export function updateAdminUI(email, onAdminActivated) {
 
 function _updateAdminControls(email, onAdminActivated) {
     const btn = document.getElementById('adminModeBtn');
+    const dashBtn = document.getElementById('adminDashboardLink');
     if (!btn) return;
 
     if (!email || !isAdminConfigured() || !isAdminEmail(email)) {
         btn.style.display = 'none';
+        if (dashBtn) dashBtn.style.display = 'none';
         return;
+    }
+
+    if (dashBtn) {
+        dashBtn.style.display = 'inline-flex';
+        dashBtn.onclick = () => { window.location.href = 'admin.html'; };
+        dashBtn.title = 'Open admin dashboard';
     }
 
     btn.style.display = 'inline-flex';

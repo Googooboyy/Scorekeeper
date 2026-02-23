@@ -12,7 +12,8 @@ import {
     deleteAnnouncement, reactivateAnnouncement,
     fetchUnlinkedGames, fetchGlobalGames, upsertGlobalGame, linkGameToGlobal,
     deletePlaygroupAdmin, deleteInviteToken,
-    adminDeleteEntry, adminDeleteGame, adminDeletePlayer
+    adminDeleteEntry, adminDeleteGame, adminDeletePlayer,
+    adminRemoveUserFromCampaigns, adminDeleteUserAccount
 } from './supabase.js';
 import { signOut } from './auth.js';
 
@@ -46,6 +47,10 @@ async function boot() {
     document.getElementById('authEmail').textContent = email || '';
     document.getElementById('authUser').style.display = 'flex';
     document.getElementById('logoutBtn').addEventListener('click', () => signOut());
+    const backBtn = document.getElementById('backToAppBtn');
+    if (backBtn) {
+        backBtn.addEventListener('click', () => { window.location.href = 'index.html'; });
+    }
 
     if (!isAdminConfigured() || !isAdminEmail(email)) {
         document.getElementById('adminGate').style.display = 'none';
@@ -295,14 +300,66 @@ function renderUsers() {
     tbody.innerHTML = filtered.map(u => {
         const owned = _members.filter(m => m.user_id === u.id && m.role === 'owner').length;
         const memberOf = _members.filter(m => m.user_id === u.id).length;
-        return `<tr>
+        return `<tr data-id="${u.id}">
+            <td><input type="checkbox" class="admin-row-check" data-table="users" value="${u.id}"></td>
             <td>${esc(u.email || '—')}</td>
             <td>${esc(u.user_metadata?.full_name || '—')}</td>
             <td>${owned}</td>
             <td>${memberOf}</td>
             <td>${fmtDate(u.created_at)}</td>
         </tr>`;
-    }).join('') || '<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No users found.</td></tr>';
+    }).join('') || '<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">No users found.</td></tr>';
+
+    setupBulkSelect('users', 'usersBulkBar', 'usersBulkCount', 'usersTable');
+    const removeBtn = document.getElementById('usersBulkRemoveCampaigns');
+    const deleteBtn = document.getElementById('usersBulkDeleteAccounts');
+    const clearBtn = document.getElementById('usersBulkClear');
+
+    if (removeBtn) {
+        removeBtn.onclick = async () => {
+            const ids = getChecked('users');
+            if (!ids.length) return;
+            if (!confirm(`Remove ${ids.length} user(s) from all campaigns? Their accounts will remain, but they won’t be members anywhere.`)) return;
+            for (const id of ids) {
+                try {
+                    await adminRemoveUserFromCampaigns(id);
+                    _members = _members.filter(m => m.user_id !== id);
+                } catch (e) {
+                    alert('Error removing memberships: ' + e.message);
+                }
+            }
+            renderUsers();
+            renderCampaigns();
+            renderPlayersTable();
+            clearChecked('users', 'usersBulkBar', 'usersBulkCount', 'usersTable');
+        };
+    }
+
+    if (deleteBtn) {
+        deleteBtn.onclick = async () => {
+            const ids = getChecked('users');
+            if (!ids.length) return;
+            if (!confirm(`Permanently delete ${ids.length} user account(s)? This cannot be undone.`)) return;
+            for (const id of ids) {
+                try {
+                    await adminRemoveUserFromCampaigns(id);
+                    await adminDeleteUserAccount(id);
+                    _members = _members.filter(m => m.user_id !== id);
+                    _users = _users.filter(u => u.id !== id);
+                } catch (e) {
+                    alert('Error deleting user: ' + e.message);
+                }
+            }
+            renderUsers();
+            renderCampaigns();
+            renderPlayersTable();
+            clearChecked('users', 'usersBulkBar', 'usersBulkCount', 'usersTable');
+        };
+    }
+
+    if (clearBtn) {
+        clearBtn.onclick = () => clearChecked('users', 'usersBulkBar', 'usersBulkCount', 'usersTable');
+    }
 }
 
 // ── Entries ───────────────────────────────────────────────────────────────────
@@ -435,7 +492,7 @@ function renderPlayersTable() {
         <td><input type="checkbox" class="admin-row-check" data-table="players" value="${p.id}"></td>
         <td>${esc(p.name)}</td>
         <td>${esc(pgName(p.playgroup_id))}</td>
-        <td>${p.user_id ? esc(userName(p.user_id)) : '<span style="color:var(--text-muted);">Unclaimed</span>'}</td>
+        <td>${renderPlayerUserCell(p)}</td>
         <td>${winsMap[p.id] || 0}</td>
         <td>
             <button class="admin-action-btn admin-action-danger" data-delete-player="${p.id}" title="Delete player">✕</button>
@@ -470,6 +527,18 @@ function renderPlayersTable() {
         renderPlayersTable();
     };
     document.getElementById('playersBulkClear').onclick = () => clearChecked('players', 'playersBulkBar', 'playersBulkCount', 'playersTable');
+}
+
+function renderPlayerUserCell(p) {
+    if (!p.user_id) {
+        return '<span style="color:var(--text-muted);">Unclaimed</span>';
+    }
+    const user = _users.find(u => u.id === p.user_id);
+    const isMember = _members.some(m => m.user_id === p.user_id && m.playgroup_id === p.playgroup_id);
+    if (!user || !isMember) {
+        return '<span style="color:var(--accent-warning);">User misplaced</span>';
+    }
+    return esc(user.email || '—');
 }
 
 // ── BGG Linking ──────────────────────────────────────────────────────────────

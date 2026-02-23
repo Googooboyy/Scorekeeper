@@ -736,6 +736,20 @@ export async function deleteInviteToken(tokenId) {
     if (error) throw error;
 }
 
+export async function adminRemoveUserFromCampaigns(userId) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { error } = await ac.from('playgroup_members').delete().eq('user_id', userId);
+    if (error) throw error;
+}
+
+export async function adminDeleteUserAccount(userId) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { error } = await ac.auth.admin.deleteUser(userId);
+    if (error) throw error;
+}
+
 export async function deletePlaygroupAdmin(playgroupId) {
     const ac = getAdminClient();
     if (!ac) throw new Error('Admin client not available');

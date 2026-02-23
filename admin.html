@@ -24,6 +24,7 @@
                     <div class="auth-area">
                         <div class="auth-user" id="authUser" style="display:none;">
                             <span class="auth-email" id="authEmail"></span>
+                            <button class="btn-auth" id="backToAppBtn" type="button">View App</button>
                             <button class="btn-auth logout" id="logoutBtn">Log out</button>
                         </div>
                     </div>
@@ -99,9 +100,15 @@
             <div id="tab-users" class="admin-panel">
                 <h2 class="admin-panel-title">Users</h2>
                 <input type="text" id="userSearch" class="admin-search" placeholder="Search users...">
+                <div class="admin-bulk-bar" id="usersBulkBar" style="display:none;">
+                    <span id="usersBulkCount">0 selected</span>
+                    <button class="admin-action-btn admin-action-danger" id="usersBulkRemoveCampaigns">Remove from campaigns</button>
+                    <button class="admin-action-btn admin-action-danger" id="usersBulkDeleteAccounts">Delete accounts</button>
+                    <button class="admin-action-btn" id="usersBulkClear">Clear</button>
+                </div>
                 <div class="admin-table-wrap">
                     <table class="admin-table" id="usersTable">
-                        <thead><tr><th>Email</th><th>Name</th><th>Owns</th><th>Member Of</th><th>Joined</th></tr></thead>
+                        <thead><tr><th><input type="checkbox" class="admin-select-all" data-table="users"></th><th>Email</th><th>Name</th><th>Owns</th><th>Member Of</th><th>Joined</th></tr></thead>
                         <tbody></tbody>
                     </table>
                 </div>
