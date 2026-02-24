@@ -1,5 +1,6 @@
 import { getSession, signInWithOAuth, signOut } from './auth.js';
 import { isAdminConfigured, isAdminEmail, isAdminMode, deactivateAdminMode, showAdminPassphraseModal } from './admin.js';
+import { showModal } from './modals.js';
 
 /** In-app toast (avoids importing modals.js and circular dependency). */
 function _toast(message) {
@@ -127,10 +128,15 @@ function _updateAdminControls(email, onAdminActivated) {
         btn.classList.add('admin-mode-active');
         btn.title = 'Exit admin mode';
         btn.onclick = () => {
-            if (confirm('Exit admin mode? You will only see your own campaigns.')) {
-                deactivateAdminMode();
-                window.location.reload();
-            }
+            showModal(
+                'Exit admin mode?',
+                'You\'ll go back to seeing only campaigns you\'re a member of.',
+                () => {
+                    deactivateAdminMode();
+                    window.location.reload();
+                },
+                'Exit admin'
+            );
         };
     } else {
         btn.textContent = '🛡 Admin';

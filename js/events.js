@@ -9,6 +9,7 @@ import {
 } from './data.js';
 import { getActivePlaygroup } from './playgroups.js';
 import { showLoginPrompt } from './auth-ui.js';
+import { isAdminMode } from './admin.js';
 import {
     insertGame,
     insertPlayer,
@@ -191,15 +192,24 @@ export function setupEventListeners() {
 
     const exportBtn = document.getElementById('exportBtn');
     const importBtn = document.getElementById('importBtn');
-    [exportBtn, importBtn].forEach(btn => {
-        if (!btn) return;
-        btn.disabled = true;
-        btn.style.opacity = '0.4';
-        btn.style.cursor = 'not-allowed';
-        btn.title = 'Coming soon';
-    });
-    exportBtn?.addEventListener('click', () => showModal('Coming Soon', 'Export & Import are temporarily disabled. Check back soon!', () => {}));
-    importBtn?.addEventListener('click', () => showModal('Coming Soon', 'Export & Import are temporarily disabled. Check back soon!', () => {}));
+    if (exportBtn) {
+        exportBtn.addEventListener('click', () => {
+            if (!isAdminMode()) {
+                showModal('Coming Soon', 'Export & Import are temporarily disabled. Check back soon!', () => {});
+                return;
+            }
+            exportData();
+        });
+    }
+    if (importBtn) {
+        importBtn.addEventListener('click', () => {
+            if (!isAdminMode()) {
+                showModal('Coming Soon', 'Export & Import are temporarily disabled. Check back soon!', () => {});
+                return;
+            }
+            importData();
+        });
+    }
     document.getElementById('importFileInput').addEventListener('change', handleFileImport);
     document.getElementById('clearAllBtn').addEventListener('click', clearAllData);
     document.getElementById('gamesToggleBtn').addEventListener('click', toggleGamesDisplay);
@@ -577,6 +587,10 @@ async function saveEntry() {
 }
 
 function exportData() {
+    if (!isAdminMode()) {
+        showNotification('Export is currently available to admins only.');
+        return;
+    }
     const pg = getActivePlaygroup();
     if (!pg) { showNotification('Select a campaign to export'); return; }
     const exportObj = {
@@ -602,6 +616,10 @@ function exportData() {
 }
 
 function importData() {
+    if (!isAdminMode()) {
+        showNotification('Import is currently available to admins only.');
+        return;
+    }
     if (!getActivePlaygroup()) { showLoginPrompt(); return; }
     document.getElementById('importFileInput').click();
 }
