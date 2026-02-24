@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google-site-verification" content="L6qndWRGRXnro5ZDDHTrEwXOVDEPJha7dn_znKxewL4" />
     <title>The Scorekeeper</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&display=swap">
     <link rel="stylesheet" href="styles.css">
@@ -12,11 +13,9 @@
         <header>
             <div class="header-row">
                 <div>
-                    <div class="logo-row">
-                        <h1 class="logo">The Scorekeeper</h1>
-                        <span class="beta-badge" title="The Scorekeeper is currently in public beta">BETA</span>
+                    <div class="logo-row logo-header-group">
+                        <h1 class="logo"><img src="logo-scorekpr/logo-ScoreKpr-tagline-350x240px-png.png" alt="The Scorekeeper" class="logo-img"></h1>
                     </div>
-                    <p class="subtitle">Track your <span class="strikethrough">victories</span> bragging rights!</p>
                 </div>
                 <div class="header-actions">
                     <div id="authArea" class="auth-area">
@@ -32,6 +31,7 @@
                         <p id="googleLoginNote" style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">More sign-in options coming soon..</p>
                         <div class="auth-user" id="authUser" style="display: none;">
                             <span class="auth-email" id="authEmail"></span>
+                            <button class="btn-auth" id="adminDashboardLink" style="display:none;" type="button">Admin Page</button>
                             <button class="btn-auth btn-admin-mode" id="adminModeBtn" style="display:none;" type="button">🛡 Admin</button>
                             <button class="btn-auth logout" id="logoutBtn">Log out</button>
                         </div>
@@ -43,53 +43,73 @@
                                 <option value="">Select campaign...</option>
                             </select>
                         </div>
+                        <div class="playgroup-meta-row">
+                            <span id="playgroupCount" class="playgroup-count" aria-live="polite"></span>
+                        </div>
                         <div class="playgroup-actions-row">
-                            <button class="btn-auth invite-playgroup" id="invitePlaygroupBtn" title="Invite others to this campaign">Copy Invite Link</button>
-                            <button class="btn-auth share-leaderboard" id="shareLeaderboardBtn" title="Share a view-only leaderboard link">Share Leaderboard</button>
+                            <button class="btn-auth invite-playgroup" id="invitePlaygroupBtn" title="Copy link to view or join this campaign">Copy Campaign Invite Link</button>
                             <button class="btn-auth create-playgroup" id="createPlaygroupBtn">+ New</button>
                             <button class="btn-auth leave-playgroup" id="leavePlaygroupBtn" title="Leave this campaign" style="display: none;">Leave</button>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="header-banners">
-                <div id="readOnlyBanner" class="read-only-banner">
-                    Log in to add wins, meeples and games!
-                </div>
-                <div id="inviteBanner" class="invite-banner" style="display: none;">
-                    <span class="invite-banner-text">You've been invited to join a campaign!</span>
-                    <p class="invite-banner-sub">Sign in with Google to accept and join.</p>
-                    <button type="button" class="btn-accept-invite" id="acceptInviteBtn">✓ Accept Invite</button>
+        <div class="header-banners">
+            <div id="announcementBanner" class="announcement-banner" style="display:none;">
+                <span id="announcementText"></span>
+                <button class="announcement-banner-close" id="announcementClose" aria-label="Dismiss">✕</button>
+            </div>
+            <div id="readOnlyBanner" class="read-only-banner">
+                    Select a campaign to add wins, players and games!
                 </div>
             </div>
         </header>
 
         <nav class="nav-tabs">
-            <button class="nav-tab nav-tab-about" data-section="about" title="About The Scorekeeper">About</button>
-            <button class="nav-tab active" data-section="dashboard">Dashboard</button>
+            <button class="nav-tab nav-tab-about active" data-section="about" title="About The Scorekeeper">About</button>
+            <button class="nav-tab" data-section="dashboard">Dashboard</button>
             <button class="nav-tab" data-section="add">Add a Game Win</button>
             <button class="nav-tab" data-section="history">History</button>
             <button class="nav-tab nav-tab-data" data-section="data">Data</button>
         </nav>
 
         <!-- Dashboard Section -->
-        <section id="dashboard" class="section active">
-            <div class="gold-divider"></div>
-            <div class="games-section-header">
-                <h2 class="games-section-title">👑 Leaderboard</h2>
-                <button class="games-toggle-btn" id="playersToggleBtn" style="display: none;">
-                    <span id="playersToggleText">Show All</span>
-                    <span class="games-toggle-icon" id="playersToggleIcon">▶</span>
-                </button>
+        <section id="dashboard" class="section">
+            <div class="dashboard-ambient">
+                <div class="about-stars" aria-hidden="true">
+                    <span class="about-star" style="top:0%;left:6%;--d:2.8s;--delay:0.1s"></span>
+                    <span class="about-star" style="top:10%;left:94%;--d:3.4s;--delay:0.7s"></span>
+                    <span class="about-star" style="top:42%;left:4%;--d:2.3s;--delay:1.1s"></span>
+                    <span class="about-star" style="top:56%;left:92%;--d:4s;--delay:0.4s"></span>
+                    <span class="about-star" style="top:28%;left:98%;--d:3.1s;--delay:1.5s"></span>
+                    <span class="about-star" style="top:64%;left:14%;--d:2.6s;--delay:0.9s"></span>
+                    <span class="about-star about-star--primary" style="top:6%;left:50%;--d:3.8s;--delay:0.2s"></span>
+                    <span class="about-star about-star--secondary" style="top:70%;left:60%;--d:2.4s;--delay:1.3s"></span>
+                </div>
+                <div class="dashboard-ambient-inner">
+                    <div class="gold-divider"></div>
+                    <div class="games-section-header">
+                        <button class="games-toggle-btn" id="playersToggleBtn" style="display: none;">
+                            <span id="playersToggleText">Show All</span>
+                            <span class="games-toggle-icon" id="playersToggleIcon">▼</span>
+                        </button>
+                    </div>
+                </div>
             </div>
             <div id="playersContainer" class="players-grid"></div>
+
+            <div class="celebration-pills" aria-label="Celebration effects">
+                <button type="button" class="celebration-pill" id="celebrationConfettiBtn" title="Confetti from above">🎊 Confetti</button>
+                <button type="button" class="celebration-pill" id="celebrationShakeBtn" title="Screen tremor">📳 Shake</button>
+                <button type="button" class="celebration-pill" id="celebrationTrumpetBtn" title="Victory fanfare">🎺 Fanfare</button>
+            </div>
 
             <div class="gold-divider"></div>
             <div class="games-section-header">
                 <h2 class="games-section-title">🏅 Top Games</h2>
                 <button class="games-toggle-btn" id="gamesToggleBtn" style="display: none;">
                     <span id="gamesToggleText">Show All</span>
-                    <span class="games-toggle-icon" id="gamesToggleIcon">▶</span>
+                    <span class="games-toggle-icon" id="gamesToggleIcon">▼</span>
                 </button>
             </div>
             <div id="gamesContainer" class="games-grid"></div>
@@ -115,7 +135,11 @@
                         </div>
                     </div>
                     <div id="newGameInput" class="new-item-input">
-                        <input type="text" id="newGameName" class="input-field" placeholder="Enter game name...">
+                        <div style="position:relative;">
+                            <input type="text" id="newGameName" class="input-field" placeholder="Enter game name..." autocomplete="off">
+                            <div id="bggSuggestions" class="bgg-suggestions" style="display:none;"></div>
+                        </div>
+                        <input type="hidden" id="newGameGlobalId" value="">
                         <div class="image-upload-section">
                             <label class="image-upload-label">Game Image (Optional)</label>
                             <div class="image-source-row">
@@ -191,6 +215,7 @@
                 <h2>
                     <span>💾</span> Data Management
                 </h2>
+                <p class="data-management-coming-soon">Coming soon</p>
                 <div class="data-actions">
                     <button class="data-btn export" id="exportBtn">
                         <span>📥</span> Export Data
@@ -212,26 +237,38 @@
                 <h2 class="history-title">📜 Recent Wins</h2>
                 <button class="games-toggle-btn" id="historyToggleBtn" style="display: none;">
                     <span id="historyToggleText">Show All</span>
-                    <span class="games-toggle-icon" id="historyToggleIcon">▶</span>
+                    <span class="games-toggle-icon" id="historyToggleIcon">▼</span>
                 </button>
             </div>
             <div id="historyContainer" class="history-grid"></div>
         </section>
 
         <!-- About Section -->
-        <section id="about" class="section">
+        <section id="about" class="section active">
 
             <!-- Hero -->
             <div class="about-hero">
-                <div class="about-beta-pill">🧪 Public Beta · v0.9.1 — Free while we build</div>
-                <h2 class="about-hero-title">The Scorekeeper</h2>
-                <p class="about-hero-sub">The friendly rivalry tracker for your board game nights, tabletop campaigns, and game-obsessed friend groups.</p>
-                <!-- Logged-out CTA -->
-                <button class="about-cta-btn" id="aboutGetStartedBtn">Sign in to start tracking</button>
-                <!-- Logged-in CTA -->
-                <div id="aboutHeroLoggedInBtns" class="about-logged-in-btns" style="display:none;">
-                    <button class="about-cta-btn" id="aboutHeroAddWinBtn">+ Add a Win</button>
-                    <button class="about-cta-btn about-cta-btn--ghost" id="aboutHeroHistoryBtn">View History</button>
+                <div class="about-stars" aria-hidden="true">
+                    <span class="about-star" style="top:8%;left:10%;--d:2.8s;--delay:0.1s"></span>
+                    <span class="about-star" style="top:18%;left:90%;--d:3.4s;--delay:0.7s"></span>
+                    <span class="about-star" style="top:60%;left:6%;--d:2.3s;--delay:1.1s"></span>
+                    <span class="about-star" style="top:74%;left:88%;--d:4s;--delay:0.4s"></span>
+                    <span class="about-star" style="top:40%;left:96%;--d:3.1s;--delay:1.5s"></span>
+                    <span class="about-star" style="top:86%;left:16%;--d:2.6s;--delay:0.9s"></span>
+                    <span class="about-star about-star--primary" style="top:6%;left:54%;--d:3.8s;--delay:0.2s"></span>
+                    <span class="about-star about-star--secondary" style="top:92%;left:66%;--d:2.4s;--delay:1.3s"></span>
+                </div>
+                <div class="about-hero-content">
+                    <div class="about-beta-pill">🧪 Public Beta · v0.9.1 — Free while we build</div>
+                    <div class="about-hero-logo"><img src="logo-scorekpr/logo-ScoreKpr-tagline-350x240px-png.png" alt="ScoreKpr" /></div>
+                    <p class="about-hero-sub">The friendly rivalry tracker for your board game nights, tabletop campaigns, and game-obsessed friend groups.</p>
+                    <!-- Logged-out CTA -->
+                    <button class="about-cta-btn" id="aboutGetStartedBtn">Sign in to start tracking</button>
+                    <!-- Logged-in CTA -->
+                    <div id="aboutHeroLoggedInBtns" class="about-logged-in-btns" style="display:none;">
+                        <button class="about-cta-btn" id="aboutHeroAddWinBtn">+ Add a Win</button>
+                        <button class="about-cta-btn about-cta-btn--ghost" id="aboutHeroHistoryBtn">View History</button>
+                    </div>
                 </div>
             </div>
 
@@ -244,7 +281,7 @@
                     <div class="about-step">
                         <div class="about-step-icon">🏰</div>
                         <h4>Create a Campaign</h4>
-                        <p>Start a campaign for your game group. Give it a name, then invite friends with a single link — they join instantly.</p>
+                        <p>Start a campaign for your game group. Give it a name, then invite friends with a single link — they can view the leaderboard and join when ready.</p>
                     </div>
                     <div class="about-step">
                         <div class="about-step-icon">🎲</div>
@@ -289,7 +326,7 @@
                     <div class="about-feature-card">
                         <span class="about-feature-icon">📥</span>
                         <div>
-                            <h4>Export &amp; Import</h4>
+                            <h4>Export &amp; Import <span class="about-feature-coming-soon">Coming soon</span></h4>
                             <p>Download a full JSON backup of your campaign data whenever you like, and restore it just as easily.</p>
                         </div>
                     </div>
@@ -305,6 +342,20 @@
                         <div>
                             <h4>Private by Default</h4>
                             <p>Your campaign data is only visible to members you've invited. No data is public. Sign in with Google — no passwords to manage.</p>
+                        </div>
+                    </div>
+                    <div class="about-feature-card">
+                        <span class="about-feature-icon">🏆</span>
+                        <div>
+                            <h4>Score Tabulation</h4>
+                            <p>Tally scores round-by-round for games with multiple scoring phases. Track VP, objectives, resources, and more — then record the winner in one tap.</p>
+                        </div>
+                    </div>
+                    <div class="about-feature-card">
+                        <span class="about-feature-icon">🆓</span>
+                        <div>
+                            <h4>Always Free</h4>
+                            <p>Core features are free forever. Upgraded tiers with extra goodies are coming soon — but a free version will always exist. Everyone deserves bragging rights.</p>
                         </div>
                     </div>
                 </div>
@@ -330,7 +381,7 @@
                     </details>
                     <details class="footer-accordion-item">
                         <summary>How do I invite someone to my campaign?</summary>
-                        <p>Select your campaign, click "Copy Invite Link", and share it anywhere. When they open the link and sign in with Google, they're added automatically.</p>
+                        <p>Select your campaign, click "Copy Campaign Invite Link", and share it. Anyone with the link can view the leaderboard as a guest. They can then click "Join campaign" (or "Login and join campaign" if not signed in) to become a member.</p>
                     </details>
                     <details class="footer-accordion-item">
                         <summary>Can I be in more than one campaign?</summary>
@@ -362,7 +413,7 @@
                 </div>
                 <!-- Logged-in -->
                 <div id="aboutBottomLoggedIn" style="display:none;">
-                    <p>Where do you want to go?</p>
+                    <p>Are you not entertained?</p>
                     <div class="about-logged-in-btns">
                         <button class="about-cta-btn" id="aboutBottomAddWinBtn">+ Add a Win</button>
                         <button class="about-cta-btn about-cta-btn--ghost" id="aboutBottomHistoryBtn">View History</button>
@@ -383,7 +434,7 @@
                     </details>
                     <details class="footer-accordion-item">
                         <summary>How do I invite others to my campaign?</summary>
-                        <p>Select a campaign, click "Copy Invite Link", and share it. New meeples sign in with Google and join automatically.</p>
+                        <p>Select a campaign, click "Copy Campaign Invite Link", and share it. Recipients can view the campaign as a guest, then choose to join with the button on the page.</p>
                     </details>
                     <details class="footer-accordion-item">
                         <summary>Can I export my data?</summary>
@@ -446,10 +497,9 @@
     <!-- Invite Campaign Modal -->
     <div class="modal-overlay" id="invitePlaygroupModal">
         <div class="modal invite-modal">
-            <h3>Invite link copied!</h3>
-            <p style="margin-bottom: 12px; color: var(--text-secondary);">The link is on your clipboard — paste it anywhere to share.</p>
-            <p style="margin-bottom: 12px; color: var(--text-secondary);">It expires in <strong>7 days</strong> and can be used up to <strong>10 times</strong>.</p>
-            <p style="font-size: 0.85rem; color: var(--text-muted);">New meeples: open the link, sign in with Google, and they'll be added to <strong id="invitePlaygroupName"></strong> automatically.</p>
+            <h3>Campaign invite link copied!</h3>
+            <p style="margin-bottom: 12px; color: var(--text-secondary);">The link is on your clipboard — paste it anywhere to share or invite.</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Anyone with the link can view <strong id="invitePlaygroupName"></strong> as a guest. They can join the campaign with the button on the page.</p>
             <div class="modal-buttons">
                 <button class="modal-btn cancel" id="inviteModalClose">Done</button>
             </div>
@@ -475,6 +525,7 @@
             <h3>Leave Campaign?</h3>
             <p style="margin-bottom: 8px; color: var(--text-secondary);">You're about to leave <strong id="leavePlaygroupName"></strong>.</p>
             <p style="font-size: 0.85rem; color: var(--text-muted);">You'll need a new invite link to rejoin.</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Leaving frees up a campaign slot so you can join or create another.</p>
             <div class="modal-buttons" style="margin-top: 24px;">
                 <button class="modal-btn cancel" id="leavePlaygroupCancel">Cancel</button>
                 <button class="modal-btn confirm" id="leavePlaygroupConfirm" style="background: var(--accent-danger);">Leave</button>
@@ -540,6 +591,14 @@
                 <button class="color-option" data-color="#ffffff" style="background: #ffffff; border: 2px solid var(--border);"></button>
             </div>
 
+            <div id="playerFavouriteQuoteSection" style="margin-top: 20px; display:none;">
+                <label style="display: block; margin-bottom: 6px; color: var(--text-secondary); font-size: 0.9rem;">Favourite quote</label>
+                <select id="playerFavouriteQuoteSelect" class="profile-fave-quote-select" title="Choose a quote to show on your leaderboard card" style="width:100%; max-width:none;">
+                    <option value="">Random</option>
+                </select>
+                <p style="margin-top: 6px; font-size: 0.8rem; color: var(--text-muted);">Controls which quote appears on your leaderboard card.</p>
+            </div>
+
             <div class="modal-buttons">
                 <button class="modal-btn cancel" id="playerImageCancel">Cancel</button>
                 <button class="modal-btn confirm" id="playerImageRemove" style="background: var(--accent-danger);">Reset</button>
@@ -585,7 +644,7 @@
                 <label style="display: block; margin-bottom: 6px; color: var(--text-secondary);">Game</label>
                 <select id="editGameSelect" class="input-field" style="padding: 12px;"></select>
                 
-                <label style="display: block; margin: 16px 0 6px; color: var(--text-secondary);">Meeple</label>
+                <label style="display: block; margin: 16px 0 6px; color: var(--text-secondary);">Victorious Meeple</label>
                 <select id="editPlayerSelect" class="input-field" style="padding: 12px;"></select>
                 
                 <label style="display: block; margin: 16px 0 6px; color: var(--text-secondary);">Date</label>
@@ -616,6 +675,10 @@
                     <button class="player-profile-unlink-btn" id="profileUnlinkBtn" style="display:none;">
                         Unlink my account
                     </button>
+                    <div class="player-profile-actions" id="profileActionsRow" style="display:none;">
+                        <button type="button" class="player-profile-action-btn" id="profileCustomizeBtn" title="Customize avatar and color">⚙️ Customize meeple</button>
+                        <button type="button" class="player-profile-action-btn player-profile-action-danger" id="profileDeleteBtn" title="Delete this player">🗑️ Delete player</button>
+                    </div>
                 </div>
                 <button class="player-profile-close" id="playerProfileClose" aria-label="Close">✕</button>
             </div>
@@ -633,8 +696,27 @@
                         <div class="profile-stat-label">Campaigns</div>
                     </div>
                     <div class="profile-stat-card" id="profileFaveGameCard">
-                        <div class="profile-stat-number profile-stat-game" id="profileFaveGame">—</div>
-                        <div class="profile-stat-label">Favourite Game</div>
+                        <div class="profile-fave-game-inner">
+                            <div class="profile-fave-game-thumb-wrap">
+                                <img id="profileFaveGameImg" class="profile-fave-game-img" alt="" style="display:none;">
+                                <div id="profileFaveGamePlaceholder" class="profile-fave-game-placeholder">🎲</div>
+                            </div>
+                            <div class="profile-fave-game-text">
+                                <div class="profile-stat-number profile-stat-game" id="profileFaveGame">—</div>
+                                <div class="profile-stat-label">Favourite Game</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Achievements (coming soon) -->
+                <div class="profile-achievements-teaser">
+                    <h3 class="profile-section-title">Achievements</h3>
+                    <div class="profile-achievements-teaser-content">
+                        <span class="profile-achievements-icon" aria-hidden="true">🏅</span>
+                        <span class="profile-achievements-icon" aria-hidden="true">🏆</span>
+                        <span class="profile-achievements-icon" aria-hidden="true">🎁</span>
+                        <p class="profile-achievements-coming">coming soon..</p>
                     </div>
                 </div>
 

@@ -1,13 +1,25 @@
 import { getSession, signInWithOAuth, signOut } from './auth.js';
 import { isAdminConfigured, isAdminEmail, isAdminMode, deactivateAdminMode, showAdminPassphraseModal } from './admin.js';
+import { showModal } from './modals.js';
+
+/** In-app toast (avoids importing modals.js and circular dependency). */
+function _toast(message) {
+    const el = document.createElement('div');
+    el.style.cssText = 'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--bg-card); color: var(--text-primary); padding: 16px 24px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 1000; animation: slideUp 0.3s ease; font-weight: 500;';
+    el.textContent = message;
+    document.body.appendChild(el);
+    setTimeout(() => {
+        el.style.animation = 'slideDown 0.3s ease';
+        setTimeout(() => el.remove(), 300);
+    }, 2000);
+}
 
 const LOGGED_OUT_BANNER_TEXT = 'Log in to add wins, players and games!';
-const SELECT_PLAYGROUP_BANNER_TEXT = 'Select a campaign to add wins, players and games!';
+const SELECT_PLAYGROUP_BANNER_HTML = 'Select a campaign to add wins, players and games!';
 
 export function setupAuthButtons() {
     const loginBtn = document.getElementById('loginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
-    const acceptInviteBtn = document.getElementById('acceptInviteBtn');
 
     async function handleLogin(btn, doneText = 'Log in with Google') {
         if (!btn) return;
@@ -19,15 +31,12 @@ export function setupAuthButtons() {
         } catch (err) {
             btn.disabled = false;
             btn.textContent = origText;
-            alert('Login failed: ' + (err.message || err));
+            _toast('Login failed: ' + (err.message || err));
         }
     }
 
     if (loginBtn) {
         loginBtn.addEventListener('click', () => handleLogin(loginBtn, 'Log in with Google'));
-    }
-    if (acceptInviteBtn) {
-        acceptInviteBtn.addEventListener('click', () => handleLogin(acceptInviteBtn, 'Accept Invite'));
     }
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => signOut());
@@ -40,9 +49,6 @@ export function updateAuthUI(isLoggedIn, hasInviteToken) {
     const authEmail = document.getElementById('authEmail');
     const googleLoginNote = document.getElementById('googleLoginNote');
     const playgroupArea = document.getElementById('playgroupArea');
-    const readOnlyBanner = document.getElementById('readOnlyBanner');
-    const inviteBanner = document.getElementById('inviteBanner');
-
     if (loginBtn) {
         loginBtn.style.display = isLoggedIn ? 'none' : 'inline-flex';
         loginBtn.disabled = false;
@@ -51,16 +57,6 @@ export function updateAuthUI(isLoggedIn, hasInviteToken) {
     if (googleLoginNote) googleLoginNote.style.display = isLoggedIn ? 'none' : 'block';
     if (authUser) authUser.style.display = isLoggedIn ? 'flex' : 'none';
     if (playgroupArea) playgroupArea.style.display = isLoggedIn ? 'flex' : 'none';
-
-    if (inviteBanner && readOnlyBanner) {
-        if (!isLoggedIn && hasInviteToken) {
-            inviteBanner.style.display = 'block';
-            readOnlyBanner.style.display = 'none';
-        } else {
-            inviteBanner.style.display = 'none';
-            readOnlyBanner.style.display = 'none';
-        }
-    }
 
     if (isLoggedIn) {
         getSession().then(session => {
@@ -94,7 +90,7 @@ export function updateEditability(canEdit) {
 }
 
 export function showLoginPrompt() {
-    alert('Please log in with Google to add wins, players and games!');
+    _toast('Please log in with Google to add wins, players and games!');
 }
 
 /**
@@ -109,11 +105,19 @@ export function updateAdminUI(email, onAdminActivated) {
 
 function _updateAdminControls(email, onAdminActivated) {
     const btn = document.getElementById('adminModeBtn');
+    const dashBtn = document.getElementById('adminDashboardLink');
     if (!btn) return;
 
     if (!email || !isAdminConfigured() || !isAdminEmail(email)) {
         btn.style.display = 'none';
+        if (dashBtn) dashBtn.style.display = 'none';
         return;
+    }
+
+    if (dashBtn) {
+        dashBtn.style.display = 'inline-flex';
+        dashBtn.onclick = () => { window.location.href = 'admin.html'; };
+        dashBtn.title = 'Open admin dashboard';
     }
 
     btn.style.display = 'inline-flex';
@@ -124,10 +128,15 @@ function _updateAdminControls(email, onAdminActivated) {
         btn.classList.add('admin-mode-active');
         btn.title = 'Exit admin mode';
         btn.onclick = () => {
-            if (confirm('Exit admin mode? You will only see your own campaigns.')) {
-                deactivateAdminMode();
-                window.location.reload();
-            }
+            showModal(
+                'Exit admin mode?',
+                'You\'ll go back to seeing only campaigns you\'re a member of.',
+                () => {
+                    deactivateAdminMode();
+                    window.location.reload();
+                },
+                'Exit admin'
+            );
         };
     } else {
         btn.textContent = '🛡 Admin';
@@ -144,12 +153,20 @@ function _updateAdminControls(email, onAdminActivated) {
     }
 }
 
-export function syncReadOnlyBanner(canEdit, isLoggedIn, hasInviteToken, guestCampaignName = null) {
+export function syncReadOnlyBanner(canEdit, isLoggedIn, hasInviteToken, guestCampaignName = null, viewingViaInvite = false) {
     const banner = document.getElementById('readOnlyBanner');
     if (!banner) return;
 
-    if (canEdit || (!isLoggedIn && hasInviteToken)) {
+    if (canEdit) {
         banner.style.display = 'none';
+        return;
+    }
+
+    if (guestCampaignName && viewingViaInvite) {
+        const btnText = isLoggedIn ? 'Join campaign' : 'Login and join campaign';
+        banner.classList.add('guest-banner');
+        banner.innerHTML = 'Viewing <strong>' + guestCampaignName + '</strong> as guest. <button type="button" class="btn-accept-invite" id="joinOrLoginInviteBtn">' + btnText + '</button>';
+        banner.style.display = 'block';
         return;
     }
 
@@ -165,6 +182,6 @@ export function syncReadOnlyBanner(canEdit, isLoggedIn, hasInviteToken, guestCam
         banner.style.display = 'none';
         return;
     }
-    banner.textContent = SELECT_PLAYGROUP_BANNER_TEXT;
+    banner.innerHTML = SELECT_PLAYGROUP_BANNER_HTML;
     banner.style.display = 'block';
 }

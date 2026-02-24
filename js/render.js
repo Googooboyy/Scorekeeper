@@ -14,6 +14,24 @@ import {
 import { deletePlayer, deleteGame, deleteEntryById } from './actions.js';
 import { openPlayerImageModal, openGameImageModal, openEditEntryModal, openPlayerProfileModal } from './modals.js';
 
+const DEFAULT_LEADERBOARD_QUOTES = [
+    'Roll with it.',
+    'Winning is just the beginning.',
+    'May the dice be ever in your favor.',
+    'One more game? Always.',
+    'Board games > boring games.'
+];
+
+function getLeaderboardQuotes() {
+    const q = typeof window !== 'undefined' && window._scorekeeperLeaderboardQuotes;
+    return (Array.isArray(q) && q.length > 0) ? q : DEFAULT_LEADERBOARD_QUOTES;
+}
+
+function pickRandomQuote() {
+    const quotes = getLeaderboardQuotes();
+    return quotes[Math.floor(Math.random() * quotes.length)];
+}
+
 export function renderAll() {
     renderPlayers();
     renderGames();
@@ -51,13 +69,17 @@ function renderGameBreakdown(breakdown) {
 export function toggleVictoryRoster(player) {
     const roster = document.getElementById('roster-' + player);
     const toggle = document.getElementById('toggle-' + player);
+    const header = toggle?.closest('.victory-roster-header');
+    const label = header?.querySelector('.victory-roster-label');
 
     if (roster && roster.classList.contains('expanded')) {
         roster.classList.remove('expanded');
         if (toggle) toggle.classList.remove('expanded');
+        if (label) label.textContent = 'more';
     } else if (roster && toggle) {
         roster.classList.add('expanded');
         toggle.classList.add('expanded');
+        if (label) label.textContent = 'less';
     }
 }
 
@@ -73,7 +95,18 @@ export function renderPlayers() {
             const signInBtn = document.getElementById('dashboardSignInBtn');
             if (signInBtn) signInBtn.addEventListener('click', () => document.getElementById('loginBtn')?.click());
         } else {
-            container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-state-icon">👥</div><h3>No Meeples Yet</h3><p>Add meeples in the "Add a Game Win" section</p></div>';
+            container.innerHTML = '' +
+                '<div class="empty-state" style="grid-column: 1/-1;">' +
+                '<div class="empty-state-icon">👥</div>' +
+                '<p style="margin-bottom: 10px;">No meeples yet for this campaign.</p>' +
+                '<button class="about-cta-btn about-cta-btn--ghost about-cta-btn--small" id="emptyAddWinBtn">+ Add a game win</button>' +
+                '</div>';
+            const addWinBtn = document.getElementById('emptyAddWinBtn');
+            if (addWinBtn) {
+                addWinBtn.addEventListener('click', () => {
+                    document.dispatchEvent(new Event('scorekeeper:openAddGame'));
+                });
+            }
         }
         if (toggleBtn) toggleBtn.style.display = 'none';
         return;
@@ -83,8 +116,21 @@ export function renderPlayers() {
         const playerEntries = data.entries.filter(e => e.player === player);
         const wins = playerEntries.length;
         const gameBreakdown = calculateGameBreakdown(player);
+        const lastPlayedDate = playerEntries.reduce((latest, entry) => {
+            if (!entry.date) return latest;
+            if (!latest) return entry.date;
+            return new Date(entry.date) > new Date(latest) ? entry.date : latest;
+        }, null);
         const playerData = data.playerData && data.playerData[player] ? data.playerData[player] : {};
-        return { player: player, wins: wins, gameBreakdown: gameBreakdown, image: playerData.image, color: playerData.color, userId: playerData.userId || null };
+        return {
+            player: player,
+            wins: wins,
+            gameBreakdown: gameBreakdown,
+            lastPlayedDate: lastPlayedDate,
+            image: playerData.image,
+            color: playerData.color,
+            userId: playerData.userId || null
+        };
     }).sort((a, b) => b.wins - a.wins);
 
     const totalPlayers = playerStats.length;
@@ -93,10 +139,10 @@ export function renderPlayers() {
     if (toggleBtn) toggleBtn.style.display = hasMorePlayers ? 'flex' : 'none';
 
     if (showAllPlayers) {
-        if (toggleText) toggleText.textContent = 'Show Top 4';
+        if (toggleText) toggleText.textContent = 'Less';
         if (toggleIcon) toggleIcon.classList.add('expanded');
     } else {
-        if (toggleText) toggleText.textContent = 'Show All (' + totalPlayers + ')';
+        if (toggleText) toggleText.textContent = 'More';
         if (toggleIcon) toggleIcon.classList.remove('expanded');
     }
 
@@ -135,38 +181,23 @@ export function renderPlayers() {
             '<div class="win-count">' + stat.wins + '</div>' +
             '<div class="win-label">Wins</div>' +
             '</div>' +
-            '<div class="player-card-actions" style="display: flex; gap: 8px;">' +
-            '<button class="edit-player-btn" data-player="' + escapeHtml(stat.player) + '" title="Customize">⚙️</button>' +
-            // When logged in: only allow deleting your own linked card. When not logged in: allow deleting unlinked players.
-            (isMyAccount || (!currentUserId && !stat.userId) ? '<button class="delete-player-btn" data-player="' + escapeHtml(stat.player) + '" title="Delete player">🗑️</button>' : '') +
-            '</div>' +
             '</div>' +
             '<div class="victory-roster-header" onclick="window.toggleVictoryRoster(\'' + escapeHtml(stat.player).replace(/'/g, "\\'") + '\')">' +
-            '<div class="victory-roster-title">' +
-            'Victory Roster' +
-            '<span style="color: var(--text-muted); font-size: 0.8rem;">(' + stat.gameBreakdown.length + ' games)</span>' +
+            '<div class="victory-roster-title" style="text-transform: none;">' + escapeHtml(
+                (currentUserId && stat.userId === currentUserId && data.currentUserFavouriteQuote)
+                    ? data.currentUserFavouriteQuote
+                    : pickRandomQuote()
+            ) + '</div>' +
+            '<div class="victory-roster-toggle-group">' +
+            '<span class="victory-roster-label">more</span>' +
+            '<span class="victory-roster-toggle" id="toggle-' + escapeHtml(stat.player) + '">▼</span>' +
             '</div>' +
-            '<div class="victory-roster-toggle" id="toggle-' + escapeHtml(stat.player) + '">▶</div>' +
             '</div>' +
             '<div class="player-game-stats" id="roster-' + escapeHtml(stat.player) + '">' +
             '<div class="player-games-list">' + renderGameBreakdown(stat.gameBreakdown) + '</div>' +
             '</div>' +
             '</div>';
     }).join('');
-
-    container.querySelectorAll('.delete-player-btn').forEach(btn => {
-        btn.addEventListener('click', function (e) {
-            e.stopPropagation();
-            deletePlayer(this.getAttribute('data-player'));
-        });
-    });
-
-    container.querySelectorAll('.edit-player-btn').forEach(btn => {
-        btn.addEventListener('click', function (e) {
-            e.stopPropagation();
-            openPlayerImageModal(this.getAttribute('data-player'));
-        });
-    });
 
     container.querySelectorAll('.player-profile-trigger').forEach(el => {
         el.addEventListener('click', function (e) {
@@ -183,7 +214,22 @@ export function renderGames() {
     const toggleIcon = document.getElementById('gamesToggleIcon');
 
     if (data.games.length === 0) {
-        container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-state-icon">🎲</div><h3>No Games Yet</h3><p>Add games in the "Add a Game Win" section</p></div>';
+        if (!data.currentUserId) {
+            container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-state-icon">🎲</div><h3>No Games Yet</h3><p>Add games in the "Add a Game Win" section</p></div>';
+        } else {
+            container.innerHTML = '' +
+                '<div class="empty-state" style="grid-column: 1/-1;">' +
+                '<div class="empty-state-icon">🎲</div>' +
+                '<p style="margin-bottom: 10px;">No games yet for this campaign.</p>' +
+                '<button class="about-cta-btn about-cta-btn--ghost about-cta-btn--small" id="emptyAddGameBtn">+ Add a game win</button>' +
+                '</div>';
+            const addGameBtn = document.getElementById('emptyAddGameBtn');
+            if (addGameBtn) {
+                addGameBtn.addEventListener('click', () => {
+                    document.dispatchEvent(new Event('scorekeeper:openAddGame'));
+                });
+            }
+        }
         toggleBtn.style.display = 'none';
         return;
     }
@@ -205,10 +251,10 @@ export function renderGames() {
     toggleBtn.style.display = hasMoreGames ? 'flex' : 'none';
 
     if (showAllGames) {
-        toggleText.textContent = 'Show Top 4';
+        toggleText.textContent = 'Less';
         toggleIcon.classList.add('expanded');
     } else {
-        toggleText.textContent = 'Show All (' + totalGames + ')';
+        toggleText.textContent = 'More';
         toggleIcon.classList.remove('expanded');
     }
 
@@ -237,7 +283,7 @@ export function renderGames() {
             '</div>' +
             '<div class="game-card-actions">' +
             '<button class="edit-game-btn" data-game="' + escapeHtml(stat.game) + '" title="Set image">⚙️</button>' +
-            '<button class="toggle-history-btn" data-game="' + escapeHtml(stat.game) + '" title="Show history">▶</button>' +
+            '<button class="toggle-history-btn" data-game="' + escapeHtml(stat.game) + '" title="Show history">▼</button>' +
             '<button class="delete-game-btn" data-game="' + escapeHtml(stat.game) + '" title="Delete game">🗑️</button>' +
             '</div>' +
             '</div>' +
@@ -274,19 +320,19 @@ export function toggleGameHistory(game, btn) {
     if (panel.classList.contains('expanded')) {
         panel.classList.remove('expanded');
         btn.classList.remove('active');
-        btn.innerHTML = '▶';
+        btn.innerHTML = '▼';
         btn.title = 'Show history';
     } else {
         document.querySelectorAll('.game-history-panel').forEach(p => p.classList.remove('expanded'));
         document.querySelectorAll('.toggle-history-btn').forEach(b => {
             b.classList.remove('active');
-            b.innerHTML = '▶';
+            b.innerHTML = '▼';
             b.title = 'Show history';
         });
 
         panel.classList.add('expanded');
         btn.classList.add('active');
-        btn.innerHTML = '▼';
+        btn.innerHTML = '▲';
         btn.title = 'Hide history';
     }
 }
@@ -377,11 +423,12 @@ export function renderHistory() {
 
     const sortedEntries = [...data.entries].sort((a, b) => new Date(b.date) - new Date(a.date));
     const totalEntries = sortedEntries.length;
-    const hasMore = totalEntries > 4;
+    const defaultHistoryCount = 6;
+    const hasMore = totalEntries > defaultHistoryCount;
     toggleBtn.style.display = hasMore ? 'flex' : 'none';
 
     if (showAllHistory) {
-        toggleText.textContent = 'Show Last 4';
+        toggleText.textContent = 'Show Last ' + defaultHistoryCount;
         toggleIcon.classList.add('expanded');
     } else {
         toggleText.textContent = 'Show All (' + totalEntries + ')';
@@ -390,7 +437,7 @@ export function renderHistory() {
 
     let displayEntries = sortedEntries;
     if (!showAllHistory && hasMore) {
-        displayEntries = sortedEntries.slice(0, 4);
+        displayEntries = sortedEntries.slice(0, defaultHistoryCount);
     }
 
     container.innerHTML = displayEntries.map(entry => {

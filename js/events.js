@@ -9,6 +9,7 @@ import {
 } from './data.js';
 import { getActivePlaygroup } from './playgroups.js';
 import { showLoginPrompt } from './auth-ui.js';
+import { isAdminMode } from './admin.js';
 import {
     insertGame,
     insertPlayer,
@@ -16,9 +17,12 @@ import {
     clearPlaygroupData,
     importPlaygroupData,
     upsertGameMetadata,
-    upsertPlayerMetadata
+    upsertPlayerMetadata,
+    upsertGlobalGame,
+    fetchAppConfig
 } from './supabase.js';
-import { showModal, hideModal, handleImageFileSelect, showNotification, fireConfetti, closeGameImageModal, closePlayerImageModal, resetPlayerCustomization, closeEditEntryModal, saveGameImage, savePlayerImage, saveEditedEntry, closePlayerProfileModal, openScoreTabulator } from './modals.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
+import { showModal, hideModal, handleImageFileSelect, showNotification, fireConfetti, playVictoryFanfare, closeGameImageModal, closePlayerImageModal, resetPlayerCustomization, closeEditEntryModal, saveGameImage, savePlayerImage, saveEditedEntry, closePlayerProfileModal, openScoreTabulator } from './modals.js';
 import {
     renderGameSelection,
     renderPlayerSelection,
@@ -174,6 +178,7 @@ export function setupEventListeners() {
     document.getElementById('newGameName').addEventListener('keypress', function (e) {
         if (e.key === 'Enter') addNewGame();
     });
+    setupBggTypeahead();
 
     document.getElementById('showNewPlayerBtn').addEventListener('click', showNewPlayerInput);
     document.getElementById('addPlayerBtn').addEventListener('click', addNewPlayer);
@@ -187,20 +192,49 @@ export function setupEventListeners() {
 
     const exportBtn = document.getElementById('exportBtn');
     const importBtn = document.getElementById('importBtn');
-    [exportBtn, importBtn].forEach(btn => {
-        if (!btn) return;
-        btn.disabled = true;
-        btn.style.opacity = '0.4';
-        btn.style.cursor = 'not-allowed';
-        btn.title = 'Coming soon';
-    });
-    exportBtn?.addEventListener('click', () => showModal('Coming Soon', 'Export & Import are temporarily disabled. Check back soon!', () => {}));
-    importBtn?.addEventListener('click', () => showModal('Coming Soon', 'Export & Import are temporarily disabled. Check back soon!', () => {}));
+    if (exportBtn) {
+        exportBtn.addEventListener('click', () => {
+            if (!isAdminMode()) {
+                showModal('Coming Soon', 'Export & Import are temporarily disabled. Check back soon!', () => {});
+                return;
+            }
+            exportData();
+        });
+    }
+    if (importBtn) {
+        importBtn.addEventListener('click', () => {
+            if (!isAdminMode()) {
+                showModal('Coming Soon', 'Export & Import are temporarily disabled. Check back soon!', () => {});
+                return;
+            }
+            importData();
+        });
+    }
     document.getElementById('importFileInput').addEventListener('change', handleFileImport);
     document.getElementById('clearAllBtn').addEventListener('click', clearAllData);
     document.getElementById('gamesToggleBtn').addEventListener('click', toggleGamesDisplay);
     document.getElementById('historyToggleBtn').addEventListener('click', toggleHistoryDisplay);
     document.getElementById('playersToggleBtn').addEventListener('click', togglePlayersDisplay);
+
+    // Celebration pills (leaderboard section)
+    const celebrationConfettiBtn = document.getElementById('celebrationConfettiBtn');
+    const celebrationShakeBtn = document.getElementById('celebrationShakeBtn');
+    const celebrationTrumpetBtn = document.getElementById('celebrationTrumpetBtn');
+    if (celebrationConfettiBtn) {
+        celebrationConfettiBtn.addEventListener('click', () => {
+            const delays = [0, 500, 1000, 1500, 2000];
+            delays.forEach(d => setTimeout(() => fireConfetti(), d));
+        });
+    }
+    if (celebrationShakeBtn) {
+        celebrationShakeBtn.addEventListener('click', () => {
+            document.body.classList.add('screen-shake');
+            setTimeout(() => document.body.classList.remove('screen-shake'), 2500);
+        });
+    }
+    if (celebrationTrumpetBtn) {
+        celebrationTrumpetBtn.addEventListener('click', () => playVictoryFanfare());
+    }
 
     document.getElementById('gameImageCancel').addEventListener('click', closeGameImageModal);
     document.getElementById('gameImageSave').addEventListener('click', saveGameImage);
@@ -325,6 +359,95 @@ export function setupEventListeners() {
 function showNewGameInput() {
     document.getElementById('newGameInput').classList.add('active');
     document.getElementById('newGameName').focus();
+    const hidden = document.getElementById('newGameGlobalId');
+    if (hidden) hidden.value = '';
+}
+
+let _bggTimer = null;
+function setupBggTypeahead() {
+    const input = document.getElementById('newGameName');
+    const dropdown = document.getElementById('bggSuggestions');
+    if (!input || !dropdown) return;
+
+    input.addEventListener('input', () => {
+        clearTimeout(_bggTimer);
+        const q = input.value.trim();
+        const hidden = document.getElementById('newGameGlobalId');
+        if (hidden) hidden.value = '';
+        if (q.length < 3) { dropdown.style.display = 'none'; return; }
+        _bggTimer = setTimeout(() => fetchBggSuggestions(q, dropdown, input), 500);
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#newGameInput')) dropdown.style.display = 'none';
+    });
+}
+
+async function fetchBggSuggestions(query, dropdown, input) {
+    try {
+        const url = SUPABASE_URL + '/functions/v1/bgg-search?q=' + encodeURIComponent(query);
+        const resp = await fetch(url, {
+            headers: { 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+        });
+        if (!resp.ok) {
+            const status = resp.status;
+            const friendly = describeBggStatus(status);
+            console.warn('BGG search failed:', status, friendly);
+            dropdown.style.display = 'none';
+            return;
+        }
+        const results = await resp.json();
+        if (!results.length) { dropdown.style.display = 'none'; return; }
+
+        dropdown.innerHTML = results.slice(0, 6).map(r => {
+            const thumb = r.thumbnail_url
+                ? `<img class="bgg-suggestion-thumb" src="${r.thumbnail_url}" alt="">`
+                : `<div class="bgg-suggestion-thumb" style="display:flex;align-items:center;justify-content:center;font-size:1rem;">🎲</div>`;
+            return `<div class="bgg-suggestion" data-bgg='${JSON.stringify(r).replace(/'/g, '&#39;')}'>
+                ${thumb}
+                <span class="bgg-suggestion-name">${escHtml(r.name)}</span>
+                ${r.year_published ? `<span class="bgg-suggestion-year">${r.year_published}</span>` : ''}
+            </div>`;
+        }).join('');
+        dropdown.style.display = 'block';
+
+        dropdown.querySelectorAll('.bgg-suggestion').forEach(el => {
+            el.addEventListener('click', async () => {
+                const bgg = JSON.parse(el.dataset.bgg);
+                input.value = bgg.name;
+                dropdown.style.display = 'none';
+                try {
+                    const globalGame = await upsertGlobalGame(bgg.bgg_id, bgg.name, bgg.year_published, bgg.thumbnail_url);
+                    const hidden = document.getElementById('newGameGlobalId');
+                    if (hidden) hidden.value = globalGame.id;
+                    if (bgg.thumbnail_url && !uiState.tempGameImage) {
+                        uiState.tempGameImage = bgg.thumbnail_url;
+                        const preview = document.getElementById('newGameImagePreview');
+                        if (preview) { preview.src = bgg.thumbnail_url; preview.style.display = 'block'; }
+                    }
+                } catch (e) { console.warn('Could not save global game:', e); }
+            });
+        });
+    } catch (e) {
+        dropdown.style.display = 'none';
+    }
+}
+
+function escHtml(text) {
+    const d = document.createElement('div');
+    d.textContent = text || '';
+    return d.innerHTML;
+}
+
+function describeBggStatus(status) {
+    switch (status) {
+        case 429: return 'Too many requests / rate limited by BGG';
+        case 500: return 'Server error on BGG';
+        case 502: return 'Bad gateway between Supabase and BGG';
+        case 503: return 'BGG temporarily unavailable';
+        case 504: return 'BGG took too long to respond';
+        default: return 'Unexpected response from BGG';
+    }
 }
 
 async function addNewGame() {
@@ -332,11 +455,13 @@ async function addNewGame() {
     if (!pg) { showLoginPrompt(); return; }
     const input = document.getElementById('newGameName');
     const name = input.value.trim();
-    if (!name) { alert('Please enter a game name'); return; }
-    if (data.games.includes(name)) { alert('This game already exists'); return; }
+    if (!name) { showNotification('Please enter a game name'); return; }
+    if (data.games.includes(name)) { showNotification('This game already exists'); return; }
+
+    const globalGameId = document.getElementById('newGameGlobalId')?.value || null;
 
     try {
-        const row = await insertGame(pg.id, name);
+        const row = await insertGame(pg.id, name, globalGameId);
         data.games.push(name);
         data._gameIdByName[name] = row.id;
         if (uiState.tempGameImage) {
@@ -346,12 +471,13 @@ async function addNewGame() {
         }
         saveData();
         input.value = '';
+        if (document.getElementById('newGameGlobalId')) document.getElementById('newGameGlobalId').value = '';
+        document.getElementById('bggSuggestions').style.display = 'none';
         document.getElementById('newGameInput').classList.remove('active');
         document.getElementById('newGameImagePreview').style.display = 'none';
         document.getElementById('newGameImageUrl').value = '';
         uiState.tempGameImage = null;
 
-        // If we came here from Tally Scores, return to the tabulator with the new game pre-selected
         if (document.body.classList.contains('tally-add-game-mode')) {
             document.body.classList.remove('tally-add-game-mode');
             openScoreTabulator(name);
@@ -359,7 +485,7 @@ async function addNewGame() {
             selectGame(name);
         }
     } catch (err) {
-        alert('Error adding game: ' + (err.message || err));
+        showNotification('Error adding game: ' + (err.message || err));
     }
 }
 
@@ -373,10 +499,11 @@ async function addNewPlayer() {
     if (!pg) { showLoginPrompt(); return; }
     const input = document.getElementById('newPlayerName');
     const name = input.value.trim();
-    if (!name) { alert('Please enter a meeple name'); return; }
-    if (data.players.includes(name)) { alert('This meeple already exists'); return; }
-    if (data.players.length >= 4) {
-        showModal('Meeple limit reached', 'This campaign supports up to 4 meeples on the current plan.', () => {});
+    if (!name) { showNotification('Please enter a meeple name'); return; }
+    if (data.players.includes(name)) { showNotification('This meeple already exists'); return; }
+    const maxMeeples = window._scorekeeperMaxMeeples || 4;
+    if (data.players.length >= maxMeeples) {
+        showModal('Meeple limit reached', `This campaign supports up to ${maxMeeples} meeples on the current plan.`, () => {});
         return;
     }
 
@@ -401,7 +528,7 @@ async function addNewPlayer() {
         uiState.tempPlayerImage = null;
         selectPlayer(name);
     } catch (err) {
-        alert('Error adding meeple: ' + (err.message || err));
+        showNotification('Error adding meeple: ' + (err.message || err));
     }
 }
 
@@ -410,11 +537,11 @@ async function saveEntry() {
     if (!pg) { showLoginPrompt(); return; }
     const dateInput = document.getElementById('winDate');
     const date = dateInput.value;
-    if (!date) { alert('Please select a date'); return; }
+    if (!date) { showNotification('Please select a date'); return; }
     currentEntry.date = date;
     const gameId = data._gameIdByName[currentEntry.game];
     const playerId = data._playerIdByName[currentEntry.player];
-    if (!gameId || !playerId) { alert('Invalid game or meeple'); return; }
+    if (!gameId || !playerId) { showNotification('Invalid game or meeple'); return; }
 
     const btn = document.getElementById('saveEntryBtn');
     const originalText = btn.innerHTML;
@@ -455,11 +582,15 @@ async function saveEntry() {
     } catch (err) {
         btn.innerHTML = originalText;
         btn.disabled = false;
-        alert('Error saving win: ' + (err.message || err));
+        showNotification('Error saving win: ' + (err.message || err));
     }
 }
 
 function exportData() {
+    if (!isAdminMode()) {
+        showNotification('Export is currently available to admins only.');
+        return;
+    }
     const pg = getActivePlaygroup();
     if (!pg) { showNotification('Select a campaign to export'); return; }
     const exportObj = {
@@ -485,6 +616,10 @@ function exportData() {
 }
 
 function importData() {
+    if (!isAdminMode()) {
+        showNotification('Import is currently available to admins only.');
+        return;
+    }
     if (!getActivePlaygroup()) { showLoginPrompt(); return; }
     document.getElementById('importFileInput').click();
 }
@@ -514,13 +649,13 @@ function handleFileImport(event) {
                         await loadData(pg.id);
                         showNotification('Data imported successfully! 📤');
                     } catch (err) {
-                        alert('Error importing: ' + (err.message || err));
+                        showNotification('Error importing: ' + (err.message || err));
                     }
                 },
                 'Import'
             );
         } catch (err) {
-            alert('Error importing file: ' + err.message);
+            showNotification('Error importing file: ' + err.message);
         }
         event.target.value = '';
     };
@@ -539,7 +674,7 @@ function clearAllData() {
                 await loadData(pg.id);
                 showNotification('All data cleared 🗑️');
             } catch (err) {
-                alert('Error clearing: ' + (err.message || err));
+                showNotification('Error clearing: ' + (err.message || err));
             }
         },
         'Clear All'

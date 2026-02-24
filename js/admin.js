@@ -18,6 +18,7 @@ const ADMIN_EMAILS  = _rawEmail
 const ADMIN_PASSPHRASE = (typeof window !== 'undefined' && window.SCOREKEEPER_ADMIN_PASSPHRASE) || null;
 
 const ADMIN_SESSION_KEY = 'scorekeeper_admin_mode';
+const ADMIN_PROMPT_DISMISSED_KEY = 'scorekeeper_admin_prompt_dismissed';
 
 /** True if admin credentials are configured in config.supabase.js */
 export function isAdminConfigured() {
@@ -44,6 +45,22 @@ export function activateAdminMode() {
 /** Deactivate admin mode */
 export function deactivateAdminMode() {
     try { sessionStorage.removeItem(ADMIN_SESSION_KEY); } catch { /* ignore */ }
+    import('./supabase.js').then(m => m.resetAdminClient()).catch(() => {});
+}
+
+/** Mark that the user dismissed the admin prompt this session (continue without admin) */
+export function setAdminPromptDismissed() {
+    try { sessionStorage.setItem(ADMIN_PROMPT_DISMISSED_KEY, '1'); } catch { /* ignore */ }
+}
+
+/** True if the user has already dismissed the admin prompt this session */
+export function hasAdminPromptDismissed() {
+    try { return sessionStorage.getItem(ADMIN_PROMPT_DISMISSED_KEY) === '1'; } catch { return false; }
+}
+
+/** Clear the dismissed flag (e.g. on sign out) */
+export function clearAdminPromptDismissed() {
+    try { sessionStorage.removeItem(ADMIN_PROMPT_DISMISSED_KEY); } catch { /* ignore */ }
 }
 
 /** Returns true if the entered phrase exactly matches the configured passphrase */
@@ -85,6 +102,7 @@ export function showAdminPassphraseModal(onSuccess, onDismiss) {
     }
 
     function handleSkip() {
+        setAdminPromptDismissed();
         cleanup();
         modal.classList.remove('active');
         if (onDismiss) onDismiss();

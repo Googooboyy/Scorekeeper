@@ -1,4 +1,4 @@
-import { fetchPlaygroups, createPlaygroup, createInviteToken, leavePlaygroup } from './supabase.js';
+import { fetchPlaygroups, createPlaygroup, getOrCreateInviteToken, leavePlaygroup, fetchPlaygroupMemberCount } from './supabase.js';
 import { showNotification, showModal } from './modals.js';
 import { isAdminMode } from './admin.js';
 
@@ -30,6 +30,7 @@ export function setActivePlaygroup(playgroup) {
     if (select) {
         select.value = playgroup ? playgroup.id : '';
     }
+    updatePlaygroupCountBadge();
     if (onPlaygroupChangeCallback) onPlaygroupChangeCallback(playgroup);
 }
 
@@ -52,7 +53,32 @@ function renderPlaygroupSelect() {
         activePlaygroup = null;
         if (onPlaygroupChangeCallback) onPlaygroupChangeCallback(null);
     }
+    updatePlaygroupCountBadge();
     updatePlaygroupActionButtons();
+}
+
+async function updatePlaygroupCountBadge() {
+    const countEl = document.getElementById('playgroupCount');
+    if (!countEl) return;
+
+    const maxCampaigns = window._scorekeeperMaxCampaigns || 2;
+    const campaignsText = playgroups.length + ' of ' + maxCampaigns + ' campaigns';
+
+    const pg = activePlaygroup;
+    if (!pg) {
+        countEl.textContent = campaignsText;
+        countEl.title = '';
+        return;
+    }
+
+    try {
+        const meepleCount = await fetchPlaygroupMemberCount(pg.id);
+        const meepleLabel = meepleCount === 1 ? 'meeple' : 'meeples';
+        countEl.textContent = `${campaignsText} · ${meepleCount} ${meepleLabel} joined`;
+        countEl.title = 'Number of meeples (users) joined to this campaign.';
+    } catch {
+        countEl.textContent = campaignsText;
+    }
 }
 
 function updatePlaygroupActionButtons() {
@@ -61,15 +87,15 @@ function updatePlaygroupActionButtons() {
     const leaveBtn = document.getElementById('leavePlaygroupBtn');
     const createBtn = document.getElementById('createPlaygroupBtn');
     if (inviteBtn) inviteBtn.style.display = activePlaygroup ? 'inline-flex' : 'none';
-    if (shareBtn) shareBtn.style.display = activePlaygroup ? 'inline-flex' : 'none';
+    if (shareBtn) shareBtn.style.display = 'none'; // Replaced by single "Copy Campaign Invite Link"
     if (leaveBtn) leaveBtn.style.display = activePlaygroup ? 'inline-flex' : 'none';
 
-    // Admins are exempt from campaign creation limits
+    const maxCampaigns = window._scorekeeperMaxCampaigns || 2;
     const ownedCount = playgroups.filter(pg => pg.role === 'owner').length;
     if (createBtn) {
-        const atLimit = !isAdminMode() && ownedCount >= 2;
+        const atLimit = !isAdminMode() && ownedCount >= maxCampaigns;
         createBtn.disabled = atLimit;
-        createBtn.title = atLimit ? 'You can only own 2 campaigns on the current plan' : '';
+        createBtn.title = atLimit ? `You can only own ${maxCampaigns} campaigns on the current plan` : '';
     }
 }
 
@@ -111,14 +137,19 @@ export function setupPlaygroupUI() {
             if (!pg) return;
             inviteBtn.disabled = true;
             try {
-                const token = await createInviteToken(pg.id);
+                const token = await getOrCreateInviteToken(pg.id);
                 const url = new URL(window.location.origin + window.location.pathname);
                 url.searchParams.set('invite', token);
                 await navigator.clipboard.writeText(url.toString());
                 if (invitePlaygroupName) invitePlaygroupName.textContent = pg.name;
                 inviteModal.classList.add('active');
             } catch (err) {
-                alert('Error creating invite link: ' + (err.message || err));
+                const rawMessage = (err && err.message) ? err.message : String(err || 'Unknown error');
+                if (/Not authenticated/i.test(rawMessage)) {
+                    showNotification('Sign in to copy a campaign invite link.');
+                } else {
+                    showNotification('Could not get invite link: ' + rawMessage);
+                }
             } finally {
                 inviteBtn.disabled = false;
             }
@@ -130,24 +161,6 @@ export function setupPlaygroupUI() {
     if (inviteModal) {
         inviteModal.addEventListener('click', (e) => {
             if (e.target === inviteModal) inviteModal.classList.remove('active');
-        });
-    }
-
-    const shareBtn = document.getElementById('shareLeaderboardBtn');
-    if (shareBtn) {
-        shareBtn.addEventListener('click', async () => {
-            const pg = activePlaygroup;
-            if (!pg) return;
-            const url = new URL(window.location.origin + window.location.pathname);
-            url.searchParams.set('share', pg.id);
-            try {
-                await navigator.clipboard.writeText(url.toString());
-                const orig = shareBtn.textContent;
-                shareBtn.textContent = 'Link copied!';
-                setTimeout(() => { shareBtn.textContent = orig; }, 2000);
-            } catch {
-                prompt('Copy this leaderboard link:', url.toString());
-            }
         });
     }
 
@@ -189,7 +202,7 @@ export function setupPlaygroupUI() {
                 renderPlaygroupSelect();
                 showNotification('You left "' + pg.name + '"');
             } catch (err) {
-                alert('Could not leave campaign: ' + (err.message || err));
+                showNotification('Could not leave campaign: ' + (err.message || err));
             } finally {
                 leaveConfirmBtn.disabled = false;
             }
@@ -214,8 +227,9 @@ export function setupPlaygroupUI() {
     async function doCreate() {
         const name = input.value?.trim();
         if (!name) return;
-        if (!isAdminMode() && playgroups.filter(pg => pg.role === 'owner').length >= 2) {
-            showModal('Campaign limit reached', 'You can only own 2 campaigns on the current plan.', () => {});
+        const maxC = window._scorekeeperMaxCampaigns || 2;
+        if (!isAdminMode() && playgroups.filter(pg => pg.role === 'owner').length >= maxC) {
+            showModal('Campaign limit reached', `You can only own ${maxC} campaigns on the current plan.`, () => {});
             return;
         }
         const exists = playgroups.some(pg => pg.name.toLowerCase() === name.toLowerCase());

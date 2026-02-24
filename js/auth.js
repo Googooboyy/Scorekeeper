@@ -58,6 +58,29 @@ export function clearInviteTokenFromStorage() {
     saveInviteTokenToStorage(null);
 }
 
+const INVITE_INTENT_KEY = 'scorekeeper_invite_intent';
+
+/** True when user chose "Login and join campaign" and we should auto-redeem after OAuth return */
+export function getInviteIntentFromStorage() {
+    try {
+        return sessionStorage.getItem(INVITE_INTENT_KEY) === 'join';
+    } catch { return false; }
+}
+
+/** Set before redirecting to OAuth so we auto-redeem on return */
+export function setInviteIntentToJoin() {
+    try {
+        sessionStorage.setItem(INVITE_INTENT_KEY, 'join');
+    } catch { /* ignore */ }
+}
+
+/** Clear after redeem or when not needed */
+export function clearInviteIntent() {
+    try {
+        sessionStorage.removeItem(INVITE_INTENT_KEY);
+    } catch { /* ignore */ }
+}
+
 export async function signOut() {
     const { error } = await getClient().auth.signOut();
     if (error) throw error;

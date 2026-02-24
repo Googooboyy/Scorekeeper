@@ -1,0 +1,2 @@
+[functions.bgg-search]
+verify_jwt = false
