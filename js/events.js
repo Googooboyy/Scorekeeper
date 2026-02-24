@@ -21,7 +21,7 @@ import {
     fetchAppConfig
 } from './supabase.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
-import { showModal, hideModal, handleImageFileSelect, showNotification, fireConfetti, closeGameImageModal, closePlayerImageModal, resetPlayerCustomization, closeEditEntryModal, saveGameImage, savePlayerImage, saveEditedEntry, closePlayerProfileModal, openScoreTabulator } from './modals.js';
+import { showModal, hideModal, handleImageFileSelect, showNotification, fireConfetti, playVictoryFanfare, closeGameImageModal, closePlayerImageModal, resetPlayerCustomization, closeEditEntryModal, saveGameImage, savePlayerImage, saveEditedEntry, closePlayerProfileModal, openScoreTabulator } from './modals.js';
 import {
     renderGameSelection,
     renderPlayerSelection,
@@ -205,6 +205,26 @@ export function setupEventListeners() {
     document.getElementById('gamesToggleBtn').addEventListener('click', toggleGamesDisplay);
     document.getElementById('historyToggleBtn').addEventListener('click', toggleHistoryDisplay);
     document.getElementById('playersToggleBtn').addEventListener('click', togglePlayersDisplay);
+
+    // Celebration pills (leaderboard section)
+    const celebrationConfettiBtn = document.getElementById('celebrationConfettiBtn');
+    const celebrationShakeBtn = document.getElementById('celebrationShakeBtn');
+    const celebrationTrumpetBtn = document.getElementById('celebrationTrumpetBtn');
+    if (celebrationConfettiBtn) {
+        celebrationConfettiBtn.addEventListener('click', () => {
+            const delays = [0, 500, 1000, 1500, 2000];
+            delays.forEach(d => setTimeout(() => fireConfetti(), d));
+        });
+    }
+    if (celebrationShakeBtn) {
+        celebrationShakeBtn.addEventListener('click', () => {
+            document.body.classList.add('screen-shake');
+            setTimeout(() => document.body.classList.remove('screen-shake'), 2500);
+        });
+    }
+    if (celebrationTrumpetBtn) {
+        celebrationTrumpetBtn.addEventListener('click', () => playVictoryFanfare());
+    }
 
     document.getElementById('gameImageCancel').addEventListener('click', closeGameImageModal);
     document.getElementById('gameImageSave').addEventListener('click', saveGameImage);
@@ -425,8 +445,8 @@ async function addNewGame() {
     if (!pg) { showLoginPrompt(); return; }
     const input = document.getElementById('newGameName');
     const name = input.value.trim();
-    if (!name) { alert('Please enter a game name'); return; }
-    if (data.games.includes(name)) { alert('This game already exists'); return; }
+    if (!name) { showNotification('Please enter a game name'); return; }
+    if (data.games.includes(name)) { showNotification('This game already exists'); return; }
 
     const globalGameId = document.getElementById('newGameGlobalId')?.value || null;
 
@@ -455,7 +475,7 @@ async function addNewGame() {
             selectGame(name);
         }
     } catch (err) {
-        alert('Error adding game: ' + (err.message || err));
+        showNotification('Error adding game: ' + (err.message || err));
     }
 }
 
@@ -469,8 +489,8 @@ async function addNewPlayer() {
     if (!pg) { showLoginPrompt(); return; }
     const input = document.getElementById('newPlayerName');
     const name = input.value.trim();
-    if (!name) { alert('Please enter a meeple name'); return; }
-    if (data.players.includes(name)) { alert('This meeple already exists'); return; }
+    if (!name) { showNotification('Please enter a meeple name'); return; }
+    if (data.players.includes(name)) { showNotification('This meeple already exists'); return; }
     const maxMeeples = window._scorekeeperMaxMeeples || 4;
     if (data.players.length >= maxMeeples) {
         showModal('Meeple limit reached', `This campaign supports up to ${maxMeeples} meeples on the current plan.`, () => {});
@@ -498,7 +518,7 @@ async function addNewPlayer() {
         uiState.tempPlayerImage = null;
         selectPlayer(name);
     } catch (err) {
-        alert('Error adding meeple: ' + (err.message || err));
+        showNotification('Error adding meeple: ' + (err.message || err));
     }
 }
 
@@ -507,11 +527,11 @@ async function saveEntry() {
     if (!pg) { showLoginPrompt(); return; }
     const dateInput = document.getElementById('winDate');
     const date = dateInput.value;
-    if (!date) { alert('Please select a date'); return; }
+    if (!date) { showNotification('Please select a date'); return; }
     currentEntry.date = date;
     const gameId = data._gameIdByName[currentEntry.game];
     const playerId = data._playerIdByName[currentEntry.player];
-    if (!gameId || !playerId) { alert('Invalid game or meeple'); return; }
+    if (!gameId || !playerId) { showNotification('Invalid game or meeple'); return; }
 
     const btn = document.getElementById('saveEntryBtn');
     const originalText = btn.innerHTML;
@@ -552,7 +572,7 @@ async function saveEntry() {
     } catch (err) {
         btn.innerHTML = originalText;
         btn.disabled = false;
-        alert('Error saving win: ' + (err.message || err));
+        showNotification('Error saving win: ' + (err.message || err));
     }
 }
 
@@ -611,13 +631,13 @@ function handleFileImport(event) {
                         await loadData(pg.id);
                         showNotification('Data imported successfully! 📤');
                     } catch (err) {
-                        alert('Error importing: ' + (err.message || err));
+                        showNotification('Error importing: ' + (err.message || err));
                     }
                 },
                 'Import'
             );
         } catch (err) {
-            alert('Error importing file: ' + err.message);
+            showNotification('Error importing file: ' + err.message);
         }
         event.target.value = '';
     };
@@ -636,7 +656,7 @@ function clearAllData() {
                 await loadData(pg.id);
                 showNotification('All data cleared 🗑️');
             } catch (err) {
-                alert('Error clearing: ' + (err.message || err));
+                showNotification('Error clearing: ' + (err.message || err));
             }
         },
         'Clear All'

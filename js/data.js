@@ -7,7 +7,8 @@ export let data = {
     playerData: {},
     _gameIdByName: {},
     _playerIdByName: {},
-    currentUserId: null  // Set from auth — used to highlight linked player card
+    currentUserId: null,  // Set from auth — used to highlight linked player card
+    currentUserFavouriteQuote: null  // Set when logged-in user profile is loaded; used on leaderboard card
 };
 
 export let currentEntry = {
@@ -51,6 +52,7 @@ export function resetData() {
     data.playerData = {};
     data._gameIdByName = {};
     data._playerIdByName = {};
+    data.currentUserFavouriteQuote = null;
 }
 
 export async function loadData(playgroupId) {

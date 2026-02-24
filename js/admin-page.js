@@ -11,11 +11,20 @@ import {
     fetchAllAnnouncements, publishAnnouncement, clearAnnouncement, fetchActiveAnnouncement,
     deleteAnnouncement, reactivateAnnouncement,
     fetchUnlinkedGames, fetchGlobalGames, upsertGlobalGame, linkGameToGlobal,
-    deletePlaygroupAdmin, deleteInviteToken,
+    deletePlaygroupAdmin, deleteInviteToken, replaceInviteToken,
     adminDeleteEntry, adminDeleteGame, adminDeletePlayer,
     adminRemoveUserFromCampaigns, adminDeleteUserAccount
 } from './supabase.js';
 import { signOut } from './auth.js';
+
+// ── Toast (replaces alert for consistent in-app feedback) ──────────────────────
+function adminToast(msg) {
+    const el = document.createElement('div');
+    el.style.cssText = 'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--bg-card); color: var(--text-primary); padding: 16px 24px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 10px 40px rgba(0,0,0,0.5); z-index: 10000; animation: slideUp 0.3s ease; font-weight: 500;';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => { el.style.animation = 'slideDown 0.3s ease'; setTimeout(() => el.remove(), 300); }, 2000);
+}
 
 // ── Cached data ──────────────────────────────────────────────────────────────
 let _playgroups = [], _users = [], _members = [], _games = [], _players = [];
@@ -113,6 +122,8 @@ function setupTabs() {
     });
 
     document.getElementById('saveConfigBtn').addEventListener('click', saveConfig);
+    document.getElementById('addQuoteBtn').addEventListener('click', addQuoteRow);
+    document.getElementById('saveQuotesBtn').addEventListener('click', saveQuotes);
     document.getElementById('publishAnnounceBtn').addEventListener('click', doPublishAnnouncement);
     document.getElementById('clearAnnounceBtn').addEventListener('click', doClearAnnouncement);
 
@@ -131,6 +142,7 @@ function onTabActivate(tab) {
         linking: loadLinking,
         invites: loadInvites,
         config: loadConfig,
+        quotes: loadQuotes,
         announcements: loadAnnouncements
     };
     if (loaders[tab]) loaders[tab]();
@@ -257,7 +269,7 @@ function renderCampaigns() {
                 _entries = _entries.filter(e => e.playgroup_id !== id);
                 _members = _members.filter(m => m.playgroup_id !== id);
                 renderCampaigns();
-            } catch (e) { alert('Error: ' + e.message); btn.disabled = false; btn.textContent = '✕'; }
+            } catch (e) { adminToast('Error: ' + e.message); btn.disabled = false; btn.textContent = '✕'; }
         });
     });
 
@@ -272,7 +284,7 @@ function renderCampaigns() {
                 _playgroups = _playgroups.filter(p => p.id !== id);
                 _entries = _entries.filter(e => e.playgroup_id !== id);
                 _members = _members.filter(m => m.playgroup_id !== id);
-            } catch (e) { alert('Error deleting campaign: ' + e.message); }
+            } catch (e) { adminToast('Error deleting campaign: ' + e.message); }
         }
         renderCampaigns();
     };
@@ -325,7 +337,7 @@ function renderUsers() {
                     await adminRemoveUserFromCampaigns(id);
                     _members = _members.filter(m => m.user_id !== id);
                 } catch (e) {
-                    alert('Error removing memberships: ' + e.message);
+                    adminToast('Error removing memberships: ' + e.message);
                 }
             }
             renderUsers();
@@ -347,7 +359,7 @@ function renderUsers() {
                     _members = _members.filter(m => m.user_id !== id);
                     _users = _users.filter(u => u.id !== id);
                 } catch (e) {
-                    alert('Error deleting user: ' + e.message);
+                    adminToast('Error deleting user: ' + e.message);
                 }
             }
             renderUsers();
@@ -404,7 +416,7 @@ function renderEntries() {
                 await adminDeleteEntry(btn.dataset.deleteEntry);
                 _entries = _entries.filter(e => e.id !== btn.dataset.deleteEntry);
                 renderEntries();
-            } catch (e) { alert('Error: ' + e.message); btn.disabled = false; btn.textContent = '✕'; }
+            } catch (e) { adminToast('Error: ' + e.message); btn.disabled = false; btn.textContent = '✕'; }
         });
     });
 
@@ -417,7 +429,7 @@ function renderEntries() {
             try {
                 await adminDeleteEntry(id);
                 _entries = _entries.filter(e => e.id !== id);
-            } catch (e) { alert('Error: ' + e.message); }
+            } catch (e) { adminToast('Error: ' + e.message); }
         }
         renderEntries();
     };
@@ -462,7 +474,7 @@ function renderGamesTable() {
                 _games = _games.filter(g => g.id !== btn.dataset.deleteGame);
                 _entries = _entries.filter(e => e.game_id !== btn.dataset.deleteGame);
                 renderGamesTable();
-            } catch (e) { alert('Error: ' + e.message); btn.disabled = false; }
+            } catch (e) { adminToast('Error: ' + e.message); btn.disabled = false; }
         });
     });
 
@@ -476,7 +488,7 @@ function renderGamesTable() {
                 await adminDeleteGame(id);
                 _games = _games.filter(g => g.id !== id);
                 _entries = _entries.filter(e => e.game_id !== id);
-            } catch (e) { alert('Error: ' + e.message); }
+            } catch (e) { adminToast('Error: ' + e.message); }
         }
         renderGamesTable();
     };
@@ -508,7 +520,7 @@ function renderPlayersTable() {
                 _players = _players.filter(p => p.id !== btn.dataset.deletePlayer);
                 _entries = _entries.filter(e => e.player_id !== btn.dataset.deletePlayer);
                 renderPlayersTable();
-            } catch (e) { alert('Error: ' + e.message); btn.disabled = false; }
+            } catch (e) { adminToast('Error: ' + e.message); btn.disabled = false; }
         });
     });
 
@@ -522,7 +534,7 @@ function renderPlayersTable() {
                 await adminDeletePlayer(id);
                 _players = _players.filter(p => p.id !== id);
                 _entries = _entries.filter(e => e.player_id !== id);
-            } catch (e) { alert('Error: ' + e.message); }
+            } catch (e) { adminToast('Error: ' + e.message); }
         }
         renderPlayersTable();
     };
@@ -659,7 +671,7 @@ async function linkBGGResult(gameId, bgg) {
         if (row) row.remove();
         renderLinkingProgress();
     } catch (e) {
-        alert('Link failed: ' + e.message);
+        adminToast('Link failed: ' + e.message);
     }
 }
 
@@ -676,34 +688,55 @@ async function loadInvites() {
 }
 
 function renderInvites() {
+    const baseUrl = typeof window !== 'undefined' && window.location ? (window.location.origin + (window.location.pathname || '/').replace(/admin\.html$/, '') || window.location.origin + '/') : '';
     const tbody = document.querySelector('#invitesTable tbody');
     tbody.innerHTML = _invites.map(t => {
         const masked = t.token ? t.token.slice(0, 8) + '…' : '—';
-        const expired = t.expires_at && new Date(t.expires_at) < new Date();
         const creator = _users.find(u => u.id === t.created_by);
         const creatorLabel = creator?.email || (t.created_by ? t.created_by.slice(0, 8) + '…' : '—');
-        return `<tr class="${expired ? 'admin-row-expired' : ''}" data-id="${t.id}">
+        const useCount = t.use_count ?? 0;
+        return `<tr data-id="${t.id}">
             <td><input type="checkbox" class="admin-row-check" data-table="invites" value="${t.id}"></td>
             <td>${esc(pgName(t.playgroup_id))}</td>
             <td><code>${esc(masked)}</code></td>
             <td title="${esc(creator?.email || '')}">${esc(creatorLabel)}</td>
-            <td>${fmtDate(t.expires_at)}${expired ? ' <span class="admin-badge admin-badge-warn">Expired</span>' : ''}</td>
-            <td>${t.uses ?? 0} / ${t.max_uses ?? '∞'}</td>
+            <td>${useCount}</td>
             <td>
+                <button class="admin-action-btn" data-copy-invite="${esc(t.token)}" title="Copy invite link">Copy link</button>
+                <button class="admin-action-btn admin-action-danger" data-replace-invite="${t.playgroup_id}" title="Replace with new token (old link stops working)">Replace</button>
                 <button class="admin-action-btn admin-action-danger" data-revoke-token="${t.id}" title="Revoke">Revoke</button>
             </td>
         </tr>`;
-    }).join('') || '<tr><td colspan="7" style="text-align:center; color:var(--text-muted);">No invite tokens.</td></tr>';
+    }).join('') || '<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">No invite tokens.</td></tr>';
 
+    tbody.querySelectorAll('[data-copy-invite]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const token = btn.dataset.copyInvite;
+            const url = baseUrl + (baseUrl.endsWith('/') ? '' : '') + (baseUrl.includes('?') ? '&' : '?') + 'invite=' + encodeURIComponent(token);
+            navigator.clipboard.writeText(url).then(() => { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy link'; }, 1500); }).catch(() => prompt('Copy invite link:', url));
+        });
+    });
+    tbody.querySelectorAll('[data-replace-invite]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            if (!confirm('Replace this invite? The current link will stop working and a new link will be created.')) return;
+            const playgroupId = btn.dataset.replaceInvite;
+            btn.disabled = true; btn.textContent = '…';
+            try {
+                await replaceInviteToken(playgroupId);
+                await loadInvites();
+            } catch (e) { adminToast('Error: ' + e.message); }
+            btn.disabled = false; btn.textContent = 'Replace';
+        });
+    });
     tbody.querySelectorAll('[data-revoke-token]').forEach(btn => {
         btn.addEventListener('click', async () => {
-            if (!confirm('Revoke this invite token?')) return;
+            if (!confirm('Revoke this invite token? The link will stop working.')) return;
             btn.disabled = true; btn.textContent = '…';
             try {
                 await deleteInviteToken(btn.dataset.revokeToken);
                 _invites = _invites.filter(t => t.id !== btn.dataset.revokeToken);
                 renderInvites();
-            } catch (e) { alert('Error: ' + e.message); btn.disabled = false; btn.textContent = 'Revoke'; }
+            } catch (e) { adminToast('Error: ' + e.message); btn.disabled = false; btn.textContent = 'Revoke'; }
         });
     });
 
@@ -716,11 +749,89 @@ function renderInvites() {
             try {
                 await deleteInviteToken(id);
                 _invites = _invites.filter(t => t.id !== id);
-            } catch (e) { alert('Error: ' + e.message); }
+            } catch (e) { adminToast('Error: ' + e.message); }
         }
         renderInvites();
     };
     document.getElementById('invitesBulkClear').onclick = () => clearChecked('invites', 'invitesBulkBar', 'invitesBulkCount', 'invitesTable');
+}
+
+// ── Leaderboard quotes ────────────────────────────────────────────────────────
+
+const DEFAULT_LEADERBOARD_QUOTES = [
+    'Roll with it.',
+    'Winning is just the beginning.',
+    'May the dice be ever in your favor.',
+    'One more game? Always.',
+    'Board games > boring games.'
+];
+
+async function loadQuotes() {
+    if (!guardAdmin()) return;
+    try {
+        const config = await fetchAppConfig();
+        let quotes = [];
+        if (config.leaderboard_quotes) {
+            try {
+                quotes = JSON.parse(config.leaderboard_quotes);
+            } catch (_) {}
+        }
+        if (!Array.isArray(quotes) || quotes.length === 0) {
+            quotes = [...DEFAULT_LEADERBOARD_QUOTES];
+        }
+        const list = document.getElementById('quotesList');
+        list.innerHTML = quotes.map((q, i) => {
+            const safe = (esc(q) || '').replace(/"/g, '&quot;');
+            return `
+            <div class="admin-quote-row" data-index="${i}">
+                <input type="text" class="admin-quote-input" value="${safe}" placeholder="Short game quote…">
+                <button type="button" class="admin-action-btn admin-action-danger admin-quote-remove" data-index="${i}" title="Remove">Remove</button>
+            </div>
+        `;
+        }).join('');
+        list.querySelectorAll('.admin-quote-remove').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const row = btn.closest('.admin-quote-row');
+                if (row) row.remove();
+            });
+        });
+    } catch (e) { console.error(e); }
+}
+
+function addQuoteRow() {
+    const list = document.getElementById('quotesList');
+    const index = list.querySelectorAll('.admin-quote-row').length;
+    const div = document.createElement('div');
+    div.className = 'admin-quote-row';
+    div.dataset.index = index;
+    div.innerHTML = `
+        <input type="text" class="admin-quote-input" value="" placeholder="Short game quote…">
+        <button type="button" class="admin-action-btn admin-action-danger admin-quote-remove" title="Remove">Remove</button>
+    `;
+    div.querySelector('.admin-quote-remove').addEventListener('click', () => div.remove());
+    list.appendChild(div);
+}
+
+async function saveQuotes() {
+    if (!guardAdmin()) return;
+    const list = document.getElementById('quotesList');
+    const inputs = list.querySelectorAll('.admin-quote-input');
+    const quotes = Array.from(inputs).map(inp => inp.value.trim()).filter(Boolean);
+    const btn = document.getElementById('saveQuotesBtn');
+    const status = document.getElementById('quotesStatus');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    try {
+        await setAppConfig('leaderboard_quotes', JSON.stringify(quotes));
+        status.textContent = 'Saved! Users will see these quotes on the next refresh.';
+        status.style.color = 'var(--accent-success)';
+    } catch (e) {
+        status.textContent = 'Error: ' + e.message;
+        status.style.color = '#f87171';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Save quotes';
+    setTimeout(() => { status.textContent = ''; }, 4000);
 }
 
 // ── Config ───────────────────────────────────────────────────────────────────
@@ -789,7 +900,7 @@ function renderAnnouncements() {
             try {
                 await reactivateAnnouncement(btn.dataset.reactivate);
                 await loadAnnouncements();
-            } catch (e) { alert('Error: ' + e.message); btn.disabled = false; btn.textContent = 'Set Active'; }
+            } catch (e) { adminToast('Error: ' + e.message); btn.disabled = false; btn.textContent = 'Set Active'; }
         });
     });
 
@@ -799,7 +910,7 @@ function renderAnnouncements() {
             try {
                 await clearAnnouncement();
                 await loadAnnouncements();
-            } catch (e) { alert('Error: ' + e.message); btn.disabled = false; btn.textContent = 'Deactivate'; }
+            } catch (e) { adminToast('Error: ' + e.message); btn.disabled = false; btn.textContent = 'Deactivate'; }
         });
     });
 
@@ -811,21 +922,21 @@ function renderAnnouncements() {
                 await deleteAnnouncement(btn.dataset.deleteAnn);
                 _announcements = _announcements.filter(a => a.id !== btn.dataset.deleteAnn);
                 renderAnnouncements();
-            } catch (e) { alert('Error: ' + e.message); btn.disabled = false; btn.textContent = 'Delete'; }
+            } catch (e) { adminToast('Error: ' + e.message); btn.disabled = false; btn.textContent = 'Delete'; }
         });
     });
 }
 
 async function doPublishAnnouncement() {
     const msg = document.getElementById('announceMessage').value.trim();
-    if (!msg) { alert('Enter a message first.'); return; }
+    if (!msg) { adminToast('Enter a message first.'); return; }
     const btn = document.getElementById('publishAnnounceBtn');
     btn.disabled = true; btn.textContent = 'Publishing…';
     try {
         await publishAnnouncement(msg);
         document.getElementById('announceMessage').value = '';
         await loadAnnouncements();
-    } catch (e) { alert('Error: ' + e.message); }
+    } catch (e) { adminToast('Error: ' + e.message); }
     btn.disabled = false; btn.textContent = 'Publish';
 }
 
@@ -834,7 +945,7 @@ async function doClearAnnouncement() {
     try {
         await clearAnnouncement();
         await loadAnnouncements();
-    } catch (e) { alert('Error: ' + e.message); }
+    } catch (e) { adminToast('Error: ' + e.message); }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

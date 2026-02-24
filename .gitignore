@@ -10,7 +10,8 @@ images-boardgames/
 images-player-avatars/
 screeshots/
 CONTACT_SETUP.md
-TIER.md
+docs/
+supabaseEXE/
 
 # Local exports, env files, OS/editor cruft
 exports-gamedata/

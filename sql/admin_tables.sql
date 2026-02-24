@@ -20,8 +20,9 @@ CREATE POLICY "Service role can manage app_config"
 
 -- Seed defaults
 INSERT INTO app_config (key, value) VALUES
-    ('max_campaigns_per_user', '2'),
-    ('max_meeples_per_campaign', '4')
+    ('max_campaigns_per_user', '4'),
+    ('max_meeples_per_campaign', '8'),
+    ('leaderboard_quotes', '["Roll with it.","Winning is just the beginning.","May the dice be ever in your favor.","One more game? Always.","Board games > boring games."]')
 ON CONFLICT (key) DO NOTHING;
 
 

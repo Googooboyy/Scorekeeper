@@ -23,7 +23,8 @@ import {
     insertPlayer
 } from './supabase.js';
 import { getSupabase } from './auth.js';
-import { renderGames, renderGameSelection } from './render.js';
+import { renderGames, renderGameSelection, renderAll } from './render.js';
+import { deletePlayer } from './actions.js';
 
 export function showModal(title, message, onConfirm, confirmLabel = 'OK') {
     setModalCallback(onConfirm);
@@ -93,7 +94,7 @@ export async function saveGameImage() {
         renderGameSelection();
     } catch (err) {
         if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
-        alert('Error saving image: ' + (err.message || err));
+        showNotification('Error saving image: ' + (err.message || err));
         return;
     }
     closeGameImageModal();
@@ -123,6 +124,23 @@ export function openPlayerImageModal(player) {
     uiState.tempPlayerImage = currentImage;
     const saveBtn = document.getElementById('playerImageSave');
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
+
+    // Favourite quote selection (only for own linked meeple)
+    const quoteSection = document.getElementById('playerFavouriteQuoteSection');
+    const quoteSelect = document.getElementById('playerFavouriteQuoteSelect');
+    const isOwnMeeple = !!(data.currentUserId && playerData.userId && playerData.userId === data.currentUserId);
+    if (quoteSection && quoteSelect) {
+        if (isOwnMeeple) {
+            const quotes = getLeaderboardQuotesForModal();
+            quoteSelect.innerHTML = '<option value=\"\">Random</option>' +
+                quotes.map(q => '<option value=\"' + escapeHtml(q) + '\">' + escapeHtml(q) + '</option>').join('');
+            quoteSelect.value = data.currentUserFavouriteQuote || '';
+            quoteSection.style.display = '';
+        } else {
+            quoteSection.style.display = 'none';
+        }
+    }
+
     document.getElementById('playerImageModal').classList.add('active');
 }
 
@@ -156,9 +174,29 @@ export async function savePlayerImage() {
         showNotification('Customization saved for "' + uiState.currentPlayerForImage + '"');
     } catch (err) {
         if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
-        alert('Error saving customization: ' + (err.message || err));
+        showNotification('Error saving customization: ' + (err.message || err));
         return;
     }
+
+    // Update favourite quote if applicable (only for own linked meeple)
+    try {
+        const quoteSelect = document.getElementById('playerFavouriteQuoteSelect');
+        const playerName = uiState.currentPlayerForImage;
+        const playerMeta = data.playerData && data.playerData[playerName];
+        const isOwnMeeple = !!(data.currentUserId && playerMeta?.userId && playerMeta.userId === data.currentUserId);
+        if (quoteSelect && isOwnMeeple) {
+            const selected = (quoteSelect.value || '').trim() || null;
+            const userId = playerMeta.userId;
+            await upsertUserProfile(userId, undefined, selected);
+            if (data.currentUserId === userId) {
+                data.currentUserFavouriteQuote = selected;
+                renderAll();
+            }
+        }
+    } catch (err) {
+        showNotification('Could not update favourite quote: ' + (err.message || err));
+    }
+
     closePlayerImageModal();
 }
 
@@ -176,7 +214,7 @@ export async function resetPlayerCustomization() {
             showNotification('Reset customization for "' + uiState.currentPlayerForImage + '"');
         }
     } catch (err) {
-        alert('Error resetting: ' + (err.message || err));
+        showNotification('Error resetting: ' + (err.message || err));
     }
     closePlayerImageModal();
 }
@@ -185,7 +223,7 @@ export function handleImageFileSelect(file, previewId, callback) {
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-        alert('Image too large. Please choose an image under 2MB.');
+        showNotification('Image too large. Please choose an image under 2MB.');
         return;
     }
 
@@ -240,12 +278,12 @@ export async function saveEditedEntry() {
     const newPlayer = document.getElementById('editPlayerSelect').value;
     const newDate = document.getElementById('editDateInput').value;
     if (!newGame || !newPlayer || !newDate) {
-        alert('Please fill all fields');
+        showNotification('Please fill all fields');
         return;
     }
     const gameId = data._gameIdByName?.[newGame];
     const playerId = data._playerIdByName?.[newPlayer];
-    if (!gameId || !playerId) { alert('Invalid game or meeple'); return; }
+    if (!gameId || !playerId) { showNotification('Invalid game or meeple'); return; }
     const entryIndex = data.entries.findIndex(e => e.id === uiState.currentEditId);
     if (entryIndex === -1) return;
     const btn = document.getElementById('editEntrySave');
@@ -269,7 +307,7 @@ export async function saveEditedEntry() {
         showNotification('Entry updated');
     } catch (err) {
         if (btn) { btn.disabled = false; btn.textContent = 'Save Changes'; }
-        alert('Error updating entry: ' + (err.message || err));
+        showNotification('Error updating entry: ' + (err.message || err));
     }
 }
 
@@ -277,6 +315,21 @@ function escapeHtmlForExport(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// ─── Leaderboard quotes (for dropdown) ───────────────────────────────────────
+
+const DEFAULT_LEADERBOARD_QUOTES = [
+    'Roll with it.',
+    'Winning is just the beginning.',
+    'May the dice be ever in your favor.',
+    'One more game? Always.',
+    'Board games > boring games.'
+];
+
+function getLeaderboardQuotesForModal() {
+    const q = typeof window !== 'undefined' && window._scorekeeperLeaderboardQuotes;
+    return (Array.isArray(q) && q.length > 0) ? q : DEFAULT_LEADERBOARD_QUOTES;
 }
 
 // ─── Favourite Game Picker ───────────────────────────────────────────────────
@@ -308,7 +361,7 @@ function _openFavouriteGamePicker(userId, gameBreakdown, userProfile, computedTo
         saveBtn.disabled = true;
         saveBtn.textContent = 'Saving…';
         try {
-            await upsertUserProfile(userId, value || null);
+            await upsertUserProfile(userId, value || null, userProfile?.favourite_quote ?? undefined);
             onSave(value ? value : computedTopGame);
             showNotification('Favourite game updated');
             close();
@@ -390,6 +443,27 @@ export async function openPlayerProfileModal(playerName) {
             _renderProfileUnlinked(player, playerName, playerMeta, currentEntries, user);
         }
 
+        // Customize meeple & Delete player (same rules as leaderboard card)
+        const actionsRow = document.getElementById('profileActionsRow');
+        const customizeBtn = document.getElementById('profileCustomizeBtn');
+        const deleteBtn = document.getElementById('profileDeleteBtn');
+        const canEdit = !!getActivePlaygroup();
+        const isOwnLinked = user && player.user_id === user.id;
+        const isUnclaimed = !player.user_id;
+        const canDelete = isOwnLinked || (!user && isUnclaimed);
+        if (actionsRow && customizeBtn && deleteBtn) {
+            actionsRow.style.display = (canEdit || canDelete) ? 'flex' : 'none';
+            customizeBtn.style.display = canEdit ? 'inline-flex' : 'none';
+            deleteBtn.style.display = canDelete ? 'inline-flex' : 'none';
+            customizeBtn.onclick = () => {
+                openPlayerImageModal(playerName);
+            };
+            deleteBtn.onclick = () => {
+                closePlayerProfileModal();
+                deletePlayer(playerName);
+            };
+        }
+
         // Claim button handler
         const claimBtn = document.getElementById('profileClaimBtn');
         claimBtn.onclick = async () => {
@@ -408,7 +482,11 @@ export async function openPlayerProfileModal(playerName) {
             } catch (err) {
                 claimBtn.disabled = false;
                 claimBtn.textContent = 'This is me — link my account';
-                showNotification('Could not link meeple: ' + (err.message || err));
+                const msg = (err && err.message) ? err.message : String(err);
+                const friendly = /not authenticated/i.test(msg)
+                    ? 'Sign in to link this meeple to your account.'
+                    : 'Could not link meeple: ' + msg;
+                showNotification(friendly);
             }
         };
 
@@ -446,9 +524,15 @@ function _renderProfileLoading(playerName) {
     document.getElementById('profileAvatarPlaceholder').style.display = 'flex';
     document.getElementById('profileClaimBtn').style.display = 'none';
     document.getElementById('profileUnlinkBtn').style.display = 'none';
+    const actionsRowLoading = document.getElementById('profileActionsRow');
+    if (actionsRowLoading) actionsRowLoading.style.display = 'none';
     document.getElementById('profileTotalWins').textContent = '—';
     document.getElementById('profileCampaignCount').textContent = '—';
     document.getElementById('profileFaveGame').textContent = '—';
+    const faveGameImg = document.getElementById('profileFaveGameImg');
+    const faveGamePlaceholder = document.getElementById('profileFaveGamePlaceholder');
+    if (faveGameImg) { faveGameImg.style.display = 'none'; faveGameImg.removeAttribute('src'); }
+    if (faveGamePlaceholder) faveGamePlaceholder.style.display = 'flex';
     document.getElementById('profileCampaignSection').style.display = 'none';
     document.getElementById('profileCampaignList').innerHTML = '';
     document.getElementById('profileGameList').innerHTML = '';
@@ -460,6 +544,8 @@ function _renderProfileLoading(playerName) {
         const existingEditBtn = faveCard.querySelector('.profile-fave-edit-btn');
         if (existingEditBtn) existingEditBtn.style.display = 'none';
     }
+    const quoteCard = document.getElementById('profileFaveQuoteCard');
+    if (quoteCard) quoteCard.style.display = 'none';
 }
 
 function _setAvatar(meta) {
@@ -495,10 +581,31 @@ function _renderProfileLinked(player, meta, campaignStats, gameBreakdown, recent
     const displayFave = userProfile?.favourite_game || computedTopGame;
 
     document.getElementById('profileName').textContent = player.name;
-    document.getElementById('profileMeta').textContent = campaignCount + ' campaign' + (campaignCount !== 1 ? 's' : '');
+    const profileMetaEl = document.getElementById('profileMeta');
+    if (campaignCount === 0) {
+        profileMetaEl.textContent = 'Meeple yet to join campaign';
+        profileMetaEl.classList.add('profile-meta-muted');
+    } else {
+        profileMetaEl.textContent = campaignCount + ' campaign' + (campaignCount !== 1 ? 's' : '');
+        profileMetaEl.classList.remove('profile-meta-muted');
+    }
     document.getElementById('profileTotalWins').textContent = totalWins;
     document.getElementById('profileCampaignCount').textContent = campaignCount;
     document.getElementById('profileFaveGame').textContent = displayFave;
+    const faveImg = document.getElementById('profileFaveGameImg');
+    const favePlaceholder = document.getElementById('profileFaveGamePlaceholder');
+    const faveGameImageUrl = displayFave && data.gameData?.[displayFave]?.image;
+    if (faveImg && favePlaceholder) {
+        if (faveGameImageUrl) {
+            faveImg.src = faveGameImageUrl;
+            faveImg.style.display = 'block';
+            favePlaceholder.style.display = 'none';
+        } else {
+            faveImg.style.display = 'none';
+            faveImg.removeAttribute('src');
+            favePlaceholder.style.display = 'flex';
+        }
+    }
     document.getElementById('profileCampaignStatCard').style.display = '';
 
     // Favourite game edit: show only when viewing own profile
@@ -519,6 +626,20 @@ function _renderProfileLinked(player, meta, campaignStats, gameBreakdown, recent
             editBtn.style.display = 'inline-flex';
             editBtn.onclick = () => _openFavouriteGamePicker(player.user_id, gameBreakdown, userProfile, computedTopGame, (newDisplayValue) => {
                 document.getElementById('profileFaveGame').textContent = newDisplayValue;
+                const img = document.getElementById('profileFaveGameImg');
+                const ph = document.getElementById('profileFaveGamePlaceholder');
+                const url = newDisplayValue && data.gameData?.[newDisplayValue]?.image;
+                if (img && ph) {
+                    if (url) {
+                        img.src = url;
+                        img.style.display = 'block';
+                        ph.style.display = 'none';
+                    } else {
+                        img.style.display = 'none';
+                        img.removeAttribute('src');
+                        ph.style.display = 'flex';
+                    }
+                }
             });
         } else if (editBtn) {
             editBtn.style.display = 'none';
@@ -576,9 +697,24 @@ function _renderProfileUnlinked(player, playerName, meta, currentEntries, curren
 
     document.getElementById('profileName').textContent = playerName;
     document.getElementById('profileMeta').textContent = 'This campaign only';
+    document.getElementById('profileMeta').classList.remove('profile-meta-muted');
     document.getElementById('profileTotalWins').textContent = totalWins;
     document.getElementById('profileCampaignStatCard').style.display = 'none';
     document.getElementById('profileFaveGame').textContent = topGame;
+    const faveImgU = document.getElementById('profileFaveGameImg');
+    const favePhU = document.getElementById('profileFaveGamePlaceholder');
+    const topGameImageUrl = topGame && data.gameData?.[topGame]?.image;
+    if (faveImgU && favePhU) {
+        if (topGameImageUrl) {
+            faveImgU.src = topGameImageUrl;
+            faveImgU.style.display = 'block';
+            favePhU.style.display = 'none';
+        } else {
+            faveImgU.style.display = 'none';
+            faveImgU.removeAttribute('src');
+            favePhU.style.display = 'flex';
+        }
+    }
 
     // Claim button: show only if logged in, player is unclaimed,
     // AND user doesn't already have a linked player in this campaign
@@ -1161,6 +1297,33 @@ export function fireConfetti() {
         else canvas.remove();
     }
     animate();
+}
+
+/** Play a short victory trumpet-style fanfare (C5 → E5 → G5 → G5 → E5 → C5) using Web Audio API. */
+export function playVictoryFanfare() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const playNote = (frequency, startTime, duration) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(frequency, startTime);
+            gain.gain.setValueAtTime(0.12, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        };
+        const C5 = 523.25, E5 = 659.25, G5 = 783.99;
+        const step = 0.22;
+        playNote(C5, 0, step);
+        playNote(E5, step, step);
+        playNote(G5, step * 2, step);
+        playNote(G5, step * 3, step);
+        playNote(E5, step * 4, step);
+        playNote(C5, step * 5, step * 1.2);
+    } catch (_) {}
 }
 
 export function showNotification(message) {

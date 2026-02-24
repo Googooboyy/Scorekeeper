@@ -89,7 +89,7 @@
             <div class="header-row">
                 <div>
                     <h1 class="logo">The Scorekeeper</h1>
-                    <p class="subtitle">Track your <span class="strikethrough">victories</span> bragging rights!</p>
+                    <p class="subtitle">Track bragging rights.</p>
                 </div>
             </div>
         </header>
@@ -148,6 +148,13 @@
                 if (topic) topic.value = 'Investor Inquiry';
             }
         })();
+        function showToast(msg) {
+            var el = document.createElement('div');
+            el.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--bg-card);color:var(--text-primary);padding:16px 24px;border-radius:12px;border:1px solid var(--border);box-shadow:0 10px 40px rgba(0,0,0,0.5);z-index:1000;animation:slideUp 0.3s ease;font-weight:500;';
+            el.textContent = msg;
+            document.body.appendChild(el);
+            setTimeout(function() { el.style.animation = 'slideDown 0.3s ease'; setTimeout(function() { el.remove(); }, 300); }, 2000);
+        }
         document.getElementById('contactForm').addEventListener('submit', function(e) {
             const btn = document.getElementById('submitBtn');
             btn.disabled = true;
@@ -161,7 +168,7 @@
                 .catch(() => {
                     btn.disabled = false;
                     btn.textContent = 'Send message';
-                    alert('Something went wrong. Please try again.');
+                    showToast('Something went wrong. Please try again.');
                 });
             e.preventDefault();
         });

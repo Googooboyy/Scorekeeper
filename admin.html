@@ -14,9 +14,8 @@
                 <div>
                     <div class="logo-row">
                         <a href="index.html" style="text-decoration:none;">
-                            <h1 class="logo" style="font-size:1.6rem; margin-bottom:4px;">The Scorekeeper</h1>
+                            <h1 class="logo" style="margin-bottom:4px;"><img src="logo-scorekpr/logo-ScoreKpr-350x200px-png.png" alt="The Scorekeeper" class="logo-img"></h1>
                         </a>
-                        <span class="beta-badge" style="background:rgba(239,68,68,0.14); color:#f87171; border-color:rgba(239,68,68,0.45);">ADMIN</span>
                     </div>
                     <p class="subtitle">System Administration</p>
                 </div>
@@ -57,6 +56,7 @@
                 <button class="admin-tab" data-tab="linking">BGG Linking</button>
                 <button class="admin-tab" data-tab="invites">Invites</button>
                 <button class="admin-tab" data-tab="config">Config</button>
+                <button class="admin-tab" data-tab="quotes">Quotes</button>
                 <button class="admin-tab" data-tab="announcements">Announce</button>
             </nav>
 
@@ -191,7 +191,7 @@
                 </div>
                 <div class="admin-table-wrap">
                     <table class="admin-table" id="invitesTable">
-                        <thead><tr><th><input type="checkbox" class="admin-select-all" data-table="invites"></th><th>Campaign</th><th>Token</th><th>Created By</th><th>Expires</th><th>Uses / Max</th><th>Actions</th></tr></thead>
+                        <thead><tr><th><input type="checkbox" class="admin-select-all" data-table="invites"></th><th>Campaign</th><th>Token</th><th>Created By</th><th>Uses</th><th>Actions</th></tr></thead>
                         <tbody></tbody>
                     </table>
                 </div>
@@ -211,6 +211,18 @@
                     </div>
                     <button class="btn btn-primary" id="saveConfigBtn">Save Config</button>
                     <span id="configStatus" class="admin-config-status"></span>
+                </div>
+            </div>
+
+            <!-- Leaderboard quotes -->
+            <div id="tab-quotes" class="admin-panel">
+                <h2 class="admin-panel-title">Leaderboard Quotes</h2>
+                <p style="color:var(--text-muted); margin-bottom:16px;">Short game-related quotes shown randomly on each leaderboard card. Users see one random quote per card on every page refresh.</p>
+                <div id="quotesList" class="admin-quotes-list"></div>
+                <div style="margin-top:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <button class="btn btn-secondary" id="addQuoteBtn" type="button">+ Add quote</button>
+                    <button class="btn btn-primary" id="saveQuotesBtn" type="button">Save quotes</button>
+                    <span id="quotesStatus" class="admin-config-status"></span>
                 </div>
             </div>
 

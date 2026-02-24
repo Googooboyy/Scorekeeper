@@ -37,8 +37,8 @@ BEGIN
     IF (
         SELECT COUNT(*) FROM playgroup_members
         WHERE user_id = v_user_id AND role = 'owner'
-    ) >= 2 THEN
-        RAISE EXCEPTION 'You can only own 2 campaigns on the current plan';
+    ) >= 4 THEN
+        RAISE EXCEPTION 'You can only own 4 campaigns on the current plan';
     END IF;
 
     INSERT INTO playgroups (name, created_by)
@@ -62,8 +62,8 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    IF (SELECT COUNT(*) FROM players WHERE playgroup_id = NEW.playgroup_id) >= 4 THEN
-        RAISE EXCEPTION 'This campaign has reached the maximum of 4 players';
+    IF (SELECT COUNT(*) FROM players WHERE playgroup_id = NEW.playgroup_id) >= 8 THEN
+        RAISE EXCEPTION 'This campaign has reached the maximum of 8 players';
     END IF;
     RETURN NEW;
 END;

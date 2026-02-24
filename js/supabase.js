@@ -71,17 +71,27 @@ export async function fetchPlaygroups() {
 }
 
 /**
- * Create an invite token for a playgroup. Returns the token string.
+ * Get or create the invite token for a playgroup (one per campaign). Returns the token string.
+ * Always uses the regular authenticated client so auth.uid() inside the RPC sees the real user,
+ * even when admin mode (service role client) is active elsewhere.
  */
-export async function createInviteToken(playgroupId, expiresHours = 168, maxUses = 10) {
-    const { data, error } = await getActiveClient()
-        .rpc('create_invite_token', {
-            p_playgroup_id: playgroupId,
-            p_expires_hours: expiresHours,
-            p_max_uses: maxUses
-        });
+export async function getOrCreateInviteToken(playgroupId) {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .rpc('create_invite_token', { p_playgroup_id: playgroupId });
     if (error) throw error;
     return data;
+}
+
+/**
+ * Resolve an invite token to campaign id and name (for guest view). Callable by anon.
+ */
+export async function resolveInviteToken(token) {
+    const client = getSupabase();
+    const { data, error } = await client
+        .rpc('resolve_invite_token', { p_token: token });
+    if (error) throw error;
+    return data?.[0] || null;
 }
 
 /**
@@ -92,6 +102,17 @@ export async function redeemInviteToken(token) {
         .rpc('redeem_invite_token', { p_token: token });
     if (error) throw error;
     return data?.[0] || null;
+}
+
+/**
+ * Replace invite token for a campaign (admin). Deprecates old token, returns new token string.
+ */
+export async function replaceInviteToken(playgroupId) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { data, error } = await ac.rpc('replace_invite_token', { p_playgroup_id: playgroupId });
+    if (error) throw error;
+    return data;
 }
 
 /**
@@ -152,9 +173,10 @@ export async function fetchPlayerById(playerId) {
  * Claim a player record — links it to the current user's account.
  * Only succeeds if the player is currently unclaimed (user_id IS NULL).
  * The DB unique index also enforces one claim per campaign per user.
+ * Always uses the regular authenticated client so the operation runs as the logged-in user.
  */
 export async function claimPlayer(playerId) {
-    const supabase = getActiveClient();
+    const supabase = getSupabase();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
@@ -173,9 +195,10 @@ export async function claimPlayer(playerId) {
 /**
  * Unlink a player record from the current user's account.
  * Only the user who originally linked it can unlink it (user_id = auth.uid()).
+ * Always uses the regular authenticated client so the operation runs as the logged-in user.
  */
 export async function unclaimPlayer(playerId) {
-    const supabase = getActiveClient();
+    const supabase = getSupabase();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
@@ -204,12 +227,12 @@ export async function fetchCrossCampaignStats(userId) {
 }
 
 /**
- * Fetch a user's profile (e.g. favourite game). Returns { favourite_game } or null.
+ * Fetch a user's profile (e.g. favourite game, favourite quote). Returns { favourite_game, favourite_quote } or null.
  */
 export async function fetchUserProfile(userId) {
     const { data, error } = await getActiveClient()
         .from('user_profile')
-        .select('favourite_game')
+        .select('favourite_game, favourite_quote')
         .eq('user_id', userId)
         .maybeSingle();
 
@@ -218,15 +241,16 @@ export async function fetchUserProfile(userId) {
 }
 
 /**
- * Set or clear a user's favourite game. Only the current user can update their own profile.
+ * Set or clear a user's favourite game and/or favourite quote. Only the current user can update their own profile.
+ * Pass undefined for a field to leave it unchanged when updating existing row (use null to clear).
  */
-export async function upsertUserProfile(userId, favouriteGame) {
+export async function upsertUserProfile(userId, favouriteGame, favouriteQuote) {
+    const payload = { user_id: userId };
+    if (favouriteGame !== undefined) payload.favourite_game = favouriteGame || null;
+    if (favouriteQuote !== undefined) payload.favourite_quote = favouriteQuote || null;
     const { error } = await getActiveClient()
         .from('user_profile')
-        .upsert(
-            { user_id: userId, favourite_game: favouriteGame || null },
-            { onConflict: 'user_id' }
-        );
+        .upsert(payload, { onConflict: 'user_id' });
 
     if (error) throw error;
 }
@@ -620,6 +644,20 @@ export async function fetchAllPlaygroupMembers() {
     const { data, error } = await ac.from('playgroup_members').select('*');
     if (error) throw error;
     return data || [];
+}
+
+/**
+ * Count how many meeples (players) are in a given playgroup.
+ * Uses the players table so regular users can see the count.
+ */
+export async function fetchPlaygroupMemberCount(playgroupId) {
+    if (!playgroupId) return 0;
+    const { count, error } = await getActiveClient()
+        .from('players')
+        .select('id', { count: 'exact', head: true })
+        .eq('playgroup_id', playgroupId);
+    if (error) throw error;
+    return count || 0;
 }
 
 export async function fetchAppConfig() {

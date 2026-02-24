@@ -24,7 +24,7 @@ export function deletePlayer(player) {
             saveData();
             showNotification('Player "' + player + '" deleted');
         } catch (err) {
-            alert('Error deleting player: ' + (err.message || err));
+            showNotification('Error deleting player: ' + (err.message || err));
         }
     }, 'Delete');
 }
@@ -51,7 +51,7 @@ export function deleteGame(game) {
             saveData();
             showNotification('Game "' + game + '" deleted');
         } catch (err) {
-            alert('Error deleting game: ' + (err.message || err));
+            showNotification('Error deleting game: ' + (err.message || err));
         }
     }, 'Delete');
 }
@@ -65,7 +65,7 @@ export function deleteEntryById(id) {
             saveData();
             showNotification('Entry deleted');
         } catch (err) {
-            alert('Error deleting entry: ' + (err.message || err));
+            showNotification('Error deleting entry: ' + (err.message || err));
         }
     }, 'Delete');
 }
