@@ -146,6 +146,7 @@ function _updateAdminControls(email, onAdminActivated) {
             showAdminPassphraseModal(
                 () => {
                     if (onAdminActivated) onAdminActivated();
+                    window.location.href = 'admin.html';
                 },
                 null
             );

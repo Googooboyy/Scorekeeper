@@ -296,8 +296,16 @@ document.addEventListener('DOMContentLoaded', async function () {
                 renderAll();
             }).catch(() => {});
         }
-        const wantDashboard = !!sess || (typeof location !== 'undefined' && location.hash === '#dashboard');
-        showSection(wantDashboard ? 'dashboard' : 'about');
+        const hash = (typeof location !== 'undefined' && location.hash) ? location.hash : '';
+        let initialSection = 'about';
+        if (hash === '#dashboard') initialSection = 'dashboard';
+        else if (hash === '#add') initialSection = 'add';
+        else if (hash === '#history') initialSection = 'history';
+        else if (hash === '#data') initialSection = 'data';
+        else if (hash && !['#about', '#dashboard', '#add', '#history', '#data'].includes(hash)) {
+            initialSection = 'not-found';
+        }
+        showSection(initialSection);
     } else {
         data.currentUserId = null;
         updateAdminUI(null);
@@ -311,9 +319,19 @@ document.addEventListener('DOMContentLoaded', async function () {
             showSection('dashboard');
         } else {
             syncReadOnlyBanner(false, false, hasInviteToken());
-            if (typeof location !== 'undefined' && location.hash === '#dashboard') {
-                showSection('dashboard');
+            const hash = (typeof location !== 'undefined' && location.hash) ? location.hash : '';
+            let initialSection = 'about';
+            if (hash === '#dashboard') initialSection = 'dashboard';
+            else if (hash === '#add') initialSection = 'add';
+            else if (hash === '#history') initialSection = 'history';
+            else if (hash === '#data') initialSection = 'data';
+            else if (hash && !['#about', '#dashboard', '#add', '#history', '#data'].includes(hash)) {
+                initialSection = 'not-found';
             }
+            if (initialSection === 'dashboard' && !getActivePlaygroup() && !viewingViaInvite) {
+                initialSection = 'about';
+            }
+            showSection(initialSection);
         }
     }
 });

@@ -1078,6 +1078,41 @@ html { overflow-x: hidden; }
     margin-bottom: 20px;
 }
 
+/* 404 / Not-found section */
+.section-404,
+.not-found-hero {
+    text-align: center;
+    padding: 56px 20px 40px;
+    position: relative;
+    overflow: hidden;
+}
+.not-found-inner {
+    position: relative;
+    z-index: 1;
+    max-width: 520px;
+    margin: 0 auto;
+}
+.not-found-icon {
+    font-size: 3rem;
+    margin-bottom: 12px;
+}
+.not-found-title {
+    font-size: 1.6rem;
+    margin-bottom: 10px;
+}
+.not-found-copy {
+    font-size: 0.98rem;
+    color: var(--text-secondary);
+    max-width: 420px;
+    margin: 0 auto 22px;
+}
+.not-found-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+}
+
 @media (max-width: 640px) {
     .nav-tab-about { border-right: none; margin-right: 0; padding: 10px 6px; font-size: 0.72rem; }
     .nav-tab-data  { border-left: none;  margin-left: 0;  padding: 10px 6px; font-size: 0.72rem; }

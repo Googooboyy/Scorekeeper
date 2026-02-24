@@ -100,11 +100,26 @@ export function showSection(sectionName) {
     // Clear any special UI modes when switching sections
     document.body.classList.remove('tally-add-game-mode');
 
+    let targetId = sectionName;
+    // Fallback to in-app 404 section if an unknown section is requested
+    if (!document.getElementById(targetId)) {
+        targetId = 'not-found';
+    }
+
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-    document.getElementById(sectionName).classList.add('active');
-    document.querySelector('[data-section="' + sectionName + '"]').classList.add('active');
-    if (sectionName === 'add') resetEntryFlow();
+
+    const targetSection = document.getElementById(targetId);
+    if (targetSection) {
+        targetSection.classList.add('active');
+    }
+
+    const targetTab = document.querySelector('[data-section="' + targetId + '"]');
+    if (targetTab) {
+        targetTab.classList.add('active');
+    }
+
+    if (targetId === 'add') resetEntryFlow();
 }
 
 export function setupEventListeners() {
