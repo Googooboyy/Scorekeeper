@@ -68,7 +68,13 @@ async function loadGuestCampaignByInvite(token) {
         if (!res?.playgroup_id) return null;
         await loadData(res.playgroup_id);
         return res.playgroup_name || null;
-    } catch {
+    } catch (err) {
+        const is404 = (typeof err?.status === 'number' && err.status === 404) || (err?.message && String(err.message).includes('Could not find'));
+        if (is404) {
+            showNotification('Invite link could not be loaded. The server may need the "resolve_invite_token" database function — run migration 021.');
+        } else {
+            showNotification('This invite link couldn\'t be loaded. It may be invalid or expired.');
+        }
         return null;
     }
 }
@@ -302,11 +308,12 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (viewingViaInvite) {
             const guestPgName = await loadGuestCampaignByInvite(token);
             syncReadOnlyBanner(false, false, true, guestPgName, true);
+            showSection('dashboard');
         } else {
             syncReadOnlyBanner(false, false, hasInviteToken());
-        }
-        if (typeof location !== 'undefined' && location.hash === '#dashboard') {
-            showSection('dashboard');
+            if (typeof location !== 'undefined' && location.hash === '#dashboard') {
+                showSection('dashboard');
+            }
         }
     }
 });

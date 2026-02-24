@@ -14,7 +14,7 @@ function _toast(message) {
 }
 
 const LOGGED_OUT_BANNER_TEXT = 'Log in to add wins, players and games!';
-const SELECT_PLAYGROUP_BANNER_HTML = 'Track <span class="strikethrough">victories</span> bragging rights! Select a campaign to add wins, players and games!';
+const SELECT_PLAYGROUP_BANNER_HTML = 'Select a campaign to add wins, players and games!';
 
 export function setupAuthButtons() {
     const loginBtn = document.getElementById('loginBtn');

@@ -1,5 +1,8 @@
 -- Invite overhaul: one token per campaign, no expiry/limits, same link for guest view and join.
 -- Removes share as separate concept; invite link serves both. Old tokens are removed.
+--
+-- REQUIRED for invite links: creates resolve_invite_token() used by anon. If this migration
+-- is not applied, opening an invite URL returns 404 and guests cannot view the leaderboard.
 
 -- 1. Remove all existing invite tokens (full migration)
 DELETE FROM invite_tokens;

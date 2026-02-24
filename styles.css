@@ -892,7 +892,7 @@ html { overflow-x: hidden; }
     margin-bottom: 16px;
 }
 .about-hero-logo img {
-    width: 350px;
+    width: 399px; /* 350px + 14% */
     max-width: 100%;
     height: auto;
     display: block;
