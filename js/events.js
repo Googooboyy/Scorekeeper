@@ -513,7 +513,7 @@ async function addNewGame() {
     }
 }
 
-function showNewPlayerInput() {
+export function showNewPlayerInput() {
     document.getElementById('newPlayerInput').classList.add('active');
     document.getElementById('newPlayerName').focus();
 }

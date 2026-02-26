@@ -1,6 +1,6 @@
 import { setRenderCallback, loadData, resetData, data } from './data.js';
-import { renderAll, toggleVictoryRoster } from './render.js';
-import { setupEventListeners, showSection } from './events.js';
+import { renderAll, toggleVictoryRoster, nextStep } from './render.js';
+import { setupEventListeners, showSection, showNewPlayerInput } from './events.js';
 import { onAuthStateChange, getSession, getInviteTokenFromStorage, saveInviteTokenToStorage, clearInviteTokenFromStorage, getInviteIntentFromStorage, clearInviteIntent, setInviteIntentToJoin, signInWithOAuth } from './auth.js';
 
 function hasInviteToken() {
@@ -120,6 +120,11 @@ document.addEventListener('DOMContentLoaded', async function () {
     setupAuthButtons();
     setRenderCallback(renderAll);
     setupEventListeners();
+    if (typeof window !== 'undefined') {
+        window._scorekeeperShowSection = showSection;
+        window._scorekeeperNextStep = nextStep;
+        window._scorekeeperShowNewPlayerInput = showNewPlayerInput;
+    }
     loadAnnouncement();
     loadBetaLimits();
 

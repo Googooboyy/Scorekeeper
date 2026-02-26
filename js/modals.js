@@ -802,14 +802,11 @@ export function openScoreTabulator(preselectGame = null) {
         scores: []        // [roundIndex][participantIndex]
     };
 
-    // Populate game dropdown and show empty state when no games
-    const gameSelect = document.getElementById('tallyGameSelect');
+    // Populate game selection grid (image-based, like Add a Win) and show empty state when no games
     const gameSelectWrap = document.getElementById('tallyGameSelectWrap');
     const gameEmptyState = document.getElementById('tallyGameEmptyState');
     const games = data.games || [];
-    gameSelect.innerHTML = '<option value="">Select a game…</option>' +
-        games.map(g => '<option value="' + escapeHtml(g) + '">' + escapeHtml(g) + '</option>').join('');
-    gameSelect.value = preselectGame && games.includes(preselectGame) ? preselectGame : '';
+    _renderTallyGameSelection(preselectGame);
 
     if (games.length === 0) {
         if (gameSelectWrap) gameSelectWrap.hidden = true;
@@ -840,8 +837,14 @@ export function openScoreTabulator(preselectGame = null) {
     // ── Event handlers ──
     const onClose = () => closeScoreTabulator();
 
-    const onGameChange = () => {
-        _tallyState.game = gameSelect.value || null;
+    const onGameSelectClick = (e) => {
+        const item = e.target.closest('.selection-item-game');
+        if (!item) return;
+        const game = item.getAttribute('data-game');
+        if (!game) return;
+        _tallyState.game = game;
+        document.querySelectorAll('#tallyGameSelection .selection-item-game').forEach(el => el.classList.remove('selected'));
+        item.classList.add('selected');
         _updateTallyStartBtn();
     };
 
@@ -929,9 +932,10 @@ export function openScoreTabulator(preselectGame = null) {
     const backToScoresBtn   = document.getElementById('tallyBackToScoresBtn');
     const saveWinBtn        = document.getElementById('tallySaveWinBtn');
 
+    const gameSelectionEl = document.getElementById('tallyGameSelection');
     closeBtn.addEventListener('click', onClose);
     cancelBtn.addEventListener('click', onClose);
-    gameSelect.addEventListener('change', onGameChange);
+    if (gameSelectionEl) gameSelectionEl.addEventListener('click', onGameSelectClick);
     if (addFirstGameBtn) addFirstGameBtn.addEventListener('click', onAddFirstGame);
     if (addNewGameBtn) addNewGameBtn.addEventListener('click', onAddFirstGame);
     addTempBtn.addEventListener('click', onAddTemp);
@@ -949,7 +953,7 @@ export function openScoreTabulator(preselectGame = null) {
     _tallyCleanup = () => {
         closeBtn.removeEventListener('click', onClose);
         cancelBtn.removeEventListener('click', onClose);
-        gameSelect.removeEventListener('change', onGameChange);
+        if (gameSelectionEl) gameSelectionEl.removeEventListener('click', onGameSelectClick);
         if (addFirstGameBtn) addFirstGameBtn.removeEventListener('click', onAddFirstGame);
         if (addNewGameBtn) addNewGameBtn.removeEventListener('click', onAddFirstGame);
         addTempBtn.removeEventListener('click', onAddTemp);
@@ -981,13 +985,81 @@ function _tallyShowStage(n) {
     document.getElementById('tallyStage' + n).classList.add('active');
 }
 
+function _renderTallyGameSelection(preselectGame) {
+    const container = document.getElementById('tallyGameSelection');
+    if (!container || !_tallyState) return;
+    const addBtn = container.querySelector('.add-new-btn');
+    container.innerHTML = '';
+    if (addBtn) container.appendChild(addBtn);
+
+    const games = data.games || [];
+    const selectedGame = preselectGame && games.includes(preselectGame) ? preselectGame : _tallyState.game;
+
+    // Sort by last played (most recent first), then by name
+    const gameLastPlayed = {};
+    (data.entries || []).forEach(e => {
+        const d = e.date ? new Date(e.date).getTime() : 0;
+        if (!gameLastPlayed[e.game] || gameLastPlayed[e.game] < d) gameLastPlayed[e.game] = d;
+    });
+    const sortedGames = [...games].sort((a, b) => {
+        const da = gameLastPlayed[a] || 0;
+        const db = gameLastPlayed[b] || 0;
+        if (db !== da) return db - da;
+        return a.localeCompare(b);
+    });
+
+    sortedGames.forEach(game => {
+        const gameImage = data.gameData && data.gameData[game] && data.gameData[game].image;
+        const div = document.createElement('div');
+        div.className = 'selection-item selection-item-game' + (game === selectedGame ? ' selected' : '');
+        div.setAttribute('data-game', game);
+        if (gameImage) {
+            const img = document.createElement('img');
+            img.src = gameImage;
+            img.alt = game;
+            img.className = 'selection-item-game-img';
+            img.onerror = function () {
+                this.style.display = 'none';
+                const fallback = div.querySelector('.selection-item-game-fallback');
+                if (fallback) fallback.style.display = 'flex';
+            };
+            div.appendChild(img);
+            const fallback = document.createElement('span');
+            fallback.className = 'selection-item-game-fallback';
+            fallback.style.display = 'none';
+            fallback.textContent = game;
+            div.appendChild(fallback);
+        } else {
+            const fallback = document.createElement('span');
+            fallback.className = 'selection-item-game-fallback';
+            fallback.textContent = game;
+            div.appendChild(fallback);
+        }
+        container.appendChild(div);
+    });
+
+    if (selectedGame && games.includes(selectedGame)) {
+        _tallyState.game = selectedGame;
+    }
+}
+
 function _renderTallyChips() {
     const container = document.getElementById('tallyMeepleChips');
     if (!_tallyState) return;
-    container.innerHTML = (data.players || []).map(p => {
+    const players = data.players || [];
+    let html = '';
+    players.forEach(p => {
         const sel = _tallyState.participants.some(x => x.name === p && !x.isTemp);
-        return '<button class="tally-chip' + (sel ? ' selected' : '') + '" data-name="' + escapeHtml(p) + '" type="button">' + escapeHtml(p) + '</button>';
-    }).join('');
+        const playerData = data.playerData && data.playerData[p] ? data.playerData[p] : {};
+        const image = playerData.image || null;
+        const imgHtml = image
+            ? '<img src="' + escapeHtml(image) + '" alt="' + escapeHtml(p) + '" class="selection-item-meeple-img" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';"><div class="selection-item-meeple-placeholder" style="display:none;">👤</div>'
+            : '<div class="selection-item-meeple-placeholder">👤</div>';
+        html += '<button class="selection-item selection-item-meeple tally-chip' + (sel ? ' selected' : '') + '" data-name="' + escapeHtml(p) + '" type="button">' +
+            '<div class="selection-item-meeple-img-wrap">' + imgHtml + '</div>' +
+            '<span class="selection-item-meeple-name">' + escapeHtml(p) + '</span></button>';
+    });
+    container.innerHTML = html;
 
     container.querySelectorAll('.tally-chip').forEach(btn => {
         btn.addEventListener('click', () => {

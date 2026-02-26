@@ -68,14 +68,14 @@
 
         <nav class="nav-tabs">
             <button class="nav-tab nav-tab-about active" data-section="about" title="About The Scorekeeper">About</button>
-            <button class="nav-tab" data-section="dashboard">Dashboard</button>
+            <button class="nav-tab" data-section="dashboard">Leaderboard</button>
             <button class="nav-tab" data-section="add">Add a Game Win</button>
             <button class="nav-tab nav-tab-tally" id="tallyLaunchBtn" type="button">Tally Scores</button>
             <button class="nav-tab" data-section="history">History</button>
             <button class="nav-tab nav-tab-data" data-section="data">Data</button>
         </nav>
 
-        <!-- Dashboard Section -->
+        <!-- Leaderboard Section -->
         <section id="dashboard" class="section">
             <div class="dashboard-ambient">
                 <div class="about-stars" aria-hidden="true">
@@ -161,9 +161,8 @@
                         <h2>Select Winner</h2>
                         <p>Who won this game?</p>
                     </div>
-                    <div id="playerSelection" class="selection-grid"></div>
-                    <div class="selection-item add-new-btn" id="showNewPlayerBtn">
-                        + Add New Meeple
+                    <div id="playerSelection" class="selection-grid selection-grid-meeple">
+                        <div class="selection-item add-new-btn" id="showNewPlayerBtn">+ Add Meeple</div>
                     </div>
                     <div id="newPlayerInput" class="new-item-input">
                         <input type="text" id="newPlayerName" class="input-field" placeholder="Enter meeple name...">
@@ -287,7 +286,7 @@
                     <div class="about-step">
                         <div class="about-step-icon">👑</div>
                         <h4>See Who Rules</h4>
-                        <p>The Dashboard ranks every meeple by wins and breaks down which games they've dominated. Glory awaits.</p>
+                        <p>The Leaderboard ranks every meeple by wins and breaks down which games they've dominated. Glory awaits.</p>
                     </div>
                 </div>
             </div>
@@ -484,7 +483,7 @@
                     <div class="footer-col">
                         <h4>Product</h4>
                         <a href="#" data-section="about">About</a>
-                        <a href="#" data-section="dashboard">Dashboard</a>
+                        <a href="#" data-section="dashboard">Leaderboard</a>
                         <a href="#" data-section="add">Add a Win</a>
                         <a href="#" data-section="history">History</a>
                         <a href="#" data-section="data">Data Management</a>
@@ -784,10 +783,9 @@
                 <div class="tally-field tally-field-game">
                     <label class="tally-label">Game</label>
                     <div id="tallyGameSelectWrap" class="tally-game-select-wrap">
-                        <select id="tallyGameSelect" class="input-field tally-select">
-                            <option value="">Select a game…</option>
-                        </select>
-                        <button type="button" class="tally-add-new-game-link" id="tallyAddNewGameBtn">+ Add new game</button>
+                        <div id="tallyGameSelection" class="selection-grid selection-grid-add-game tally-game-grid">
+                            <div class="selection-item add-new-btn" id="tallyAddNewGameBtn">+ Add new game</div>
+                        </div>
                     </div>
                     <div id="tallyGameEmptyState" class="tally-empty-state" hidden>
                         <p class="tally-empty-state-text">You don't have any games yet. Add your first game to start tallying scores.</p>
@@ -796,7 +794,7 @@
                 </div>
                 <div class="tally-field">
                     <label class="tally-label">Who's playing? <span class="tally-label-hint">(pick 2 or more)</span></label>
-                    <div id="tallyMeepleChips" class="tally-chips"></div>
+                    <div id="tallyMeepleChips" class="selection-grid selection-grid-meeple tally-meeple-grid"></div>
                     <div class="tally-temp-add">
                         <input type="text" id="tallyTempName" class="input-field" placeholder="Add guest meeple…">
                         <button class="btn btn-secondary tally-add-temp-btn" id="tallyAddTempBtn" type="button">+ Add</button>

@@ -429,22 +429,38 @@ export function renderGameSelection() {
 
 export function renderPlayerSelection() {
     const container = document.getElementById('playerSelection');
+    const addBtn = container.querySelector('.add-new-btn');
+    container.innerHTML = '';
+    if (addBtn) container.appendChild(addBtn);
+
     if (data.players.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-muted); text-align: center; grid-column: 1/-1;">No players yet. Add your first player below.</p>';
+        const p = document.createElement('p');
+        p.style.cssText = 'color: var(--text-muted); text-align: center; grid-column: 1/-1;';
+        p.textContent = 'No players yet. Add your first player above.';
+        container.appendChild(p);
         return;
     }
 
     const sortedPlayers = [...data.players].sort((a, b) => a.localeCompare(b));
 
-    container.innerHTML = sortedPlayers.map(player => {
+    sortedPlayers.forEach(player => {
+        const playerData = data.playerData && data.playerData[player] ? data.playerData[player] : {};
+        const image = playerData.image || null;
         const selectedClass = currentEntry.player === player ? 'selected' : '';
-        return '<div class="selection-item ' + selectedClass + '" data-player="' + escapeHtml(player) + '">' + escapeHtml(player) + '</div>';
-    }).join('');
-
-    container.querySelectorAll('.selection-item').forEach(item => {
-        item.addEventListener('click', function () {
+        const div = document.createElement('div');
+        div.className = 'selection-item selection-item-meeple ' + selectedClass;
+        div.setAttribute('data-player', player);
+        div.innerHTML =
+            '<div class="selection-item-meeple-img-wrap">' +
+            (image
+                ? '<img src="' + escapeHtml(image) + '" alt="' + escapeHtml(player) + '" class="selection-item-meeple-img" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';"><div class="selection-item-meeple-placeholder" style="display:none;">👤</div>'
+                : '<div class="selection-item-meeple-placeholder">👤</div>') +
+            '</div>' +
+            '<span class="selection-item-meeple-name">' + escapeHtml(player) + '</span>';
+        div.addEventListener('click', function () {
             selectPlayer(this.getAttribute('data-player'));
         });
+        container.appendChild(div);
     });
 }
 
