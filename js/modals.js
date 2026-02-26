@@ -904,7 +904,6 @@ export function openScoreTabulator(preselectGame = null) {
     };
 
     const onRoundCustomKey = (e) => { if (e.key === 'Enter') onRoundConfirm(); };
-    const onRoundCancel    = () => { customWrap.hidden = true; customInput.value = ''; };
 
     // ── Stage 3 (confirm date & save) ─────────────────────────────────────────
     const onBackToScores = () => {
@@ -927,7 +926,6 @@ export function openScoreTabulator(preselectGame = null) {
     const backBtn           = document.getElementById('tallyBackBtn');
     const roundOptContainer = document.getElementById('tallyRoundPicker');
     const roundConfirmBtn   = document.getElementById('tallyRoundConfirmBtn');
-    const roundCancelBtn    = document.getElementById('tallyRoundCancelBtn');
     const recordBtn         = document.getElementById('tallyRecordBtn');
     const backToScoresBtn   = document.getElementById('tallyBackToScoresBtn');
     const saveWinBtn        = document.getElementById('tallySaveWinBtn');
@@ -945,7 +943,6 @@ export function openScoreTabulator(preselectGame = null) {
     roundOptContainer.addEventListener('click', onRoundOptClick);
     roundConfirmBtn.addEventListener('click', onRoundConfirm);
     customInput.addEventListener('keypress', onRoundCustomKey);
-    roundCancelBtn.addEventListener('click', onRoundCancel);
     recordBtn.addEventListener('click', onRecord);
     backToScoresBtn.addEventListener('click', onBackToScores);
     saveWinBtn.addEventListener('click', onSaveWin);
@@ -963,7 +960,6 @@ export function openScoreTabulator(preselectGame = null) {
         roundOptContainer.removeEventListener('click', onRoundOptClick);
         roundConfirmBtn.removeEventListener('click', onRoundConfirm);
         customInput.removeEventListener('keypress', onRoundCustomKey);
-        roundCancelBtn.removeEventListener('click', onRoundCancel);
         recordBtn.removeEventListener('click', onRecord);
         backToScoresBtn.removeEventListener('click', onBackToScores);
         saveWinBtn.removeEventListener('click', onSaveWin);
@@ -1146,7 +1142,7 @@ function _renderScoreTableBody() {
     const body = document.getElementById('scoreTableBody');
     body.innerHTML = _tallyState.scores.map((row, ri) =>
         '<tr>' +
-        '<td class="score-td-round"><input class="score-round-name" type="text" data-ri="' + ri + '" value="' + escapeHtml(_tallyState.roundNames[ri] || ('Rnd ' + (ri + 1))) + '" maxlength="18" placeholder="Rnd ' + (ri + 1) + '"></td>' +
+        '<td class="score-td-round"><span class="score-round-cell"><input class="score-round-name" type="text" data-ri="' + ri + '" value="' + escapeHtml(_tallyState.roundNames[ri] || ('Rnd ' + (ri + 1))) + '" maxlength="18" placeholder="Rnd ' + (ri + 1) + '"><button class="score-round-remove" data-ri="' + ri + '" type="button" aria-label="Remove row">×</button></span></td>' +
         row.map((val, ci) =>
             '<td class="score-td"><input type="number" class="score-input" data-ri="' + ri + '" data-ci="' + ci + '" value="' + (val !== null ? val : '') + '" placeholder="0" inputmode="decimal"></td>'
         ).join('') + '</tr>'
@@ -1177,6 +1173,16 @@ function _renderScoreTableBody() {
             _tallyState.roundNames[parseInt(input.dataset.ri)] = input.value;
         });
     });
+
+    body.querySelectorAll('.score-round-remove').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const ri = parseInt(btn.dataset.ri);
+            _tallyState.roundNames.splice(ri, 1);
+            _tallyState.scores.splice(ri, 1);
+            _renderScoreTableBody();
+            _updateTotals();
+        });
+    });
 }
 
 function _updateTotals() {
@@ -1204,7 +1210,7 @@ function _updateWinnerBar(winnerIdxs, totals, maxTotal) {
 
     if (!maxTotal) {
         bar.innerHTML = '';
-        recordBtn.textContent = 'Record This Win 🎉';
+        recordBtn.textContent = 'Review win and set date';
         recordBtn.disabled = false;
         return;
     }
@@ -1227,7 +1233,7 @@ function _updateWinnerBar(winnerIdxs, totals, maxTotal) {
             html += '<div class="tally-temp-warning">⚠️ <strong>' + escapeHtml(p.name) + '</strong> is a guest meeple. Tap below to add them to your campaign and record the win.</div>';
             recordBtn.textContent = 'Add to Campaign & Record 🎉';
         } else {
-            recordBtn.textContent = 'Record This Win 🎉';
+            recordBtn.textContent = 'Review win and set date';
         }
         recordBtn.disabled = false;
     }
@@ -1301,7 +1307,7 @@ async function _tallyRecordWin() {
         document.getElementById('tallyTitle').textContent = '🎉 Winner!';
         document.getElementById('tallySubtitle').textContent = 'Confirm and save the win';
         recordBtn.disabled = false;
-        recordBtn.textContent = 'Record This Win 🎉';
+        recordBtn.textContent = 'Review win and set date';
         _tallyShowStage(3);
     }, 1400);
 }

@@ -1901,6 +1901,15 @@ html { overflow-x: hidden; }
     padding: 2px 3px; outline: none; cursor: text; transition: border-color 0.2s, color 0.2s;
 }
 .score-round-name:focus { border-bottom-color: var(--accent-gold); color: var(--text-primary); }
+.score-round-cell {
+    display: inline-flex; align-items: center; gap: 4px;
+}
+.score-round-remove {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: 1rem; padding: 0; line-height: 1;
+    opacity: 0.6; flex-shrink: 0;
+}
+.score-round-remove:hover { opacity: 1; color: var(--accent-warning); }
 .score-td { border-top: 1px solid rgba(255,255,255,0.04); }
 .score-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
 .score-input {
