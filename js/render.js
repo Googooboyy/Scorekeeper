@@ -3,12 +3,10 @@ import {
     currentEntry,
     showAllGames,
     showAllHistory,
-    showAllPlayers,
     showAllGamesInAdd,
     uiState,
     toggleShowAllGames,
     toggleShowAllHistory,
-    toggleShowAllPlayers,
     toggleShowAllGamesInAdd,
     escapeHtml,
     formatDate
@@ -108,9 +106,8 @@ export function toggleVictoryRoster(player) {
 
 export function renderPlayers() {
     const container = document.getElementById('playersContainer');
+    if (!container) return;
     const toggleBtn = document.getElementById('playersToggleBtn');
-    const toggleText = document.getElementById('playersToggleText');
-    const toggleIcon = document.getElementById('playersToggleIcon');
 
     if (data.players.length === 0) {
         if (!data.currentUserId) {
@@ -156,22 +153,7 @@ export function renderPlayers() {
         };
     }).sort((a, b) => b.wins - a.wins);
 
-    const totalPlayers = playerStats.length;
-    const hasMorePlayers = totalPlayers > 4;
-
-    if (toggleBtn) toggleBtn.style.display = hasMorePlayers ? 'flex' : 'none';
-
-    if (showAllPlayers) {
-        if (toggleText) toggleText.textContent = 'Less';
-        if (toggleIcon) toggleIcon.classList.add('expanded');
-    } else {
-        if (toggleText) toggleText.textContent = 'More';
-        if (toggleIcon) toggleIcon.classList.remove('expanded');
-    }
-
-    if (!showAllPlayers && hasMorePlayers) {
-        playerStats = playerStats.slice(0, 4);
-    }
+    if (toggleBtn) toggleBtn.style.display = 'none';
 
     const currentUserId = data.currentUserId;
     container.innerHTML = playerStats.map((stat, index) => {
