@@ -70,6 +70,7 @@
             <button class="nav-tab nav-tab-about active" data-section="about" title="About The Scorekeeper">About</button>
             <button class="nav-tab" data-section="dashboard">Dashboard</button>
             <button class="nav-tab" data-section="add">Add a Game Win</button>
+            <button class="nav-tab nav-tab-tally" id="tallyLaunchBtn" type="button">Tally Scores</button>
             <button class="nav-tab" data-section="history">History</button>
             <button class="nav-tab nav-tab-data" data-section="data">Data</button>
         </nav>
@@ -88,7 +89,6 @@
                     <span class="about-star about-star--secondary" style="top:70%;left:60%;--d:2.4s;--delay:1.3s"></span>
                 </div>
                 <div class="dashboard-ambient-inner">
-                    <div class="gold-divider"></div>
                     <div class="games-section-header">
                         <button class="games-toggle-btn" id="playersToggleBtn" style="display: none;">
                             <span id="playersToggleText">Show All</span>
@@ -103,6 +103,7 @@
                 <button type="button" class="celebration-pill" id="celebrationConfettiBtn" title="Confetti from above">🎊 Confetti</button>
                 <button type="button" class="celebration-pill" id="celebrationShakeBtn" title="Screen tremor">📳 Shake</button>
                 <button type="button" class="celebration-pill" id="celebrationTrumpetBtn" title="Victory fanfare">🎺 Fanfare</button>
+                <button type="button" class="celebration-pill" id="celebrationRollQuotesBtn" title="Randomise quotes on all cards">🎲 Roll Quotes</button>
             </div>
 
             <div class="gold-divider"></div>
@@ -126,14 +127,8 @@
                         <h2>Select Game</h2>
                         <p>Choose the board game that was played</p>
                     </div>
-                    <div id="gameSelection" class="selection-grid">
-                        <!-- "+ Add New Game" moved inside grid -->
-                        <div class="selection-item add-new-btn" id="showNewGameBtn">
-                            + Add New Game
-                        </div>
-                        <div class="selection-item tally-grid-btn" id="tallyLaunchBtn" role="button" tabindex="0">
-                            🏆 Tally Scores
-                        </div>
+                    <div id="gameSelection" class="selection-grid selection-grid-add-game">
+                        <div class="selection-item add-new-btn" id="showNewGameBtn">+ Add New Game</div>
                     </div>
                     <div id="newGameInput" class="new-item-input">
                         <div style="position:relative;">

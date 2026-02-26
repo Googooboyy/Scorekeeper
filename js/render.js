@@ -4,10 +4,12 @@ import {
     showAllGames,
     showAllHistory,
     showAllPlayers,
+    showAllGamesInAdd,
     uiState,
     toggleShowAllGames,
     toggleShowAllHistory,
     toggleShowAllPlayers,
+    toggleShowAllGamesInAdd,
     escapeHtml,
     formatDate
 } from './data.js';
@@ -30,6 +32,27 @@ function getLeaderboardQuotes() {
 function pickRandomQuote() {
     const quotes = getLeaderboardQuotes();
     return quotes[Math.floor(Math.random() * quotes.length)];
+}
+
+/** Update quotes on all player cards in a wave, one card at a time. */
+export function rollQuotesWave() {
+    const container = document.getElementById('playersContainer');
+    if (!container) return;
+    const cards = container.querySelectorAll('.player-card');
+    const staggerMs = 120;
+    cards.forEach((card, index) => {
+        const quoteEl = card.querySelector('.player-card-quote');
+        if (!quoteEl) return;
+        const player = card.getAttribute('data-player');
+        const pd = player && data.playerData && data.playerData[player] ? data.playerData[player] : {};
+        const isMyAccount = !!(data.currentUserId && pd.userId && pd.userId === data.currentUserId);
+        if (isMyAccount && data.currentUserFavouriteQuote) return;
+        setTimeout(() => {
+            quoteEl.textContent = pickRandomQuote();
+            quoteEl.classList.add('quote-just-updated');
+            setTimeout(() => quoteEl.classList.remove('quote-just-updated'), 320);
+        }, index * staggerMs);
+    });
 }
 
 export function renderAll() {
@@ -167,27 +190,21 @@ export function renderPlayers() {
         const imageHtml = stat.image ?
             '<div class="player-card-image-container">' + crownHtml + '<img src="' + escapeHtml(stat.image) + '" alt="' + escapeHtml(stat.player) + '" class="player-card-image" onerror="this.style.display=\'none\'; this.parentElement.querySelector(\'.player-card-image-placeholder\').style.display=\'flex\';"><div class="player-card-image-placeholder" style="display: none;">👤</div></div>' :
             '<div class="player-card-image-container">' + crownHtml + '<div class="player-card-image-placeholder">👤</div></div>';
-        const colorIndicator = stat.color ? '<span class="player-color-indicator" style="background: ' + stat.color + ';"></span>' : '';
+        const displayQuote = (currentUserId && stat.userId === currentUserId && data.currentUserFavouriteQuote)
+            ? data.currentUserFavouriteQuote
+            : pickRandomQuote();
 
         return '<div class="player-card' + hasPlayerColorClass + linkedClass + '" data-player="' + escapeHtml(stat.player) + '" style="' + playerCardStyle + '">' +
             '<div class="player-header">' +
             '<div class="player-info-section player-profile-trigger" data-player="' + escapeHtml(stat.player) + '" title="View profile" style="cursor:pointer;">' + imageHtml +
             '<div class="player-name-section">' +
-            '<div class="player-name">' + escapeHtml(stat.player) + colorIndicator + youBadge + meepleUnclaimedBadge + '</div>' +
-            '<div class="win-label">Rank #' + (index + 1) + ' <span class="player-profile-hint"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span></div>' +
+            '<div class="player-name">' + escapeHtml(stat.player) + youBadge + meepleUnclaimedBadge + '</div>' +
+            '<div class="player-card-quote">' + escapeHtml(displayQuote) + '</div>' +
             '</div>' +
-            '</div>' +
-            '<div class="win-count-section">' +
-            '<div class="win-count">' + stat.wins + '</div>' +
-            '<div class="win-label">Wins</div>' +
             '</div>' +
             '</div>' +
             '<div class="victory-roster-header" onclick="window.toggleVictoryRoster(\'' + escapeHtml(stat.player).replace(/'/g, "\\'") + '\')">' +
-            '<div class="victory-roster-title" style="text-transform: none;">' + escapeHtml(
-                (currentUserId && stat.userId === currentUserId && data.currentUserFavouriteQuote)
-                    ? data.currentUserFavouriteQuote
-                    : pickRandomQuote()
-            ) + '</div>' +
+            '<div class="victory-roster-wins">' + stat.wins + ' Games Won</div>' +
             '<div class="victory-roster-toggle-group">' +
             '<span class="victory-roster-label">more</span>' +
             '<span class="victory-roster-toggle" id="toggle-' + escapeHtml(stat.player) + '">▼</span>' +
@@ -349,28 +366,83 @@ export function togglePlayersDisplay() {
 
 export function renderGameSelection() {
     const container = document.getElementById('gameSelection');
-    const addBtn   = container.querySelector('.add-new-btn');
-    const tallyBtn = container.querySelector('.tally-grid-btn');
+    const addBtn = container.querySelector('.add-new-btn');
     container.innerHTML = '';
     container.appendChild(addBtn);
-    if (tallyBtn) container.appendChild(tallyBtn);
 
     if (data.games.length === 0) {
         return;
     }
 
-    const sortedGames = [...data.games].sort((a, b) => a.localeCompare(b));
+    // Sort games by last played (most recent first), then by name for ties
+    const gameLastPlayed = {};
+    data.entries.forEach(e => {
+        const d = e.date ? new Date(e.date).getTime() : 0;
+        if (!gameLastPlayed[e.game] || gameLastPlayed[e.game] < d) gameLastPlayed[e.game] = d;
+    });
+    const sortedGames = [...data.games].sort((a, b) => {
+        const da = gameLastPlayed[a] || 0;
+        const db = gameLastPlayed[b] || 0;
+        if (db !== da) return db - da;
+        return a.localeCompare(b);
+    });
 
-    sortedGames.forEach(game => {
+    const showAll = showAllGamesInAdd;
+    const hasMoreThanFive = sortedGames.length > 5;
+    const gamesToShow = (showAll || !hasMoreThanFive) ? sortedGames : sortedGames.slice(0, 5);
+
+    gamesToShow.forEach(game => {
+        const gameImage = data.gameData && data.gameData[game] && data.gameData[game].image;
         const div = document.createElement('div');
-        div.className = 'selection-item' + (currentEntry.game === game ? ' selected' : '');
+        div.className = 'selection-item selection-item-game' + (currentEntry.game === game ? ' selected' : '');
         div.setAttribute('data-game', game);
-        div.textContent = game;
+        if (gameImage) {
+            const img = document.createElement('img');
+            img.src = gameImage;
+            img.alt = game;
+            img.className = 'selection-item-game-img';
+            img.onerror = function () {
+                this.style.display = 'none';
+                const fallback = div.querySelector('.selection-item-game-fallback');
+                if (fallback) fallback.style.display = 'flex';
+            };
+            div.appendChild(img);
+            const fallback = document.createElement('span');
+            fallback.className = 'selection-item-game-fallback';
+            fallback.style.display = 'none';
+            fallback.textContent = game;
+            div.appendChild(fallback);
+        } else {
+            const fallback = document.createElement('span');
+            fallback.className = 'selection-item-game-fallback';
+            fallback.textContent = game;
+            div.appendChild(fallback);
+        }
         div.addEventListener('click', function () {
             selectGame(this.getAttribute('data-game'));
         });
         container.appendChild(div);
     });
+
+    if (hasMoreThanFive) {
+        const showAllCard = document.createElement('div');
+        showAllCard.className = 'selection-item selection-item-show-all';
+        showAllCard.setAttribute('role', 'button');
+        showAllCard.setAttribute('tabindex', '0');
+        showAllCard.textContent = showAll ? 'Show less' : 'Show all';
+        showAllCard.addEventListener('click', function () {
+            toggleShowAllGamesInAdd();
+            renderGameSelection();
+        });
+        showAllCard.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleShowAllGamesInAdd();
+                renderGameSelection();
+            }
+        });
+        container.appendChild(showAllCard);
+    }
 }
 
 export function renderPlayerSelection() {

@@ -5,9 +5,23 @@ import { isAdminMode } from './admin.js';
 let activePlaygroup = null;
 let playgroups = [];
 let onPlaygroupChangeCallback = null;
+const LAST_CAMPAIGN_KEY = 'scorekeeper_last_campaign_id';
 
 export function getActivePlaygroup() {
     return activePlaygroup;
+}
+
+function saveLastCampaignId(id) {
+    try {
+        if (id) localStorage.setItem(LAST_CAMPAIGN_KEY, id);
+        else localStorage.removeItem(LAST_CAMPAIGN_KEY);
+    } catch { /* ignore */ }
+}
+
+function getLastCampaignId() {
+    try {
+        return localStorage.getItem(LAST_CAMPAIGN_KEY) || null;
+    } catch { return null; }
 }
 
 export function getPlaygroups() {
@@ -26,6 +40,7 @@ export async function loadPlaygroups() {
 
 export function setActivePlaygroup(playgroup) {
     activePlaygroup = playgroup;
+    saveLastCampaignId(playgroup ? playgroup.id : null);
     const select = document.getElementById('playgroupSelect');
     if (select) {
         select.value = playgroup ? playgroup.id : '';
@@ -38,7 +53,9 @@ function renderPlaygroupSelect() {
     const select = document.getElementById('playgroupSelect');
     if (!select) return;
 
-    const currentId = select.value || (activePlaygroup && activePlaygroup.id);
+    const lastId = getLastCampaignId();
+    const defaultLastId = lastId && playgroups.some(pg => pg.id === lastId) ? lastId : null;
+    const currentId = (activePlaygroup && activePlaygroup.id) || defaultLastId || select.value || null;
     select.innerHTML = '<option value="">Select campaign...</option>' +
         playgroups.map(pg => '<option value="' + pg.id + '">' + escapeHtml(pg.name) + '</option>').join('');
 
@@ -274,4 +291,14 @@ export function setupPlaygroupUI() {
     modal.addEventListener('click', (e) => {
         if (e.target === modal) closeModal();
     });
+}
+
+/** Ensures the last known campaign is selected when returning to the tab/window. */
+export function ensureLastCampaignSelected() {
+    if (playgroups.length === 0) return;
+    const lastId = getLastCampaignId();
+    if (!lastId || !playgroups.some(pg => pg.id === lastId)) return;
+    if (activePlaygroup && activePlaygroup.id === lastId) return;
+    const pg = playgroups.find(pg => pg.id === lastId);
+    if (pg) setActivePlaygroup(pg);
 }

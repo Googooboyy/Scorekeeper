@@ -26,6 +26,8 @@ import { showModal, hideModal, handleImageFileSelect, showNotification, fireConf
 import {
     renderGameSelection,
     renderPlayerSelection,
+    renderPlayers,
+    rollQuotesWave,
     selectGame,
     selectPlayer,
     nextStep,
@@ -62,7 +64,8 @@ function _handleImageUrl(url, previewId, callback) {
 export function setupNavigation() {
     document.querySelectorAll('.nav-tab').forEach(tab => {
         tab.addEventListener('click', function () {
-            showSection(this.getAttribute('data-section'));
+            const section = this.getAttribute('data-section');
+            if (section) showSection(section);
         });
     });
 }
@@ -249,6 +252,12 @@ export function setupEventListeners() {
     }
     if (celebrationTrumpetBtn) {
         celebrationTrumpetBtn.addEventListener('click', () => playVictoryFanfare());
+    }
+    const celebrationRollQuotesBtn = document.getElementById('celebrationRollQuotesBtn');
+    if (celebrationRollQuotesBtn) {
+        celebrationRollQuotesBtn.addEventListener('click', () => {
+            rollQuotesWave();
+        });
     }
 
     document.getElementById('gameImageCancel').addEventListener('click', closeGameImageModal);

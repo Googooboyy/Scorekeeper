@@ -141,6 +141,7 @@ header .subtitle {
     justify-content: center;
     align-items: center;
     gap: 10px;
+    margin-top: 10px;
     margin-bottom: 28px;
 }
 .celebration-pill {
@@ -208,9 +209,9 @@ body.screen-shake {
     background: linear-gradient(180deg, var(--accent-gold), var(--accent-gold-dark)) !important;
     display: block !important;
 }
-.players-grid .player-card:first-child .win-count {
+.players-grid .player-card:first-child .victory-roster-wins {
     color: var(--accent-gold);
-    font-size: 2.2rem;
+    font-size: 1.25rem;
 }
 .players-grid .player-card:first-child .player-crown {
     position: absolute;
@@ -260,16 +261,31 @@ body.screen-shake {
         0 14px 34px color-mix(in srgb, var(--player-card-color) 30%, transparent);
     transform: translateY(-2px);
 }
+/* Soft gradient: dark → player colour at end of card (from 4/5 mark), slight diagonal */
+.player-card.has-player-color:not(:first-child)::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background: linear-gradient(135deg,
+        transparent 0%,
+        transparent 75%,
+        color-mix(in srgb, var(--player-card-color) 18%, transparent) 90%,
+        color-mix(in srgb, var(--player-card-color) 35%, transparent) 100%);
+    z-index: 0;
+}
+.player-card > * { position: relative; z-index: 1; }
 .player-card-image-container {
     position: relative;
     display: inline-block;
 }
 .player-card-image {
-    width: 48px; height: 48px; border-radius: 50%; object-fit: cover;
+    width: 95px; height: 95px; border-radius: 50%; object-fit: cover;
     background: var(--bg-secondary); border: 2px solid var(--border); flex-shrink: 0;
 }
 .player-card-image-placeholder {
-    width: 48px; height: 48px; border-radius: 50%;
+    width: 95px; height: 95px; border-radius: 50%;
     background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
     border: 2px solid var(--border); display: flex; align-items: center; justify-content: center;
     font-size: 1.5rem; flex-shrink: 0;
@@ -281,7 +297,7 @@ body.screen-shake {
 .player-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .player-info-section { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
 .player-name-section { flex: 1; min-width: 0; }
-.player-name { font-size: 1.1rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; }
+.player-name { font-size: 1.43rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; }
 .meeple-unclaimed-badge {
     margin-left: 6px;
     padding: 1px 5px;
@@ -295,6 +311,18 @@ body.screen-shake {
     color: var(--text-muted);
     white-space: nowrap;
     flex-shrink: 0;
+}
+.player-card-quote {
+    font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; font-style: italic;
+    line-height: 1.3;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.player-card-quote.quote-just-updated {
+    animation: quoteRollIn 0.3s ease;
+}
+@keyframes quoteRollIn {
+    0% { opacity: 0; transform: translateY(4px); }
+    100% { opacity: 1; transform: translateY(0); }
 }
 .win-count-section { text-align: right; margin-right: 12px; }
 .win-count { font-size: 1.5rem; font-weight: 700; color: var(--accent-success); }
@@ -322,6 +350,10 @@ body.screen-shake {
     cursor: pointer; user-select: none; transition: opacity 0.2s ease;
 }
 .victory-roster-header:hover { opacity: 0.8; }
+.victory-roster-wins {
+    font-size: 0.95rem; font-weight: 700; color: var(--accent-success);
+    text-align: left;
+}
 .victory-roster-title { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; }
 .victory-roster-toggle-group {
     display: inline-flex; align-items: center; gap: 6px;
@@ -531,6 +563,7 @@ body.read-only .add-new-btn { pointer-events: none; opacity: 0.5; }
 
 /* Entry Flow */
 .entry-flow { max-width: 600px; margin: 0 auto; }
+#add .entry-flow { max-width: 1000px; }
 .step { display: none; animation: slideIn 0.3s ease; }
 .step.active { display: block; }
 @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
@@ -546,6 +579,21 @@ body.read-only .add-new-btn { pointer-events: none; opacity: 0.5; }
     gap: 12px;
     margin-bottom: 24px;
 }
+.selection-grid-add-game {
+    grid-template-columns: repeat(7, 1fr);
+}
+@media (max-width: 1100px) {
+    .selection-grid-add-game { grid-template-columns: repeat(5, 1fr); }
+}
+@media (max-width: 800px) {
+    .selection-grid-add-game { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 600px) {
+    .selection-grid-add-game { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 450px) {
+    .selection-grid-add-game { grid-template-columns: repeat(2, 1fr); }
+}
 .selection-item {
     background: var(--bg-card); border: 2px solid var(--border); border-radius: 12px;
     padding: 20px; cursor: pointer; transition: all 0.2s ease; text-align: center;
@@ -557,7 +605,25 @@ body.read-only .add-new-btn { pointer-events: none; opacity: 0.5; }
     border-style: dashed; color: var(--text-secondary); grid-column: 1 / -1;
     order: -1; margin-bottom: 8px;
 }
+.selection-grid-add-game .add-new-btn {
+    grid-column: auto; order: 0; margin-bottom: 0;
+}
 .add-new-btn:hover { border-color: var(--accent-success); color: var(--accent-success); background: rgba(16, 185, 129, 0.05); }
+.selection-item-game {
+    padding: 0; min-height: 0; aspect-ratio: 3 / 4; overflow: hidden;
+}
+.selection-item-game img.selection-item-game-img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.selection-item-game .selection-item-game-fallback {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    padding: 12px; font-size: 0.85rem; font-weight: 500; word-break: break-word; text-align: center;
+}
+.selection-item-game { position: relative; }
+.selection-item-show-all {
+    border-style: dashed; color: var(--text-muted); font-size: 0.9rem;
+}
+.selection-item-show-all:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
 
 .input-field {
     width: 100%; padding: 16px; background: var(--bg-secondary); border: 2px solid var(--border);

@@ -33,10 +33,12 @@ export const uiState = {
 export let showAllGames = false;
 export let showAllHistory = false;
 export let showAllPlayers = false;
+export let showAllGamesInAdd = false;
 
 export function toggleShowAllGames() { showAllGames = !showAllGames; }
 export function toggleShowAllHistory() { showAllHistory = !showAllHistory; }
 export function toggleShowAllPlayers() { showAllPlayers = !showAllPlayers; }
+export function toggleShowAllGamesInAdd() { showAllGamesInAdd = !showAllGamesInAdd; }
 
 let renderCallback = null;
 

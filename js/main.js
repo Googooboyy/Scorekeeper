@@ -6,7 +6,7 @@ import { onAuthStateChange, getSession, getInviteTokenFromStorage, saveInviteTok
 function hasInviteToken() {
     return !!getInviteTokenFromUrl() || !!getInviteTokenFromStorage();
 }
-import { loadPlaygroups, setActivePlaygroup, setOnPlaygroupChange, setupPlaygroupUI, getActivePlaygroup } from './playgroups.js';
+import { loadPlaygroups, setActivePlaygroup, setOnPlaygroupChange, setupPlaygroupUI, getActivePlaygroup, ensureLastCampaignSelected } from './playgroups.js';
 import { setupAuthButtons, updateAuthUI, updateEditability, syncReadOnlyBanner, updateAdminUI } from './auth-ui.js';
 import { redeemInviteToken, resolveInviteToken, fetchPlaygroupName, fetchActiveAnnouncement, fetchAppConfig, fetchUserProfile } from './supabase.js';
 import { showNotification, fireConfetti } from './modals.js';
@@ -249,12 +249,20 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     });
 
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && data.currentUserId) {
+            ensureLastCampaignSelected();
+        }
+    });
+
     setOnPlaygroupChange(async (playgroup) => {
         const canEdit = !!playgroup;
         updateEditability(canEdit);
         syncReadOnlyBanner(canEdit, true, hasInviteToken());
-        if (playgroup) await loadData(playgroup.id);
-        else {
+        if (playgroup) {
+            await loadData(playgroup.id);
+            showSection('dashboard');
+        } else {
             resetData();
             renderAll();
         }
