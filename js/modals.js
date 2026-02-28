@@ -111,12 +111,18 @@ export function openPlayerImageModal(player) {
     const currentColor = playerData.color || '#6366f1';
 
     const preview = document.getElementById('playerImagePreview');
+    const removeImageBtn = document.getElementById('playerImageRemoveInSection');
     if (currentImage) {
         preview.src = currentImage;
         preview.style.display = 'block';
+        if (removeImageBtn) removeImageBtn.style.display = 'inline-block';
     } else {
         preview.style.display = 'none';
+        if (removeImageBtn) removeImageBtn.style.display = 'none';
     }
+
+    const fileInput = document.getElementById('playerImageFileInput');
+    if (fileInput) fileInput.value = '';
 
     uiState.selectedColor = currentColor;
     document.querySelectorAll('#colorPicker .color-option').forEach(btn => {

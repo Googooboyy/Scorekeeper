@@ -282,7 +282,20 @@ export function setupEventListeners() {
     document.getElementById('playerImageFileInput').addEventListener('change', function (e) {
         handleImageFileSelect(e.target.files[0], 'playerImagePreview', function (result) {
             uiState.tempPlayerImage = result;
+            const removeBtn = document.getElementById('playerImageRemoveInSection');
+            if (removeBtn) removeBtn.style.display = 'inline-block';
         });
+    });
+
+    document.getElementById('playerImageRemoveInSection').addEventListener('click', function () {
+        uiState.tempPlayerImage = null;
+        const preview = document.getElementById('playerImagePreview');
+        const fileInput = document.getElementById('playerImageFileInput');
+        const removeBtn = document.getElementById('playerImageRemoveInSection');
+        if (preview) { preview.style.display = 'none'; preview.removeAttribute('src'); }
+        if (fileInput) fileInput.value = '';
+        if (removeBtn) removeBtn.style.display = 'none';
+        savePlayerImage();
     });
 
     document.querySelectorAll('#colorPicker .color-option').forEach(btn => {

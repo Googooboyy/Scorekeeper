@@ -13,11 +13,6 @@
     <div class="container">
         <header>
             <div class="header-row">
-                <div>
-                    <div class="logo-row logo-header-group">
-                        <h1 class="logo"><img src="logo-scorekpr/logo-ScoreKpr-tagline-350x240px-png.png" alt="The Scorekeeper" class="logo-img"></h1>
-                    </div>
-                </div>
                 <div class="header-actions">
                     <div id="authArea" class="auth-area">
                         <button class="btn-auth btn-google-black" id="loginBtn" type="button">
@@ -604,7 +599,10 @@
                         <span>📁</span> Choose New Image
                     </label>
                 </div>
-                <img id="playerImagePreview" class="image-preview" alt="Preview" style="display: none;">
+                <div class="image-preview-row" style="display: flex; align-items: center; gap: 12px; margin-top: 8px; flex-wrap: wrap;">
+                    <img id="playerImagePreview" class="image-preview" alt="Preview" style="display: none;">
+                    <button type="button" id="playerImageRemoveInSection" class="btn-remove-image" style="display: none;">Remove image</button>
+                </div>
             </div>
 
             <label style="display: block; margin-bottom: 8px; color: var(--text-secondary); font-size: 0.9rem;">Meeple Color</label>

@@ -832,6 +832,8 @@ body.tally-add-game-mode #step3 {
 .file-input-wrapper input[type=file] { position: absolute; left: -9999px; }
 .file-input-label { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; background: var(--bg-card); border: 2px dashed var(--border); border-radius: 8px; cursor: pointer; transition: all 0.3s ease; color: var(--text-secondary); white-space: nowrap; }
 .file-input-label:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
+.btn-remove-image { background: none; border: none; color: var(--accent-danger); font-size: 0.9rem; cursor: pointer; padding: 4px 0; text-decoration: underline; }
+.btn-remove-image:hover { color: #f87171; }
 
 /* Modal */
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
