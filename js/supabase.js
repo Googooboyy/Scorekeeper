@@ -321,6 +321,18 @@ export async function fetchCrossCampaignGameBreakdown(userId) {
 }
 
 /**
+ * Fetch games played per game (from entry_participants) for a linked player across all campaigns.
+ * Returns [{ game_name, total_games_played }] for per-game breakdown in profile modal.
+ */
+export async function fetchCrossCampaignGamesPlayed(userId) {
+    const { data, error } = await getActiveClient()
+        .rpc('get_cross_campaign_games_played', { p_user_id: userId });
+
+    if (error) throw error;
+    return data || [];
+}
+
+/**
  * Fetch recent entries for a player across all campaigns (cross-campaign profile view).
  * Returns the 20 most recent win entries.
  */
@@ -395,6 +407,37 @@ export async function fetchEntries(playgroupId) {
 }
 
 /**
+ * Fetch entry_participants for a playgroup. Returns Map<entryId, string[]> (player names).
+ * Graceful: on error (e.g. table missing), returns empty object.
+ */
+export async function fetchEntryParticipants(playgroupId) {
+    try {
+        const { data: entries, error: entriesErr } = await getActiveClient()
+            .from('entries')
+            .select('id')
+            .eq('playgroup_id', playgroupId);
+        if (entriesErr || !entries?.length) return {};
+
+        const entryIds = entries.map(e => e.id);
+        const { data: rows, error } = await getActiveClient()
+            .from('entry_participants')
+            .select('entry_id, players!inner(name)')
+            .in('entry_id', entryIds);
+        if (error) return {};
+
+        const byEntry = {};
+        (rows || []).forEach(r => {
+            if (!byEntry[r.entry_id]) byEntry[r.entry_id] = [];
+            const name = r.players?.name;
+            if (name) byEntry[r.entry_id].push(name);
+        });
+        return byEntry;
+    } catch {
+        return {};
+    }
+}
+
+/**
  * Fetch game metadata (images)
  */
 export async function fetchGameMetadata(gameIds) {
@@ -430,10 +473,11 @@ export async function fetchPlayerMetadata(playerIds) {
  * Load full playgroup data into the app's data shape
  */
 export async function loadPlaygroupData(playgroupId) {
-    const [games, players, entries] = await Promise.all([
+    const [games, players, entries, participantsByEntry] = await Promise.all([
         fetchGames(playgroupId),
         fetchPlayers(playgroupId),
-        fetchEntries(playgroupId)
+        fetchEntries(playgroupId),
+        fetchEntryParticipants(playgroupId)
     ]);
 
     const gameIds = games.map(g => g.id);
@@ -465,10 +509,16 @@ export async function loadPlaygroupData(playgroupId) {
         playerData[p.name].userId = p.user_id || null;
     });
 
+    // Merge participants into each entry
+    const entriesWithParticipants = entries.map(e => ({
+        ...e,
+        participants: participantsByEntry[e.id] || []
+    }));
+
     return {
         players: players.map(p => p.name),
         games: games.map(g => g.name),
-        entries: entries,
+        entries: entriesWithParticipants,
         gameData,
         playerData,
         _gameIdByName: Object.fromEntries(games.map(g => [g.name, g.id])),
@@ -518,9 +568,10 @@ async function getCurrentUserName() {
 }
 
 /**
- * Insert a new entry (win record)
+ * Insert a new entry (win record). Optionally pass participantIds (including winner).
+ * If omitted, defaults to [playerId] (winner only).
  */
-export async function insertEntry(playgroupId, gameId, playerId, date) {
+export async function insertEntry(playgroupId, gameId, playerId, date, participantIds = null) {
     const createdByName = await getCurrentUserName();
     const { data, error } = await getActiveClient()
         .from('entries')
@@ -535,13 +586,26 @@ export async function insertEntry(playgroupId, gameId, playerId, date) {
         .single();
 
     if (error) throw error;
+
+    const ids = participantIds && participantIds.length > 0 ? participantIds : [playerId];
+    const uniqueIds = [...new Set(ids)];
+    if (uniqueIds.length > 0) {
+        try {
+            await getActiveClient()
+                .from('entry_participants')
+                .insert(uniqueIds.map(pid => ({ entry_id: data.id, player_id: pid })));
+        } catch (epErr) {
+            console.warn('Could not insert entry_participants:', epErr);
+        }
+    }
     return data;
 }
 
 /**
- * Update an entry
+ * Update an entry. Optionally pass participantIds (including winner).
+ * If omitted, defaults to [playerId] (winner only).
  */
-export async function updateEntry(entryId, gameId, playerId, date) {
+export async function updateEntry(entryId, gameId, playerId, date, participantIds = null) {
     const updatedByName = await getCurrentUserName();
     const { data, error } = await getActiveClient()
         .from('entries')
@@ -557,6 +621,19 @@ export async function updateEntry(entryId, gameId, playerId, date) {
         .single();
 
     if (error) throw error;
+
+    const ids = participantIds && participantIds.length > 0 ? participantIds : [playerId];
+    const uniqueIds = [...new Set(ids)];
+    try {
+        await getActiveClient().from('entry_participants').delete().eq('entry_id', entryId);
+        if (uniqueIds.length > 0) {
+            await getActiveClient()
+                .from('entry_participants')
+                .insert(uniqueIds.map(pid => ({ entry_id: entryId, player_id: pid })));
+        }
+    } catch (epErr) {
+        console.warn('Could not update entry_participants:', epErr);
+    }
     return data;
 }
 
@@ -677,7 +754,10 @@ export async function importPlaygroupData(playgroupId, imported) {
         const gid = gameIds[entry.game];
         const pid = playerIds[entry.player];
         if (gid && pid && entry.date) {
-            await insertEntry(playgroupId, gid, pid, entry.date);
+            const participantIds = (entry.participants || [])
+                .map(name => playerIds[name])
+                .filter(Boolean);
+            await insertEntry(playgroupId, gid, pid, entry.date, participantIds.length > 0 ? participantIds : null);
         }
     }
 }

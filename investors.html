@@ -347,7 +347,7 @@
                 <p>Interested in learning more or scheduling a call? Pick a time below or reach out — we'd love to hear from you.</p>
                 <div class="inv-cta-buttons">
                     <!-- Replace the href with your Calendly or Cal.com scheduling URL -->
-                    <a href="https://calendly.com/googooboyy" class="inv-cta-primary" target="_blank" rel="noopener noreferrer">
+                    <a href="#" id="bookCallBtn" class="inv-cta-primary">
                         Book a 30‑min call
                     </a>
                     <a href="contact.html?subject=Investor" class="inv-cta-secondary" style="color: var(--accent-primary); text-decoration: underline; text-underline-offset: 3px;">Or reach out via contact form</a>
@@ -372,5 +372,43 @@
             </footer>
         </main>
     </div>
+
+    <!-- Temporary: Book call unavailable modal -->
+    <div class="modal-overlay" id="bookCallModal">
+        <div class="modal">
+            <h3>Currently Not Available</h3>
+            <p>Until further notice.</p>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" id="bookCallModalClose">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var btn = document.getElementById('bookCallBtn');
+            var modal = document.getElementById('bookCallModal');
+            var closeBtn = document.getElementById('bookCallModalClose');
+
+            function showModal() {
+                if (modal) modal.classList.add('active');
+            }
+
+            function hideModal() {
+                if (modal) modal.classList.remove('active');
+            }
+
+            if (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    showModal();
+                });
+            }
+            if (closeBtn) closeBtn.addEventListener('click', hideModal);
+            if (modal) modal.addEventListener('click', function (e) {
+                if (e.target === modal) hideModal();
+            });
+        })();
+    </script>
 </body>
 </html>

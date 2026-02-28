@@ -32,6 +32,7 @@ import {
     nextStep,
     prevStep,
     resetEntryFlow,
+    step2Continue,
     toggleGamesDisplay,
     toggleHistoryDisplay,
     togglePlayersDisplay
@@ -122,6 +123,8 @@ export function showSection(sectionName) {
     }
 
     if (targetId === 'add') resetEntryFlow();
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 export function setupEventListeners() {
@@ -156,7 +159,7 @@ export function setupEventListeners() {
 
     // tallyComplete — fired by modals.js when Stage 3 "Save Win" is confirmed
     window.addEventListener('tallyComplete', async (e) => {
-        const { game, winner, date } = e.detail;
+        const { game, winner, date, participants } = e.detail;
         const pg = getActivePlaygroup();
         if (!pg) { showLoginPrompt(); return; }
 
@@ -167,13 +170,20 @@ export function setupEventListeners() {
             return;
         }
 
+        const participantIds = (participants && participants.length > 0 ? participants : [winner])
+            .map(name => data._playerIdByName[name])
+            .filter(Boolean);
+        const uniqueParticipantIds = participantIds.length > 0 ? [...new Set(participantIds)] : null;
+
         try {
-            const row = await insertEntry(pg.id, gameId, playerId, date);
+            const row = await insertEntry(pg.id, gameId, playerId, date, uniqueParticipantIds);
+            const entryParticipants = (participants && participants.length > 0 ? participants : [winner]);
             data.entries.push({
                 id: row.id,
                 game,
                 player: winner,
                 date,
+                participants: entryParticipants,
                 created_at: row.created_at || new Date().toISOString(),
                 created_by_name: row.created_by_name || null,
                 updated_at: row.updated_at || null,
@@ -211,6 +221,8 @@ export function setupEventListeners() {
 
     document.getElementById('backToStep1').addEventListener('click', function () { prevStep(1); });
     document.getElementById('backToStep2').addEventListener('click', function () { prevStep(2); });
+    const step2ContinueBtn = document.getElementById('step2ContinueBtn');
+    if (step2ContinueBtn) step2ContinueBtn.addEventListener('click', step2Continue);
     document.getElementById('saveEntryBtn').addEventListener('click', saveEntry);
 
     const exportBtn = document.getElementById('exportBtn');
@@ -573,18 +585,27 @@ async function saveEntry() {
     const playerId = data._playerIdByName[currentEntry.player];
     if (!gameId || !playerId) { showNotification('Invalid game or meeple'); return; }
 
+    const participantIds = (currentEntry.participants || [])
+        .map(name => data._playerIdByName[name])
+        .filter(Boolean);
+    const uniqueParticipantIds = participantIds.length > 0 ? [...new Set(participantIds)] : null;
+
     const btn = document.getElementById('saveEntryBtn');
     const originalText = btn.innerHTML;
     btn.textContent = 'Saving…';
     btn.disabled = true;
 
     try {
-        const row = await insertEntry(pg.id, gameId, playerId, date);
+        const row = await insertEntry(pg.id, gameId, playerId, date, uniqueParticipantIds);
+        const participants = currentEntry.participants && currentEntry.participants.length > 0
+            ? currentEntry.participants
+            : [currentEntry.player];
         data.entries.push({
             id: row.id,
             game: currentEntry.game,
             player: currentEntry.player,
             date: currentEntry.date,
+            participants,
             created_at: row.created_at || new Date().toISOString(),
             created_by_name: row.created_by_name || null,
             updated_at: row.updated_at || null,

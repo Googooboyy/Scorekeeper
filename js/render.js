@@ -135,11 +135,17 @@ export function renderPlayers() {
         return;
     }
 
+    const participated = (e, p) =>
+        (e.participants && e.participants.includes(p)) || (!e.participants && e.player === p);
+
     let playerStats = data.players.map(player => {
         const playerEntries = data.entries.filter(e => e.player === player);
         const wins = playerEntries.length;
+        const participatedEntries = data.entries.filter(e => participated(e, player));
+        const gamesPlayed = participatedEntries.length;
+        const winPct = gamesPlayed > 0 ? (wins / gamesPlayed) * 100 : 0;
         const gameBreakdown = calculateGameBreakdown(player);
-        const lastPlayedDate = playerEntries.reduce((latest, entry) => {
+        const lastPlayedDate = participatedEntries.reduce((latest, entry) => {
             if (!entry.date) return latest;
             if (!latest) return entry.date;
             return new Date(entry.date) > new Date(latest) ? entry.date : latest;
@@ -148,13 +154,18 @@ export function renderPlayers() {
         return {
             player: player,
             wins: wins,
+            gamesPlayed,
+            winPct,
             gameBreakdown: gameBreakdown,
             lastPlayedDate: lastPlayedDate,
             image: playerData.image,
             color: playerData.color,
             userId: playerData.userId || null
         };
-    }).sort((a, b) => b.wins - a.wins);
+    }).sort((a, b) => {
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        return (b.winPct || 0) - (a.winPct || 0);
+    });
 
     if (toggleBtn) toggleBtn.style.display = 'none';
 
@@ -189,7 +200,7 @@ export function renderPlayers() {
             '</div>' +
             '</div>' +
             '<div class="victory-roster-header" onclick="window.toggleVictoryRoster(\'' + escapeHtml(stat.player).replace(/'/g, "\\'") + '\')">' +
-            '<div class="victory-roster-wins">' + stat.wins + ' Games Won</div>' +
+            '<div class="victory-roster-wins">' + stat.wins + ' Games Won' + (stat.gamesPlayed > 0 ? ' · ' + (stat.winPct || 0).toFixed(0) + '% win rate' : '') + '</div>' +
             '<div class="victory-roster-toggle-group">' +
             '<span class="victory-roster-label">more</span>' +
             '<span class="victory-roster-toggle" id="toggle-' + escapeHtml(stat.player) + '">▼</span>' +
@@ -538,9 +549,12 @@ export function renderPlayerSelection() {
     sortedPlayers.forEach(player => {
         const playerData = data.playerData && data.playerData[player] ? data.playerData[player] : {};
         const image = playerData.image || null;
-        const selectedClass = currentEntry.player === player ? 'selected' : '';
+        const inParticipants = (currentEntry.participants || []).includes(player);
+        const isWinner = currentEntry.player === player;
+        const selectedClass = inParticipants ? 'selected' : '';
+        const winnerBadge = isWinner ? ' <span class="selection-winner-badge" title="Winner">👑</span>' : '';
         const div = document.createElement('div');
-        div.className = 'selection-item selection-item-meeple ' + selectedClass;
+        div.className = 'selection-item selection-item-meeple ' + selectedClass + (isWinner ? ' is-winner' : '');
         div.setAttribute('data-player', player);
         div.innerHTML =
             '<div class="selection-item-meeple-img-wrap">' +
@@ -548,12 +562,41 @@ export function renderPlayerSelection() {
                 ? '<img src="' + escapeHtml(image) + '" alt="' + escapeHtml(player) + '" class="selection-item-meeple-img" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';"><div class="selection-item-meeple-placeholder" style="display:none;">👤</div>'
                 : '<div class="selection-item-meeple-placeholder">👤</div>') +
             '</div>' +
-            '<span class="selection-item-meeple-name">' + escapeHtml(player) + '</span>';
+            '<span class="selection-item-meeple-name">' + escapeHtml(player) + winnerBadge + '</span>';
         div.addEventListener('click', function () {
-            selectPlayer(this.getAttribute('data-player'));
+            togglePlayerInStep2(this.getAttribute('data-player'));
         });
         container.appendChild(div);
     });
+
+    const continueBtn = document.getElementById('step2ContinueBtn');
+    if (continueBtn) continueBtn.disabled = !currentEntry.player;
+}
+
+export function togglePlayerInStep2(player) {
+    if (currentEntry.player === player) return;
+    if (!currentEntry.player) {
+        currentEntry.player = player;
+        currentEntry.participants = [player];
+    } else {
+        const p = currentEntry.participants || [];
+        const idx = p.indexOf(player);
+        if (idx >= 0) {
+            p.splice(idx, 1);
+        } else {
+            p.push(player);
+        }
+        currentEntry.participants = p;
+    }
+    renderPlayerSelection();
+}
+
+export function step2Continue() {
+    if (!currentEntry.player) return;
+    if (!currentEntry.participants || !currentEntry.participants.includes(currentEntry.player)) {
+        currentEntry.participants = [currentEntry.player, ...(currentEntry.participants || []).filter(p => p !== currentEntry.player)];
+    }
+    nextStep(3);
 }
 
 function relativeTime(isoString) {
@@ -660,8 +703,10 @@ export function selectGame(game) {
 
 export function selectPlayer(player) {
     currentEntry.player = player;
+    if (!currentEntry.participants || !currentEntry.participants.includes(player)) {
+        currentEntry.participants = [player, ...(currentEntry.participants || []).filter(p => p !== player)];
+    }
     renderPlayerSelection();
-    setTimeout(() => nextStep(3), 150);
 }
 
 export function nextStep(step) {
@@ -678,6 +723,7 @@ export function resetEntryFlow() {
     currentEntry.game = null;
     currentEntry.player = null;
     currentEntry.date = null;
+    currentEntry.participants = [];
     document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
     document.getElementById('step1').classList.add('active');
     document.getElementById('newGameInput').classList.remove('active');

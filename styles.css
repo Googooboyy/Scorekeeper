@@ -671,6 +671,15 @@ body.read-only .add-new-btn { pointer-events: none; opacity: 0.5; }
     white-space: nowrap;
     max-width: 100%;
 }
+.selection-winner-badge {
+    display: inline-block;
+    margin-left: 2px;
+    font-size: 0.7rem;
+}
+.selection-item-meeple.is-winner {
+    border-color: var(--accent-primary);
+    background: rgba(99,102,241,0.08);
+}
 /* Tally meeple chips as cards — reuse meeple styling */
 .tally-meeple-grid .tally-chip {
     border: 2px solid var(--border);
@@ -688,6 +697,32 @@ body.read-only .add-new-btn { pointer-events: none; opacity: 0.5; }
     font-family: inherit;
     text-align: center;
 }
+
+/* Edit Win Record modal: larger avatars and readable names */
+.edit-entry-meeple-grid.selection-grid-meeple {
+    grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
+}
+.edit-entry-meeple-grid .selection-item-meeple {
+    min-height: 110px;
+}
+.edit-entry-meeple-grid .selection-item-meeple-img-wrap {
+    max-width: 56px;
+    min-width: 48px;
+}
+.edit-entry-meeple-grid .selection-item-meeple-placeholder {
+    font-size: 1.75rem;
+}
+.edit-entry-meeple-grid .selection-item-meeple-name {
+    font-size: 0.9rem;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.25;
+    -webkit-line-clamp: 2;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
 .selection-item-game {
     padding: 0; min-height: 0; aspect-ratio: 3 / 4; overflow: hidden;
 }
@@ -1499,7 +1534,7 @@ html { overflow-x: hidden; }
 /* Stats summary row: row1 = Total Wins, Campaigns; row2 = Favourite Game, Favourite Quote */
 .profile-stats-row {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     gap: 12px;
 }
 .profile-stat-card {

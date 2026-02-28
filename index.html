@@ -24,7 +24,6 @@
                             </svg>
                             Sign in with Google
                         </button>
-                        <p id="googleLoginNote" style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">More sign-in options coming soon..</p>
                         <div class="auth-user" id="authUser" style="display: none;">
                             <span class="auth-email" id="authEmail"></span>
                             <button class="btn-auth" id="adminDashboardLink" style="display:none;" type="button">Admin Page</button>
@@ -156,12 +155,12 @@
                     </div>
                 </div>
 
-                <!-- Step 2: Select Winner -->
+                <!-- Step 2: Select Winner & Players -->
                 <div id="step2" class="step">
                     <div class="step-header">
                         <div class="step-number">2</div>
-                        <h2>Select Winner</h2>
-                        <p>Who won this game?</p>
+                        <h2>Select Winner & Players</h2>
+                        <p>Who won? Who else played? (optional)</p>
                     </div>
                     <div id="playerSelection" class="selection-grid selection-grid-meeple">
                         <div class="selection-item add-new-btn" id="showNewPlayerBtn">+ Add Meeple</div>
@@ -186,6 +185,7 @@
                     </div>
                     <div class="btn-group">
                         <button class="btn btn-secondary" id="backToStep1">Back</button>
+                        <button class="btn btn-primary" id="step2ContinueBtn" disabled>Continue</button>
                     </div>
                 </div>
 
@@ -212,7 +212,6 @@
                 <h2>
                     <span>💾</span> Data Management
                 </h2>
-                <p class="data-management-coming-soon">Coming soon</p>
                 <div class="data-actions">
                     <button class="data-btn export" id="exportBtn">
                         <span>📥</span> Export Data
@@ -674,6 +673,9 @@
                 
                 <label style="display: block; margin: 16px 0 6px; color: var(--text-secondary);">Victorious Meeple</label>
                 <select id="editPlayerSelect" class="input-field" style="padding: 12px;"></select>
+
+                <label style="display: block; margin: 16px 0 6px; color: var(--text-secondary);">Players who played</label>
+                <div id="editEntryParticipants" class="selection-grid selection-grid-meeple edit-entry-meeple-grid" style="min-height: 48px;"></div>
                 
                 <label style="display: block; margin: 16px 0 6px; color: var(--text-secondary);">Date</label>
                 <input type="date" id="editDateInput" class="input-field date-input">
@@ -735,6 +737,14 @@
                             </div>
                         </div>
                     </div>
+                    <div class="profile-stat-card">
+                        <div class="profile-stat-number" id="profileGamesPlayed">—</div>
+                        <div class="profile-stat-label">Games Played</div>
+                    </div>
+                    <div class="profile-stat-card">
+                        <div class="profile-stat-number" id="profileWinRate">—</div>
+                        <div class="profile-stat-label">Win Rate</div>
+                    </div>
                 </div>
 
                 <!-- Achievements (coming soon) -->
@@ -754,9 +764,9 @@
                     <div class="profile-campaign-list" id="profileCampaignList"></div>
                 </div>
 
-                <!-- Game breakdown -->
+                <!-- Games Win Rate: wins/games played per game, bar = win rate -->
                 <div id="profileGameSection">
-                    <h3 class="profile-section-title" id="profileGameSectionTitle">Wins by Game</h3>
+                    <h3 class="profile-section-title" id="profileGameSectionTitle">Games Win Rate</h3>
                     <div class="profile-game-list" id="profileGameList"></div>
                 </div>
 

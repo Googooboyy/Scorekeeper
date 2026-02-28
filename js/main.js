@@ -310,8 +310,9 @@ document.addEventListener('DOMContentLoaded', async function () {
             }).catch(() => {});
         }
         const hash = (typeof location !== 'undefined' && location.hash) ? location.hash : '';
-        let initialSection = 'about';
-        if (hash === '#dashboard') initialSection = 'dashboard';
+        // Logged-in users go to leaderboard (dashboard) by default when no hash
+        let initialSection = 'dashboard';
+        if (hash === '#about') initialSection = 'about';
         else if (hash === '#add') initialSection = 'add';
         else if (hash === '#history') initialSection = 'history';
         else if (hash === '#data') initialSection = 'data';

@@ -14,7 +14,8 @@ export let data = {
 export let currentEntry = {
     game: null,
     player: null,
-    date: null
+    date: null,
+    participants: []
 };
 
 let _modalCallback = null;

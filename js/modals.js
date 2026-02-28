@@ -17,6 +17,7 @@ import {
     unclaimPlayer,
     fetchCrossCampaignStats,
     fetchCrossCampaignGameBreakdown,
+    fetchCrossCampaignGamesPlayed,
     fetchPlayerRecentEntries,
     fetchUserProfile,
     upsertUserProfile,
@@ -253,6 +254,9 @@ export function openEditEntryModal(id) {
     if (!entry) return;
 
     uiState.currentEditId = id;
+    const participants = entry.participants && entry.participants.length > 0
+        ? [...entry.participants]
+        : [entry.player];
 
     const gameSelect = document.getElementById('editGameSelect');
     gameSelect.innerHTML = data.games.map(g =>
@@ -263,6 +267,35 @@ export function openEditEntryModal(id) {
     playerSelect.innerHTML = data.players.map(p =>
         '<option value="' + escapeHtmlForExport(p) + '"' + (p === entry.player ? ' selected' : '') + '>' + escapeHtmlForExport(p) + '</option>'
     ).join('');
+
+    const participantsContainer = document.getElementById('editEntryParticipants');
+    if (participantsContainer) {
+        participantsContainer.innerHTML = '';
+        (data.players || []).sort((a, b) => a.localeCompare(b)).forEach(p => {
+            const selected = participants.includes(p);
+            const playerData = data.playerData && data.playerData[p] ? data.playerData[p] : {};
+            const image = playerData.image || null;
+            const imgHtml = image
+                ? '<img src="' + escapeHtmlForExport(image) + '" alt="" class="selection-item-meeple-img" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';"><div class="selection-item-meeple-placeholder" style="display:none;">👤</div>'
+                : '<div class="selection-item-meeple-placeholder">👤</div>';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'selection-item selection-item-meeple' + (selected ? ' selected' : '');
+            btn.setAttribute('data-player', p);
+            btn.innerHTML = '<div class="selection-item-meeple-img-wrap">' + imgHtml + '</div><span class="selection-item-meeple-name">' + escapeHtmlForExport(p) + '</span>';
+            btn.addEventListener('click', () => {
+                const idx = participants.indexOf(p);
+                if (idx >= 0) {
+                    if (participants.length > 1) participants.splice(idx, 1);
+                } else {
+                    participants.push(p);
+                }
+                btn.classList.toggle('selected', participants.includes(p));
+            });
+            participantsContainer.appendChild(btn);
+        });
+        uiState.editEntryParticipants = participants;
+    }
 
     document.getElementById('editDateInput').value = entry.date;
 
@@ -276,6 +309,7 @@ export function closeEditEntryModal() {
     const saveBtn = document.getElementById('editEntrySave');
     if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }
     uiState.currentEditId = null;
+    uiState.editEntryParticipants = null;
 }
 
 export async function saveEditedEntry() {
@@ -292,12 +326,17 @@ export async function saveEditedEntry() {
     const gameId = data._gameIdByName?.[newGame];
     const playerId = data._playerIdByName?.[newPlayer];
     if (!gameId || !playerId) { showNotification('Invalid game or meeple'); return; }
+    const participants = [...new Set([newPlayer, ...(uiState.editEntryParticipants || [])])];
+    const participantIds = participants
+        .map(name => data._playerIdByName[name])
+        .filter(Boolean);
+    const uniqueParticipantIds = participantIds.length > 0 ? [...new Set(participantIds)] : null;
     const entryIndex = data.entries.findIndex(e => e.id === uiState.currentEditId);
     if (entryIndex === -1) return;
     const btn = document.getElementById('editEntrySave');
     if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
     try {
-        const updated = await updateEntry(uiState.currentEditId, gameId, playerId, newDate);
+        const updated = await updateEntry(uiState.currentEditId, gameId, playerId, newDate, uniqueParticipantIds);
         const { data: { user } } = await getSupabase().auth.getUser();
         const updatedByName = user
             ? (user.user_metadata?.full_name || user.email || null)
@@ -307,6 +346,7 @@ export async function saveEditedEntry() {
             game: newGame,
             player: newPlayer,
             date: newDate,
+            participants: participants,
             updated_at: updated?.updated_at || new Date().toISOString(),
             updated_by_name: updatedByName
         };
@@ -438,13 +478,14 @@ export async function openPlayerProfileModal(playerName) {
 
         if (player.user_id) {
             // Player is linked — fetch cross-campaign data and user profile (favourite game)
-            const [campaignStats, gameBreakdown, recentEntries, userProfile] = await Promise.all([
+            const [campaignStats, gameBreakdown, gamesPlayedBreakdown, recentEntries, userProfile] = await Promise.all([
                 fetchCrossCampaignStats(player.user_id),
                 fetchCrossCampaignGameBreakdown(player.user_id),
+                fetchCrossCampaignGamesPlayed(player.user_id),
                 fetchPlayerRecentEntries(player.user_id, 10),
                 fetchUserProfile(player.user_id)
             ]);
-            _renderProfileLinked(player, playerMeta, campaignStats, gameBreakdown, recentEntries, user, userProfile);
+            _renderProfileLinked(player, playerMeta, campaignStats, gameBreakdown, gamesPlayedBreakdown, recentEntries, user, userProfile);
         } else {
             // Player is not linked — show current-campaign stats only
             const currentEntries = data.entries.filter(e => e.player === playerName);
@@ -537,6 +578,10 @@ function _renderProfileLoading(playerName) {
     document.getElementById('profileTotalWins').textContent = '—';
     document.getElementById('profileCampaignCount').textContent = '—';
     document.getElementById('profileFaveGame').textContent = '—';
+    const gpElL = document.getElementById('profileGamesPlayed');
+    const wrElL = document.getElementById('profileWinRate');
+    if (gpElL) gpElL.textContent = '—';
+    if (wrElL) wrElL.textContent = '—';
     const faveGameImg = document.getElementById('profileFaveGameImg');
     const faveGamePlaceholder = document.getElementById('profileFaveGamePlaceholder');
     if (faveGameImg) { faveGameImg.style.display = 'none'; faveGameImg.removeAttribute('src'); }
@@ -576,7 +621,7 @@ function _setAvatar(meta) {
     }
 }
 
-function _renderProfileLinked(player, meta, campaignStats, gameBreakdown, recentEntries, currentUser, userProfile) {
+function _renderProfileLinked(player, meta, campaignStats, gameBreakdown, gamesPlayedBreakdown, recentEntries, currentUser, userProfile) {
     _setAvatar(meta);
 
     const totalWins = campaignStats.reduce((s, r) => s + Number(r.total_wins), 0);
@@ -597,9 +642,16 @@ function _renderProfileLinked(player, meta, campaignStats, gameBreakdown, recent
         profileMetaEl.textContent = campaignCount + ' campaign' + (campaignCount !== 1 ? 's' : '');
         profileMetaEl.classList.remove('profile-meta-muted');
     }
+    const totalGamesPlayed = campaignStats.reduce((s, r) => s + Number(r.total_games_played || r.total_wins || 0), 0);
+    const winPct = totalGamesPlayed > 0 ? ((totalWins / totalGamesPlayed) * 100).toFixed(1) + '%' : '—';
+
     document.getElementById('profileTotalWins').textContent = totalWins;
     document.getElementById('profileCampaignCount').textContent = campaignCount;
     document.getElementById('profileFaveGame').textContent = displayFave;
+    const gpEl = document.getElementById('profileGamesPlayed');
+    const wrEl = document.getElementById('profileWinRate');
+    if (gpEl) gpEl.textContent = totalGamesPlayed;
+    if (wrEl) wrEl.textContent = winPct;
     const faveImg = document.getElementById('profileFaveGameImg');
     const favePlaceholder = document.getElementById('profileFaveGamePlaceholder');
     const faveGameImageUrl = displayFave && data.gameData?.[displayFave]?.image;
@@ -632,7 +684,7 @@ function _renderProfileLinked(player, meta, campaignStats, gameBreakdown, recent
                 faveCard.appendChild(editBtn);
             }
             editBtn.style.display = 'inline-flex';
-            editBtn.onclick = () => _openFavouriteGamePicker(player.user_id, gameBreakdown, userProfile, computedTopGame, (newDisplayValue) => {
+            editBtn.onclick = () => _openFavouriteGamePicker(player.user_id, merged, userProfile, computedTopGame, (newDisplayValue) => {
                 document.getElementById('profileFaveGame').textContent = newDisplayValue;
                 const img = document.getElementById('profileFaveGameImg');
                 const ph = document.getElementById('profileFaveGamePlaceholder');
@@ -663,24 +715,37 @@ function _renderProfileLinked(player, meta, campaignStats, gameBreakdown, recent
     unlinkBtn.disabled = false;
     unlinkBtn.textContent = 'Unlink my account';
 
-    // Campaign breakdown
+    // Campaign breakdown: campaign name, wins/games played, win %
     document.getElementById('profileCampaignSection').style.display = '';
     document.getElementById('profileCampaignList').innerHTML = campaignStats.map(row => {
         const wins = Number(row.total_wins);
+        const played = Number(row.total_games_played || wins) || 0;
+        const pct = played > 0 ? Math.round((wins / played) * 100) : 0;
+        const detail = played > 0
+            ? wins + '/' + played + ' wins (' + pct + '%)'
+            : wins + ' win' + (wins !== 1 ? 's' : '');
         return '<div class="profile-campaign-row">' +
             '<div class="profile-campaign-name">' + escapeHtml(row.playgroup_name) + '</div>' +
-            '<div class="profile-campaign-detail">' +
-            (row.top_game ? escapeHtml(row.top_game) + ' · ' : '') +
-            '<strong>' + wins + '</strong> win' + (wins !== 1 ? 's' : '') +
-            '</div>' +
+            '<div class="profile-campaign-detail">' + detail + '</div>' +
             '</div>';
     }).join('') || '<div class="profile-empty">No wins yet.</div>';
 
-    // Game breakdown
-    document.getElementById('profileGameSectionTitle').textContent = 'Wins by Game (all campaigns)';
-    document.getElementById('profileGameList').innerHTML = _renderGameBreakdownHtml(gameBreakdown.map(r => ({
-        game: r.game_name, count: Number(r.total_wins)
-    })));
+    // Games Win Rate: merge wins + games played, sort by wins > games played > alphabetical
+    const winsByGame = {};
+    (gameBreakdown || []).forEach(r => { winsByGame[r.game_name || r.game] = Number(r.total_wins || 0); });
+    const gamesByGame = {};
+    (gamesPlayedBreakdown || []).forEach(r => { gamesByGame[r.game_name || r.game] = Number(r.total_games_played || 0); });
+    const allGames = new Set([...Object.keys(winsByGame), ...Object.keys(gamesByGame)]);
+    const merged = Array.from(allGames)
+        .map(game => ({
+            game,
+            wins: winsByGame[game] || 0,
+            gamesPlayed: gamesByGame[game] || 0
+        }))
+        .filter(r => r.gamesPlayed > 0)
+        .sort((a, b) => b.wins - a.wins || b.gamesPlayed - a.gamesPlayed || (a.game || '').localeCompare(b.game || ''));
+    document.getElementById('profileGameSectionTitle').textContent = 'Games Win Rate (all campaigns)';
+    document.getElementById('profileGameList').innerHTML = _renderGamesWinRateHtml(merged);
 
     // Recent history
     document.getElementById('profileHistoryList').innerHTML = _renderRecentHistoryHtml(recentEntries, true);
@@ -689,7 +754,12 @@ function _renderProfileLinked(player, meta, campaignStats, gameBreakdown, recent
 function _renderProfileUnlinked(player, playerName, meta, currentEntries, currentUser) {
     _setAvatar(meta);
 
+    const participated = (e, p) =>
+        (e.participants && e.participants.includes(p)) || (!e.participants && e.player === p);
+    const participatedEntries = data.entries.filter(e => participated(e, playerName));
     const totalWins = currentEntries.length;
+    const totalGamesPlayed = participatedEntries.length;
+    const winPct = totalGamesPlayed > 0 ? ((totalWins / totalGamesPlayed) * 100).toFixed(1) + '%' : '—';
 
     // Game breakdown from current campaign
     const gameCounts = {};
@@ -709,6 +779,10 @@ function _renderProfileUnlinked(player, playerName, meta, currentEntries, curren
     document.getElementById('profileTotalWins').textContent = totalWins;
     document.getElementById('profileCampaignStatCard').style.display = 'none';
     document.getElementById('profileFaveGame').textContent = topGame;
+    const gpElU = document.getElementById('profileGamesPlayed');
+    const wrElU = document.getElementById('profileWinRate');
+    if (gpElU) gpElU.textContent = totalGamesPlayed;
+    if (wrElU) wrElU.textContent = winPct;
     const faveImgU = document.getElementById('profileFaveGameImg');
     const favePhU = document.getElementById('profileFaveGamePlaceholder');
     const topGameImageUrl = topGame && data.gameData?.[topGame]?.image;
@@ -750,9 +824,18 @@ function _renderProfileUnlinked(player, playerName, meta, currentEntries, curren
     // Campaign section: hidden
     document.getElementById('profileCampaignSection').style.display = 'none';
 
-    // Game breakdown (current campaign)
-    document.getElementById('profileGameSectionTitle').textContent = 'Wins by Game';
-    document.getElementById('profileGameList').innerHTML = _renderGameBreakdownHtml(gameBreakdown);
+    // Games Win Rate (unlinked: merge wins + games played, sort by wins > games played > alphabetical)
+    const gamesPlayedCounts = {};
+    participatedEntries.forEach(e => {
+        gamesPlayedCounts[e.game] = (gamesPlayedCounts[e.game] || 0) + 1;
+    });
+    const mergedUnlinked = Object.keys(gamesPlayedCounts).map(game => ({
+        game,
+        wins: gameCounts[game] || 0,
+        gamesPlayed: gamesPlayedCounts[game] || 0
+    })).sort((a, b) => b.wins - a.wins || b.gamesPlayed - a.gamesPlayed || (a.game || '').localeCompare(b.game || ''));
+    document.getElementById('profileGameSectionTitle').textContent = 'Games Win Rate';
+    document.getElementById('profileGameList').innerHTML = _renderGamesWinRateHtml(mergedUnlinked);
 
     // Recent history (current campaign)
     const recentEntries = [...currentEntries]
@@ -762,17 +845,18 @@ function _renderProfileUnlinked(player, playerName, meta, currentEntries, curren
     document.getElementById('profileHistoryList').innerHTML = _renderRecentHistoryHtml(recentEntries, false);
 }
 
-function _renderGameBreakdownHtml(gameBreakdown) {
-    if (!gameBreakdown.length) return '<div class="profile-empty">No wins recorded yet.</div>';
-    const max = gameBreakdown[0].count;
-    return gameBreakdown.map(g => {
-        const pct = max > 0 ? Math.round((g.count / max) * 100) : 0;
+function _renderGamesWinRateHtml(rows) {
+    if (!rows.length) return '<div class="profile-empty">No games played yet.</div>';
+    const MIN_BAR_PCT = 3; // minimum bar width for 0% win rate (aesthetics)
+    return rows.map(r => {
+        const winRate = r.gamesPlayed > 0 ? (r.wins / r.gamesPlayed) * 100 : 0;
+        const barPct = Math.max(winRate, winRate === 0 ? MIN_BAR_PCT : 0);
         return '<div class="profile-game-row">' +
-            '<div class="profile-game-name">' + escapeHtml(g.game) + '</div>' +
+            '<div class="profile-game-name">' + escapeHtml(r.game) + '</div>' +
             '<div class="profile-game-bar-wrap">' +
-            '<div class="profile-game-bar" style="width:' + pct + '%"></div>' +
+            '<div class="profile-game-bar" style="width:' + barPct + '%"></div>' +
             '</div>' +
-            '<div class="profile-game-count">' + g.count + '</div>' +
+            '<div class="profile-game-count">' + r.wins + '/' + r.gamesPlayed + '</div>' +
             '</div>';
     }).join('');
 }
@@ -1435,10 +1519,10 @@ function _tallySaveWin() {
     if (!date) { showNotification('Please pick a date'); return; }
     const game   = _tallyState._pendingGame || _tallyState.game;
     const winner = _tallyState._pendingWinner;
+    const participants = (_tallyState.participants || []).filter(p => !p.isTemp).map(p => p.name);
     closeScoreTabulator();
-    // Bridge to events.js via custom event — now carries date too
     window.dispatchEvent(new CustomEvent('tallyComplete', {
-        detail: { game, winner: winner.name, date }
+        detail: { game, winner: winner.name, date, participants }
     }));
 }
 
