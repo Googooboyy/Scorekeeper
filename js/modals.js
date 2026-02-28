@@ -1019,6 +1019,7 @@ function _renderTallyGameSelection(preselectGame) {
         const div = document.createElement('div');
         div.className = 'selection-item selection-item-game' + (game === selectedGame ? ' selected' : '');
         div.setAttribute('data-game', game);
+        div.setAttribute('title', game);
         if (gameImage) {
             const img = document.createElement('img');
             img.src = gameImage;
@@ -1041,6 +1042,10 @@ function _renderTallyGameSelection(preselectGame) {
             fallback.textContent = game;
             div.appendChild(fallback);
         }
+        const tooltip = document.createElement('span');
+        tooltip.className = 'selection-item-game-tooltip';
+        tooltip.textContent = game;
+        div.appendChild(tooltip);
         container.appendChild(div);
     });
 
@@ -1071,11 +1076,11 @@ async function _loadOtherCampaignGamesForTally() {
         wrap.style.display = '';
         if (toggleBtn) {
             toggleBtn.style.display = '';
-            toggleBtn.textContent = _tallyShowOtherCampaigns ? 'Hide other campaigns' : 'Show other campaigns';
+            toggleBtn.textContent = _tallyShowOtherCampaigns ? 'Hide more games' : 'More games from other campaigns';
             toggleBtn.onclick = () => {
                 _tallyShowOtherCampaigns = !_tallyShowOtherCampaigns;
                 if (section) section.style.display = _tallyShowOtherCampaigns ? '' : 'none';
-                toggleBtn.textContent = _tallyShowOtherCampaigns ? 'Hide other campaigns' : 'Show other campaigns';
+                toggleBtn.textContent = _tallyShowOtherCampaigns ? 'Hide more games' : 'More games from other campaigns';
             };
         }
         if (section) section.style.display = _tallyShowOtherCampaigns ? '' : 'none';
@@ -1084,6 +1089,7 @@ async function _loadOtherCampaignGamesForTally() {
             const div = document.createElement('div');
             div.className = 'selection-item selection-item-game' + (name === _tallyState.game ? ' selected' : '');
             div.setAttribute('data-game', name);
+            div.setAttribute('title', name);
             if (image) {
                 const img = document.createElement('img');
                 img.src = image;
@@ -1106,6 +1112,10 @@ async function _loadOtherCampaignGamesForTally() {
                 fallback.textContent = name;
                 div.appendChild(fallback);
             }
+            const tooltip = document.createElement('span');
+            tooltip.className = 'selection-item-game-tooltip';
+            tooltip.textContent = name;
+            div.appendChild(tooltip);
             div.addEventListener('click', async function () {
                 const gameName = this.getAttribute('data-game');
                 if (data.games.includes(gameName)) {

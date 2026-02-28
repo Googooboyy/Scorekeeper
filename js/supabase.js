@@ -133,7 +133,7 @@ export async function createPlaygroup(name) {
 export async function fetchGames(playgroupId) {
     const { data, error } = await getActiveClient()
         .from('games')
-        .select('id, name')
+        .select('id, name, global_game_id')
         .eq('playgroup_id', playgroupId)
         .order('name');
 
@@ -143,7 +143,9 @@ export async function fetchGames(playgroupId) {
 
 /**
  * Fetch games from the user's other campaigns (excluding the current one).
- * Returns unique game names with optional image, excluding games already in current campaign.
+ * Returns unique game names with optional image.
+ * Excludes games already in current campaign by name OR by global_game_id (linked games).
+ * Deduplicates by global_game_id within other campaigns (linked game appears once).
  * Used for the "Other campaigns' games" section in game selection modals.
  */
 export async function fetchGamesFromOtherCampaigns(currentPlaygroupId, currentGameNames = []) {
@@ -152,34 +154,45 @@ export async function fetchGamesFromOtherCampaigns(currentPlaygroupId, currentGa
     const otherPgs = playgroups.filter(pg => pg.id !== currentPlaygroupId);
     if (!otherPgs.length) return [];
 
-    const otherNames = new Set();
+    // Build set of current campaign's linked game ids — exclude these from other campaigns
+    const currentGames = await fetchGames(currentPlaygroupId);
+    const currentGlobalGameIds = new Set(
+        (currentGames || []).filter(g => g.global_game_id).map(g => g.global_game_id)
+    );
+
+    // otherGamesByKey: key = global_game_id (if linked) or name (if unlinked), value = { name, gameId }
+    const otherGamesByKey = new Map();
     const idToName = {};
-    const allGameIds = [];
 
     for (const pg of otherPgs) {
         const games = await fetchGames(pg.id);
         games.forEach(g => {
-            if (!currentSet.has(g.name)) {
-                otherNames.add(g.name);
-                allGameIds.push(g.id);
+            if (currentSet.has(g.name)) return; // already in current campaign by name
+            if (g.global_game_id && currentGlobalGameIds.has(g.global_game_id)) return; // already in current by link
+
+            const key = g.global_game_id || g.name;
+            if (!otherGamesByKey.has(key)) {
+                otherGamesByKey.set(key, { name: g.name, gameId: g.id });
             }
             idToName[g.id] = g.name;
         });
     }
 
+    const allGameIds = [...new Set([...otherGamesByKey.values()].map(v => v.gameId))];
     if (allGameIds.length === 0) return [];
 
     const gameMeta = await fetchGameMetadata(allGameIds);
-    const nameToImage = {};
+    const idToImage = {};
     for (const [gameId, meta] of Object.entries(gameMeta)) {
-        const name = idToName[gameId];
-        if (name && otherNames.has(name) && meta?.image && !nameToImage[name]) {
-            nameToImage[name] = meta.image;
-        }
+        if (meta?.image) idToImage[gameId] = meta.image;
     }
 
-    const names = [...otherNames].sort((a, b) => a.localeCompare(b));
-    return names.map(name => ({ name, image: nameToImage[name] || null }));
+    const results = [...otherGamesByKey.values()].map(({ name, gameId }) => ({
+        name,
+        image: idToImage[gameId] || null
+    }));
+    results.sort((a, b) => a.name.localeCompare(b.name));
+    return results;
 }
 
 /**
@@ -679,6 +692,22 @@ export async function fetchAllUsers() {
     return users || [];
 }
 
+/** Update last_seen_at for current user (admin page visits). Uses regular client so auth.uid() is set.
+ *  Throttled to once per day by the RPC. */
+export async function updateLastSeen() {
+    const { error } = await getSupabase().rpc('update_last_seen');
+    if (error) throw error;
+}
+
+/** Fetch user_id -> last_seen_at map for admin users table. Requires admin client. */
+export async function fetchUserLastSeenMap() {
+    const ac = getAdminClient();
+    if (!ac) return {};
+    const { data, error } = await ac.from('user_last_seen').select('user_id, last_seen_at');
+    if (error) throw error;
+    return Object.fromEntries((data || []).map(r => [r.user_id, r.last_seen_at]));
+}
+
 export async function fetchAllPlaygroupMembers() {
     const ac = getAdminClient();
     if (!ac) throw new Error('Admin client not available');
@@ -859,13 +888,37 @@ export async function upsertGlobalGame(bggId, name, yearPublished, thumbnailUrl)
     return data;
 }
 
-export async function linkGameToGlobal(gameId, globalGameId) {
+export async function linkGameToGlobal(gameId, globalGameId, canonicalName = null) {
     const ac = getAdminClient();
     if (!ac) throw new Error('Admin client not available');
+    const updates = { global_game_id: globalGameId };
+    if (canonicalName != null && canonicalName !== '') {
+        updates.name = canonicalName;
+    }
     const { error } = await ac.from('games')
-        .update({ global_game_id: globalGameId })
+        .update(updates)
         .eq('id', gameId);
     if (error) throw error;
+}
+
+/**
+ * Create a global_game by name (no BGG). Uses a synthetic negative bgg_id in 32-bit integer range (-2147483648 to -1).
+ */
+export async function createGlobalGameByName(name) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const nameVal = (name || '').trim() || 'Unnamed';
+    for (let attempt = 0; attempt < 5; attempt++) {
+        const syntheticBggId = -Math.floor(Math.random() * 2147483647) - 1;
+        const { data, error } = await ac.from('global_games')
+            .insert({ bgg_id: syntheticBggId, name: nameVal })
+            .select()
+            .single();
+        if (!error) return data;
+        if (error.code === '23505') continue;
+        throw error;
+    }
+    throw new Error('Could not create game (id conflict); please try again.');
 }
 
 export async function fetchUnlinkedGames() {
@@ -891,6 +944,67 @@ export async function adminDeleteGame(gameId) {
     if (!ac) throw new Error('Admin client not available');
     const { error } = await ac.from('games').delete().eq('id', gameId);
     if (error) throw error;
+}
+
+/**
+ * Update a game's name (admin only).
+ */
+export async function adminUpdateGame(gameId, { name }) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const trimmed = (name || '').trim();
+    if (!trimmed) throw new Error('Game name cannot be empty');
+    const { data, error } = await ac
+        .from('games')
+        .update({ name: trimmed })
+        .eq('id', gameId)
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+}
+
+/**
+ * Merge source game into target game (same campaign only).
+ * Reassigns entries, optionally copies game_metadata image, then deletes source.
+ */
+export async function adminMergeGames(sourceGameId, targetGameId) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    if (sourceGameId === targetGameId) throw new Error('Source and target cannot be the same game');
+
+    const { data: games, error: fetchErr } = await ac.from('games')
+        .select('id, name, playgroup_id')
+        .in('id', [sourceGameId, targetGameId]);
+    if (fetchErr) throw fetchErr;
+    if (!games || games.length !== 2) throw new Error('Could not find both games');
+
+    const sourceGame = games.find(g => g.id === sourceGameId);
+    const targetGame = games.find(g => g.id === targetGameId);
+    if (!sourceGame || !targetGame) throw new Error('Could not find both games');
+    if (sourceGame.playgroup_id !== targetGame.playgroup_id) {
+        throw new Error('Games must be in the same campaign to merge');
+    }
+
+    const { error: updateErr } = await ac.from('entries')
+        .update({ game_id: targetGameId })
+        .eq('game_id', sourceGameId);
+    if (updateErr) throw updateErr;
+
+    const { data: metaRows } = await ac.from('game_metadata')
+        .select('game_id, image')
+        .in('game_id', [sourceGameId, targetGameId]);
+    const sourceMeta = metaRows?.find(r => r.game_id === sourceGameId);
+    const targetMeta = metaRows?.find(r => r.game_id === targetGameId);
+    if (sourceMeta?.image && !targetMeta?.image) {
+        await ac.from('game_metadata').upsert(
+            { game_id: targetGameId, image: sourceMeta.image },
+            { onConflict: 'game_id' }
+        );
+    }
+
+    const { error: deleteErr } = await ac.from('games').delete().eq('id', sourceGameId);
+    if (deleteErr) throw deleteErr;
 }
 
 export async function adminDeletePlayer(playerId) {

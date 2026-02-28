@@ -103,7 +103,7 @@
                 </div>
                 <div class="admin-table-wrap">
                     <table class="admin-table" id="usersTable">
-                        <thead><tr><th><input type="checkbox" class="admin-select-all" data-table="users"></th><th>Email</th><th>Name</th><th>Owns</th><th>Member Of</th><th>Joined</th></tr></thead>
+                        <thead><tr><th><input type="checkbox" class="admin-select-all" data-table="users"></th><th>Email</th><th>Name</th><th>Owns</th><th>Member Of</th><th>Joined</th><th class="admin-sortable" data-sort="last_seen" title="Sort by last seen">Last seen <span class="sort-icon"></span></th></tr></thead>
                         <tbody></tbody>
                     </table>
                 </div>
@@ -134,18 +134,41 @@
             <div id="tab-games" class="admin-panel">
                 <div class="admin-sub-tabs">
                     <button class="admin-sub-tab active" data-subtab="games-list">Games</button>
+                    <button class="admin-sub-tab" data-subtab="consolidated-list">Consolidated</button>
                     <button class="admin-sub-tab" data-subtab="players-list">Players</button>
                 </div>
                 <div id="subtab-games-list" class="admin-sub-panel active">
-                    <h2 class="admin-panel-title">Games</h2>
+                    <div class="admin-panel-header-row" style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:12px;">
+                        <h2 class="admin-panel-title" style="margin:0;">Games</h2>
+                        <label style="display:flex; align-items:center; gap:8px; color:var(--text-muted); font-size:0.9rem;">
+                            Sort by:
+                            <select id="gamesSortSelect" class="admin-search" style="min-width:180px; padding:6px 10px;">
+                                <option value="name-az">A–Z (Name)</option>
+                                <option value="name-za">Z–A (Name)</option>
+                                <option value="date-newest">Date added (newest first)</option>
+                                <option value="date-oldest">Date added (oldest first)</option>
+                            </select>
+                        </label>
+                    </div>
                     <div class="admin-bulk-bar" id="gamesBulkBar" style="display:none;">
                         <span id="gamesBulkCount">0 selected</span>
+                        <button class="admin-action-btn admin-action-success" id="gamesBulkMerge" style="display:none;">Merge Selected</button>
                         <button class="admin-action-btn admin-action-danger" id="gamesBulkDelete">Delete Selected</button>
                         <button class="admin-action-btn" id="gamesBulkClear">Clear</button>
                     </div>
                     <div class="admin-table-wrap">
                         <table class="admin-table" id="gamesTable">
                             <thead><tr><th><input type="checkbox" class="admin-select-all" data-table="games"></th><th>Name</th><th>Campaign</th><th>Wins</th><th>BGG</th><th>Actions</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="subtab-consolidated-list" class="admin-sub-panel">
+                    <h2 class="admin-panel-title">Consolidated Games</h2>
+                    <p style="color:var(--text-muted); margin-bottom:16px;">Games grouped by canonical identity (BGG-linked or normalized name). One row per logical game across all campaigns.</p>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table" id="consolidatedGamesTable">
+                            <thead><tr><th>Canonical Name</th><th>Campaigns</th><th>Total Wins</th><th># Game Rows</th><th>Actions</th></tr></thead>
                             <tbody></tbody>
                         </table>
                     </div>
@@ -246,6 +269,36 @@
                         <tbody></tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Merge / Link Game Modal -->
+    <div class="modal-overlay" id="adminMergeModal">
+        <div class="modal admin-passphrase-modal" style="max-width:460px;">
+            <h3 class="admin-passphrase-title" id="adminMergeTitle">Merge Games</h3>
+            <p class="admin-passphrase-desc" id="adminMergeDesc">Merge the source game into another game in the same campaign. All entries will be reassigned.</p>
+            <div id="adminMergeGamePicker">
+                <label style="display:block; margin:12px 0 4px; font-weight:500;">Merge into:</label>
+                <select id="adminMergeTargetSelect" class="input-field admin-passphrase-input" style="width:100%; margin-bottom:16px;"></select>
+            </div>
+            <div id="adminMergeBGGLink" style="display:none;">
+                <p class="admin-passphrase-desc" style="margin-bottom:12px;">Link selected games so they appear as one in the Consolidated view.</p>
+                <label style="display:block; margin:8px 0 4px; font-weight:500;">Link to existing game:</label>
+                <select id="adminMergeExistingSelect" class="input-field admin-passphrase-input" style="width:100%; margin-bottom:12px;">
+                    <option value="">— Choose an existing game —</option>
+                </select>
+                <label style="display:block; margin:12px 0 4px; font-weight:500;">Or create new canonical game (use selected game name):</label>
+                <select id="adminMergeCreateNewSelect" class="input-field admin-passphrase-input" style="width:100%; margin-bottom:12px;">
+                    <option value="">— Choose a name —</option>
+                </select>
+                <label style="display:block; margin:12px 0 4px; font-weight:500;">Or search BGG (when API available):</label>
+                <input type="text" id="adminMergeBGGSearch" class="input-field admin-passphrase-input" placeholder="Game name..." style="width:100%; margin-bottom:8px;">
+                <div id="adminMergeBGGResults" style="min-height:60px; margin-bottom:12px;"></div>
+            </div>
+            <div class="admin-passphrase-actions">
+                <button class="btn btn-secondary" id="adminMergeCancel" type="button">Cancel</button>
+                <button class="btn admin-passphrase-btn admin-action-success" id="adminMergeConfirm" type="button">Merge</button>
             </div>
         </div>
     </div>

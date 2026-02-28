@@ -10,10 +10,11 @@ import {
     fetchAppConfig, setAppConfig,
     fetchAllAnnouncements, publishAnnouncement, clearAnnouncement, fetchActiveAnnouncement,
     deleteAnnouncement, reactivateAnnouncement,
-    fetchUnlinkedGames, fetchGlobalGames, upsertGlobalGame, linkGameToGlobal,
+    fetchUnlinkedGames, fetchGlobalGames, upsertGlobalGame, linkGameToGlobal, createGlobalGameByName,
     deletePlaygroupAdmin, deleteInviteToken, replaceInviteToken,
-    adminDeleteEntry, adminDeleteGame, adminDeletePlayer,
-    adminRemoveUserFromCampaigns, adminDeleteUserAccount
+    adminDeleteEntry, adminDeleteGame, adminDeletePlayer, adminMergeGames, adminUpdateGame,
+    adminRemoveUserFromCampaigns, adminDeleteUserAccount,
+    updateLastSeen, fetchUserLastSeenMap
 } from './supabase.js';
 import { signOut } from './auth.js';
 
@@ -29,6 +30,9 @@ function adminToast(msg) {
 // ── Cached data ──────────────────────────────────────────────────────────────
 let _playgroups = [], _users = [], _members = [], _games = [], _players = [];
 let _entries = [], _invites = [], _config = {}, _globalGames = [];
+let _userLastSeen = {};
+let _usersSortBy = 'last_seen';
+let _usersSortDir = 'asc'; // asc = oldest first (for pruning), desc = newest first
 
 const pgName = id => _playgroups.find(p => p.id === id)?.name || id?.slice(0, 8) || '—';
 const userName = id => {
@@ -91,6 +95,7 @@ function showDashboard() {
     document.getElementById('adminDashboard').style.display = 'block';
     setupTabs();
     loadOverview();
+    updateLastSeen().catch(() => {}); // fire-and-forget, throttled once/day
 }
 
 function guardAdmin() {
@@ -118,6 +123,7 @@ function setupTabs() {
             document.querySelectorAll('.admin-sub-panel').forEach(p => p.classList.remove('active'));
             tab.classList.add('active');
             document.getElementById('subtab-' + tab.dataset.subtab).classList.add('active');
+            if (tab.dataset.subtab === 'consolidated-list') renderConsolidatedGames();
         });
     });
 
@@ -130,6 +136,19 @@ function setupTabs() {
     document.getElementById('campaignSearch').addEventListener('input', renderCampaigns);
     document.getElementById('userSearch').addEventListener('input', renderUsers);
     document.getElementById('entryCampaignFilter').addEventListener('change', renderEntries);
+
+    document.querySelector('#usersTable .admin-sortable[data-sort="last_seen"]')?.addEventListener('click', (e) => {
+        if (e.target.closest('input')) return;
+        _usersSortBy = 'last_seen';
+        _usersSortDir = _usersSortDir === 'asc' ? 'desc' : 'asc';
+        renderUsers();
+    });
+
+    document.getElementById('adminMergeCancel').addEventListener('click', hideMergeModal);
+    document.getElementById('adminMergeConfirm').addEventListener('click', doMergeGames);
+    document.getElementById('adminMergeModal').addEventListener('click', (e) => {
+        if (e.target.id === 'adminMergeModal') hideMergeModal();
+    });
 }
 
 function onTabActivate(tab) {
@@ -159,6 +178,13 @@ async function loadOverview() {
         ]);
     } catch (e) { console.error('Overview load error:', e); return; }
 
+    _playgroups = _playgroups || [];
+    _users = _users || [];
+    _entries = _entries || [];
+    _games = _games || [];
+    _players = _players || [];
+    _globalGames = _globalGames || [];
+
     document.getElementById('statCampaigns').textContent = _playgroups.length;
     document.getElementById('statUsers').textContent = _users.length;
     document.getElementById('statEntries').textContent = _entries.length;
@@ -178,10 +204,10 @@ function renderTopGames() {
     _entries.forEach(e => {
         const game = _games.find(g => g.id === e.game_id);
         if (!game) return;
-        const key = game.global_game_id || game.name;
-        const label = game.global_game_id
+        const key = game?.global_game_id || game?.name;
+        const label = game?.global_game_id
             ? (_globalGames.find(gg => gg.id === game.global_game_id)?.name || game.name)
-            : game.name;
+            : game?.name || '—';
         if (!winsByGame[key]) winsByGame[key] = { label, count: 0 };
         winsByGame[key].count++;
     });
@@ -296,7 +322,12 @@ function renderCampaigns() {
 async function loadUsers() {
     if (!guardAdmin()) return;
     if (!_users.length) {
-        [_users, _members] = await Promise.all([fetchAllUsers(), fetchAllPlaygroupMembers()]);
+        const [users, members, lastSeen] = await Promise.all([
+            fetchAllUsers(), fetchAllPlaygroupMembers(), fetchUserLastSeenMap()
+        ]);
+        _users = users;
+        _members = members;
+        _userLastSeen = lastSeen;
     }
     renderUsers();
 }
@@ -304,14 +335,29 @@ async function loadUsers() {
 function renderUsers() {
     const q = (document.getElementById('userSearch').value || '').toLowerCase();
     const tbody = document.querySelector('#usersTable tbody');
-    const filtered = _users.filter(u => {
+    const thead = document.querySelector('#usersTable thead tr');
+    let filtered = _users.filter(u => {
         const email = u.email || '';
         const name = u.user_metadata?.full_name || '';
         return !q || email.toLowerCase().includes(q) || name.toLowerCase().includes(q);
     });
+    if (_usersSortBy === 'last_seen') {
+        filtered = [...filtered].sort((a, b) => {
+            const ta = _userLastSeen[a.id] ? new Date(_userLastSeen[a.id]).getTime() : 0;
+            const tb = _userLastSeen[b.id] ? new Date(_userLastSeen[b.id]).getTime() : 0;
+            if (ta === tb) return 0;
+            return _usersSortDir === 'asc' ? ta - tb : tb - ta;
+        });
+    }
+    // Update sort icon
+    thead?.querySelectorAll('.admin-sortable').forEach(th => {
+        const icon = th.querySelector('.sort-icon');
+        if (icon) icon.textContent = th.dataset.sort === _usersSortBy ? (_usersSortDir === 'asc' ? '↑' : '↓') : '';
+    });
     tbody.innerHTML = filtered.map(u => {
         const owned = _members.filter(m => m.user_id === u.id && m.role === 'owner').length;
         const memberOf = _members.filter(m => m.user_id === u.id).length;
+        const lastSeen = _userLastSeen[u.id];
         return `<tr data-id="${u.id}">
             <td><input type="checkbox" class="admin-row-check" data-table="users" value="${u.id}"></td>
             <td>${esc(u.email || '—')}</td>
@@ -319,8 +365,9 @@ function renderUsers() {
             <td>${owned}</td>
             <td>${memberOf}</td>
             <td>${fmtDate(u.created_at)}</td>
+            <td>${lastSeen ? fmtDate(lastSeen) : '—'}</td>
         </tr>`;
-    }).join('') || '<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">No users found.</td></tr>';
+    }).join('') || '<tr><td colspan="7" style="text-align:center; color:var(--text-muted);">No users found.</td></tr>';
 
     setupBulkSelect('users', 'usersBulkBar', 'usersBulkCount', 'usersTable');
     const removeBtn = document.getElementById('usersBulkRemoveCampaigns');
@@ -445,8 +492,17 @@ async function loadGamesPlayers() {
             fetchAllGames(), fetchAllPlayers(), fetchAllEntries(), fetchPlaygroups(), fetchAllUsers()
         ]);
     }
+    if (!_globalGames?.length) {
+        _globalGames = await fetchGlobalGames();
+    }
+    const sortEl = document.getElementById('gamesSortSelect');
+    if (sortEl && !sortEl.dataset.bound) {
+        sortEl.dataset.bound = '1';
+        sortEl.addEventListener('change', () => renderGamesTable());
+    }
     renderGamesTable();
     renderPlayersTable();
+    renderConsolidatedGames();
 }
 
 function renderGamesTable() {
@@ -454,17 +510,52 @@ function renderGamesTable() {
     const winsMap = {};
     _entries.forEach(e => { winsMap[e.game_id] = (winsMap[e.game_id] || 0) + 1; });
 
-    tbody.innerHTML = _games.map(g => `<tr data-id="${g.id}">
+    // Earliest entry created_at per game (date added proxy)
+    const gameFirstEntryAt = {};
+    _entries.forEach(e => {
+        const t = e.created_at ? new Date(e.created_at).getTime() : 0;
+        if (!gameFirstEntryAt[e.game_id] || t < gameFirstEntryAt[e.game_id]) {
+            gameFirstEntryAt[e.game_id] = t;
+        }
+    });
+
+    const sortBy = document.getElementById('gamesSortSelect')?.value || 'name-az';
+    const sorted = [..._games].sort((a, b) => {
+        if (sortBy === 'name-az') return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+        if (sortBy === 'name-za') return (b.name || '').localeCompare(a.name || '', undefined, { sensitivity: 'base' });
+        const ta = gameFirstEntryAt[a.id] || (sortBy === 'date-newest' ? 0 : 1e15);
+        const tb = gameFirstEntryAt[b.id] || (sortBy === 'date-newest' ? 0 : 1e15);
+        if (sortBy === 'date-newest') return tb - ta; // newest first
+        return ta - tb; // oldest first
+    });
+
+    const sameCampaignCount = {};
+    _games.forEach(g => {
+        const k = g.playgroup_id;
+        sameCampaignCount[k] = (sameCampaignCount[k] || 0) + 1;
+    });
+    tbody.innerHTML = sorted.map(g => {
+        const canMerge = (sameCampaignCount[g.playgroup_id] || 0) > 1;
+        return `<tr data-id="${g.id}">
         <td><input type="checkbox" class="admin-row-check" data-table="games" value="${g.id}"></td>
-        <td>${esc(g.name)}</td>
+        <td class="games-name-cell" data-game-id="${g.id}" data-game-name="${esc(g.name)}">${esc(g.name)}</td>
         <td>${esc(pgName(g.playgroup_id))}</td>
         <td>${winsMap[g.id] || 0}</td>
         <td>${g.global_game_id ? '<span class="admin-badge admin-badge-ok">Linked</span>' : '<span class="admin-badge admin-badge-warn">—</span>'}</td>
         <td>
+            <button class="admin-action-btn" data-edit-game="${g.id}" title="Edit name">Edit</button>
+            ${canMerge ? `<button class="admin-action-btn admin-action-success" data-merge-game="${g.id}" title="Merge into another game">Merge</button>` : ''}
             <button class="admin-action-btn admin-action-danger" data-delete-game="${g.id}" title="Delete game">✕</button>
         </td>
-    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">No games.</td></tr>';
+    </tr>`;
+    }).join('') || '<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">No games.</td></tr>';
 
+    tbody.querySelectorAll('[data-edit-game]').forEach(btn => {
+        btn.addEventListener('click', () => startEditGameName(btn.dataset.editGame));
+    });
+    tbody.querySelectorAll('[data-merge-game]').forEach(btn => {
+        btn.addEventListener('click', () => showMergeModal(btn.dataset.mergeGame));
+    });
     tbody.querySelectorAll('[data-delete-game]').forEach(btn => {
         btn.addEventListener('click', async () => {
             if (!confirm('Delete this game and all its entries?')) return;
@@ -474,11 +565,13 @@ function renderGamesTable() {
                 _games = _games.filter(g => g.id !== btn.dataset.deleteGame);
                 _entries = _entries.filter(e => e.game_id !== btn.dataset.deleteGame);
                 renderGamesTable();
+                renderConsolidatedGames();
             } catch (e) { adminToast('Error: ' + e.message); btn.disabled = false; }
         });
     });
 
-    setupBulkSelect('games', 'gamesBulkBar', 'gamesBulkCount', 'gamesTable');
+    setupBulkSelect('games', 'gamesBulkBar', 'gamesBulkCount', 'gamesTable', updateGamesMergeButton);
+    document.getElementById('gamesBulkMerge').onclick = () => showBulkMergeModal();
     document.getElementById('gamesBulkDelete').onclick = async () => {
         const ids = getChecked('games');
         if (!ids.length) return;
@@ -491,8 +584,403 @@ function renderGamesTable() {
             } catch (e) { adminToast('Error: ' + e.message); }
         }
         renderGamesTable();
+        renderConsolidatedGames();
     };
     document.getElementById('gamesBulkClear').onclick = () => clearChecked('games', 'gamesBulkBar', 'gamesBulkCount', 'gamesTable');
+}
+
+// ── Edit game name ───────────────────────────────────────────────────────────
+
+function startEditGameName(gameId) {
+    const row = document.querySelector(`#gamesTable tr[data-id="${gameId}"]`);
+    const cell = row?.querySelector('.games-name-cell');
+    if (!cell || cell.querySelector('input')) return;
+    const currentName = (cell.dataset.gameName || '').trim();
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentName;
+    input.className = 'admin-edit-input';
+    input.style.cssText = 'width:100%; padding:6px 10px; background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border); border-radius:6px; font-size:inherit;';
+    const finish = (save) => {
+        input.removeEventListener('blur', onBlur);
+        input.removeEventListener('keydown', onKey);
+        const newName = (input.value || '').trim();
+        cell.textContent = '';
+        cell.dataset.gameName = newName || currentName;
+        cell.textContent = newName || currentName;
+        if (save && newName && newName !== currentName) {
+            adminUpdateGame(gameId, { name: newName }).then(() => {
+                const g = _games.find(x => x.id === gameId);
+                if (g) g.name = newName;
+                renderGamesTable();
+                renderConsolidatedGames();
+                adminToast('Game name updated.');
+            }).catch(e => {
+                adminToast('Error: ' + e.message);
+                cell.textContent = currentName;
+                cell.dataset.gameName = currentName;
+            });
+        } else {
+            cell.textContent = currentName;
+            cell.dataset.gameName = currentName;
+        }
+    };
+    const onBlur = () => finish(true);
+    const onKey = (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+        if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    };
+    input.addEventListener('blur', onBlur);
+    input.addEventListener('keydown', onKey);
+    cell.textContent = '';
+    cell.appendChild(input);
+    input.focus();
+    input.select();
+}
+
+// ── Merge modal ──────────────────────────────────────────────────────────────
+
+let _mergeSourceId = null;
+let _mergeBulkIds = null;
+
+function updateGamesMergeButton() {
+    const ids = getChecked('games');
+    const mergeBtn = document.getElementById('gamesBulkMerge');
+    if (!mergeBtn) return;
+    mergeBtn.style.display = ids.length >= 2 ? 'inline-block' : 'none';
+}
+
+let _mergeIsLinkMode = false;
+let _linkChosenBGG = null;
+
+async function showBulkMergeModal() {
+    const ids = getChecked('games');
+    if (ids.length < 2) {
+        adminToast('Select at least 2 games to merge or link.');
+        return;
+    }
+    const selectedGames = ids.map(id => _games.find(g => g.id === id)).filter(Boolean);
+    const playgroupIds = [...new Set(selectedGames.map(g => g.playgroup_id))];
+    const allSameCampaign = playgroupIds.length === 1;
+
+    _mergeSourceId = null;
+    _mergeBulkIds = ids;
+    _mergeIsLinkMode = !allSameCampaign;
+    _linkChosenBGG = null;
+    _linkChosenGlobalGameId = null;
+    _linkCreateNewName = null;
+
+    const pickerEl = document.getElementById('adminMergeGamePicker');
+    const bggEl = document.getElementById('adminMergeBGGLink');
+    const titleEl = document.getElementById('adminMergeTitle');
+    const descEl = document.getElementById('adminMergeDesc');
+    const confirmBtn = document.getElementById('adminMergeConfirm');
+
+    if (allSameCampaign) {
+        pickerEl.style.display = 'block';
+        bggEl.style.display = 'none';
+        titleEl.textContent = 'Merge Games';
+        descEl.textContent = `Merge ${ids.length} selected games into one. Choose which game to keep (others will be merged into it):`;
+        const sel = document.getElementById('adminMergeTargetSelect');
+        sel.innerHTML = selectedGames.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('');
+        confirmBtn.textContent = 'Merge';
+        confirmBtn.disabled = false;
+    } else {
+        pickerEl.style.display = 'none';
+        bggEl.style.display = 'block';
+        titleEl.textContent = 'Link Selected Games';
+        descEl.textContent = `Link ${ids.length} selected games so they appear as one in the Consolidated view.`;
+        _globalGames = await fetchGlobalGames();
+        const existingSel = document.getElementById('adminMergeExistingSelect');
+        existingSel.innerHTML = '<option value="">— Choose an existing game —</option>' +
+            (_globalGames || []).map(gg => `<option value="${gg.id}">${esc(gg.name)}${gg.year_published ? ' (' + gg.year_published + ')' : ''}</option>`).join('');
+        existingSel.value = '';
+        const uniqueNames = [...new Set(selectedGames.map(g => (g.name || '').trim()).filter(Boolean))];
+        const createSel = document.getElementById('adminMergeCreateNewSelect');
+        createSel.innerHTML = '<option value="">— Choose a name —</option>' +
+            uniqueNames.map(n => `<option value="${(n || '').replace(/"/g, '&quot;')}">${esc(n)}</option>`).join('');
+        createSel.value = '';
+        document.getElementById('adminMergeBGGSearch').value = '';
+        document.getElementById('adminMergeBGGResults').innerHTML = '';
+        confirmBtn.textContent = 'Link All';
+        confirmBtn.disabled = true;
+        setupMergeBGGLink();
+    }
+    document.getElementById('adminMergeModal').classList.add('active');
+}
+
+let _linkChosenGlobalGameId = null;
+let _linkCreateNewName = null;
+
+function updateLinkConfirmButton() {
+    const confirmBtn = document.getElementById('adminMergeConfirm');
+    const canLink = !!(_linkChosenBGG || _linkChosenGlobalGameId || _linkCreateNewName);
+    confirmBtn.disabled = !canLink;
+}
+
+function setupMergeBGGLink() {
+    const existingSel = document.getElementById('adminMergeExistingSelect');
+    const createSel = document.getElementById('adminMergeCreateNewSelect');
+    const input = document.getElementById('adminMergeBGGSearch');
+    const resultsDiv = document.getElementById('adminMergeBGGResults');
+    let timer;
+
+    existingSel.onchange = () => {
+        _linkChosenGlobalGameId = existingSel.value || null;
+        _linkChosenBGG = null;
+        _linkCreateNewName = null;
+        createSel.value = '';
+        resultsDiv.querySelectorAll('.admin-bgg-result').forEach(b => b.classList.remove('selected'));
+        updateLinkConfirmButton();
+    };
+
+    createSel.onchange = () => {
+        _linkCreateNewName = (createSel.value || '').trim() || null;
+        _linkChosenGlobalGameId = null;
+        _linkChosenBGG = null;
+        existingSel.value = '';
+        resultsDiv.innerHTML = '';
+        resultsDiv.querySelectorAll('.admin-bgg-result').forEach(b => b.classList.remove('selected'));
+        updateLinkConfirmButton();
+    };
+
+    input.oninput = () => {
+        clearTimeout(timer);
+        const q = input.value.trim();
+        if (q.length < 2) {
+            resultsDiv.innerHTML = '';
+            _linkChosenBGG = null;
+            if (!_linkChosenGlobalGameId && !_linkCreateNewName) existingSel.value = '';
+            if (!_linkChosenGlobalGameId && !_linkCreateNewName) createSel.value = '';
+            updateLinkConfirmButton();
+            return;
+        }
+        timer = setTimeout(() => searchBGGForMerge(q, resultsDiv, () => {
+            _linkChosenBGG = null;
+            updateLinkConfirmButton();
+        }, (bgg) => {
+            _linkChosenBGG = bgg;
+            _linkChosenGlobalGameId = null;
+            _linkCreateNewName = null;
+            existingSel.value = '';
+            createSel.value = '';
+            updateLinkConfirmButton();
+        }), 500);
+    };
+}
+
+async function searchBGGForMerge(query, resultsDiv, onClear, onPick) {
+    resultsDiv.innerHTML = '<span style="color:var(--text-muted); font-size:0.85rem;">Searching...</span>';
+    onClear();
+    try {
+        const url = SUPABASE_URL + '/functions/v1/bgg-search?q=' + encodeURIComponent(query);
+        const resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } });
+        if (!resp.ok) throw new Error('BGG search failed');
+        const results = await resp.json();
+        if (!results.length) {
+            resultsDiv.innerHTML = '<span style="color:var(--text-muted); font-size:0.85rem;">No results.</span>';
+            return;
+        }
+        resultsDiv.innerHTML = results.slice(0, 5).map(r =>
+            `<button type="button" class="admin-bgg-result" data-bgg='${JSON.stringify(r).replace(/'/g, '&#39;')}'>
+                ${esc(r.name)}${r.year_published ? ' (' + r.year_published + ')' : ''}
+            </button>`
+        ).join('');
+        resultsDiv.querySelectorAll('.admin-bgg-result').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const bgg = JSON.parse(btn.dataset.bgg);
+                onPick(bgg);
+                resultsDiv.querySelectorAll('.admin-bgg-result').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+            });
+        });
+    } catch (e) {
+        resultsDiv.innerHTML = `<span style="color:#f87171; font-size:0.85rem;">Error: ${esc(e.message)}</span>`;
+        onClear();
+    }
+}
+
+function showMergeModal(sourceGameId) {
+    const source = _games.find(g => g.id === sourceGameId);
+    if (!source) return;
+    const others = _games.filter(g => g.playgroup_id === source.playgroup_id && g.id !== sourceGameId);
+    if (!others.length) {
+        adminToast('No other games in this campaign to merge into.');
+        return;
+    }
+    _mergeSourceId = sourceGameId;
+    _mergeBulkIds = null;
+    document.getElementById('adminMergeDesc').textContent = `Merge "${source.name}" into another game in ${pgName(source.playgroup_id)}. All entries will be reassigned.`;
+    const sel = document.getElementById('adminMergeTargetSelect');
+    sel.innerHTML = others.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('');
+    document.getElementById('adminMergeModal').classList.add('active');
+}
+
+function hideMergeModal() {
+    _mergeSourceId = null;
+    _mergeBulkIds = null;
+    _mergeIsLinkMode = false;
+    _linkChosenBGG = null;
+    _linkChosenGlobalGameId = null;
+    _linkCreateNewName = null;
+    document.getElementById('adminMergeModal').classList.remove('active');
+}
+
+async function doMergeGames() {
+    if (_mergeIsLinkMode) {
+        await doLinkSelectedGames();
+        return;
+    }
+
+    const targetId = document.getElementById('adminMergeTargetSelect').value;
+    if (!targetId) return;
+
+    const idsToMerge = _mergeBulkIds || (_mergeSourceId ? [_mergeSourceId] : []);
+    if (!idsToMerge.length) return;
+
+    const btn = document.getElementById('adminMergeConfirm');
+    btn.disabled = true;
+    try {
+        const sourcesToMerge = idsToMerge.filter(id => id !== targetId);
+        for (const sourceId of sourcesToMerge) {
+            await adminMergeGames(sourceId, targetId);
+            _entries.forEach(e => {
+                if (e.game_id === sourceId) e.game_id = targetId;
+            });
+            _games = _games.filter(g => g.id !== sourceId);
+        }
+        hideMergeModal();
+        clearChecked('games', 'gamesBulkBar', 'gamesBulkCount', 'gamesTable');
+        document.getElementById('gamesBulkBar').style.display = 'none';
+        renderGamesTable();
+        renderConsolidatedGames();
+        adminToast(sourcesToMerge.length === 1 ? 'Games merged successfully.' : `${sourcesToMerge.length} games merged successfully.`);
+    } catch (e) {
+        adminToast('Error: ' + e.message);
+    }
+    btn.disabled = false;
+}
+
+async function doLinkSelectedGames() {
+    if ((!_linkChosenBGG && !_linkChosenGlobalGameId && !_linkCreateNewName) || !_mergeBulkIds?.length) {
+        adminToast('Pick an existing game, create a new one, or search BGG and select a result.');
+        return;
+    }
+    const btn = document.getElementById('adminMergeConfirm');
+    btn.disabled = true;
+    try {
+        let globalGameId;
+        let canonicalName;
+        if (_linkChosenGlobalGameId) {
+            globalGameId = _linkChosenGlobalGameId;
+            canonicalName = (_globalGames || []).find(gg => gg.id === globalGameId)?.name || null;
+        } else if (_linkCreateNewName) {
+            const globalGame = await createGlobalGameByName(_linkCreateNewName);
+            globalGameId = globalGame.id;
+            canonicalName = globalGame.name;
+            _globalGames = _globalGames || [];
+            _globalGames.push(globalGame);
+        } else {
+            const globalGame = await upsertGlobalGame(
+                _linkChosenBGG.bgg_id,
+                _linkChosenBGG.name,
+                _linkChosenBGG.year_published,
+                _linkChosenBGG.thumbnail_url
+            );
+            globalGameId = globalGame.id;
+            canonicalName = globalGame.name;
+        }
+        for (const gameId of _mergeBulkIds) {
+            await linkGameToGlobal(gameId, globalGameId, canonicalName);
+        }
+        _games = _games.map(g =>
+            _mergeBulkIds.includes(g.id)
+                ? { ...g, global_game_id: globalGameId, name: canonicalName || g.name }
+                : g
+        );
+        hideMergeModal();
+        clearChecked('games', 'gamesBulkBar', 'gamesBulkCount', 'gamesTable');
+        document.getElementById('gamesBulkBar').style.display = 'none';
+        renderGamesTable();
+        renderConsolidatedGames();
+        adminToast(`${_mergeBulkIds.length} game(s) linked successfully.`);
+    } catch (e) {
+        adminToast('Error: ' + e.message);
+    }
+    btn.disabled = false;
+}
+
+// ── Consolidated games view ──────────────────────────────────────────────────
+
+function normalizeGameName(name) {
+    return (name || '').toLowerCase().trim().replace(/\s*\([^)]*\)\s*/g, '').trim();
+}
+
+function renderConsolidatedGames() {
+    const tbody = document.querySelector('#consolidatedGamesTable tbody');
+    if (!tbody) return;
+    const entries = _entries || [];
+    const games = _games || [];
+    const globalGames = _globalGames || [];
+
+    const winsByGame = {};
+    entries.forEach(e => {
+        const game = games.find(g => g.id === e.game_id);
+        if (!game) return;
+        winsByGame[game.id] = (winsByGame[game.id] || 0) + 1;
+    });
+
+    const groups = {};
+    games.forEach(g => {
+        const key = g.global_game_id
+            ? 'gg:' + g.global_game_id
+            : 'name:' + normalizeGameName(g.name);
+        if (!groups[key]) {
+            groups[key] = {
+                key,
+                canonicalName: g.global_game_id
+                    ? (globalGames.find(gg => gg.id === g.global_game_id)?.name || g.name)
+                    : g.name,
+                games: [],
+                totalWins: 0,
+                campaigns: new Set()
+            };
+        }
+        groups[key].games.push(g);
+        groups[key].totalWins += winsByGame[g.id] || 0;
+        groups[key].campaigns.add(g.playgroup_id);
+    });
+
+    const rows = Object.values(groups).sort((a, b) => b.totalWins - a.totalWins);
+
+    tbody.innerHTML = rows.map((row, idx) => {
+        const campaigns = [...row.campaigns].map(pgId => pgName(pgId)).join(', ');
+        const linked = row.games[0]?.global_game_id;
+        const campaignCounts = {};
+        row.games.forEach(g => { campaignCounts[g.playgroup_id] = (campaignCounts[g.playgroup_id] || 0) + 1; });
+        const hasSameCampaignDuplicates = Object.values(campaignCounts).some(c => c > 1);
+        const sourceForMerge = hasSameCampaignDuplicates
+            ? row.games.find(g => campaignCounts[g.playgroup_id] > 1)
+            : null;
+        return `<tr data-consolidated-row="${idx}">
+            <td>${esc(row.canonicalName)}</td>
+            <td>${esc(campaigns)}</td>
+            <td>${row.totalWins}</td>
+            <td>${row.games.length}</td>
+            <td>
+                ${linked ? '<span class="admin-badge admin-badge-ok">Linked</span>' : ''}
+                ${sourceForMerge ? `<button type="button" class="admin-action-btn admin-action-success" data-consolidated-merge="${sourceForMerge.id}">Merge</button>` : ''}
+            </td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No games.</td></tr>';
+
+    tbody.querySelectorAll('[data-consolidated-merge]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const sourceId = btn.dataset.consolidatedMerge;
+            if (sourceId) showMergeModal(sourceId);
+        });
+    });
 }
 
 function renderPlayersTable() {
@@ -560,17 +1048,23 @@ let _unlinked = [];
 async function loadLinking() {
     if (!guardAdmin()) return;
     try {
-        [_unlinked, _globalGames, _playgroups] = await Promise.all([
+        const [u, gg, pg] = await Promise.all([
             fetchUnlinkedGames(), fetchGlobalGames(), fetchPlaygroups()
         ]);
+        _unlinked = u || [];
+        _globalGames = gg || [];
+        _playgroups = pg || [];
     } catch (e) { console.error(e); return; }
     renderLinkingProgress();
     renderLinkingList();
 }
 
 function renderLinkingProgress() {
-    const total = _games.length || (_unlinked.length + _globalGames.length);
-    const linked = total - _unlinked.length;
+    const gamesLen = (_games && _games.length) || 0;
+    const unlinkedLen = (_unlinked && _unlinked.length) || 0;
+    const globalLen = (_globalGames && _globalGames.length) || 0;
+    const total = gamesLen || (unlinkedLen + globalLen);
+    const linked = total - unlinkedLen;
     const pct = total ? Math.round((linked / total) * 100) : 0;
     document.getElementById('linkingProgress').textContent = `${linked} of ${total} games linked (${pct}%)`;
     document.getElementById('linkingProgressBar').style.width = pct + '%';
@@ -578,11 +1072,12 @@ function renderLinkingProgress() {
 
 function renderLinkingList() {
     const container = document.getElementById('linkingList');
-    if (!_unlinked.length) {
+    const unlinked = _unlinked || [];
+    if (!unlinked.length) {
         container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:20px;">All games are linked!</p>';
         return;
     }
-    container.innerHTML = _unlinked.map(g => `
+    container.innerHTML = unlinked.map(g => `
         <div class="admin-link-row" data-game-id="${g.id}">
             <div class="admin-link-info">
                 <strong>${esc(g.name)}</strong>
@@ -610,7 +1105,7 @@ function renderLinkingList() {
         btn.addEventListener('click', () => {
             const row = btn.closest('.admin-link-row');
             row.remove();
-            _unlinked = _unlinked.filter(g => g.id !== btn.dataset.skipGame);
+            _unlinked = (_unlinked || []).filter(g => g.id !== btn.dataset.skipGame);
             renderLinkingProgress();
         });
     });
@@ -666,8 +1161,8 @@ async function linkBGGResult(gameId, bgg) {
     const row = document.querySelector(`[data-game-id="${gameId}"]`);
     try {
         const globalGame = await upsertGlobalGame(bgg.bgg_id, bgg.name, bgg.year_published, bgg.thumbnail_url);
-        await linkGameToGlobal(gameId, globalGame.id);
-        _unlinked = _unlinked.filter(g => g.id !== gameId);
+        await linkGameToGlobal(gameId, globalGame.id, globalGame.name);
+        _unlinked = (_unlinked || []).filter(g => g.id !== gameId);
         if (row) row.remove();
         renderLinkingProgress();
     } catch (e) {
@@ -969,7 +1464,7 @@ function clearChecked(tableKey, barId, countId, tableId) {
     document.getElementById(countId).textContent = '0 selected';
 }
 
-function setupBulkSelect(tableKey, barId, countId, tableId) {
+function setupBulkSelect(tableKey, barId, countId, tableId, onBarUpdate) {
     const selectAll = document.querySelector(`.admin-select-all[data-table="${tableKey}"]`);
     const bar = document.getElementById(barId);
     const countEl = document.getElementById(countId);
@@ -982,6 +1477,7 @@ function setupBulkSelect(tableKey, barId, countId, tableId) {
         } else {
             bar.style.display = 'none';
         }
+        if (typeof onBarUpdate === 'function') onBarUpdate();
     }
 
     // Wire row checkboxes

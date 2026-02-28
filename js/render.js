@@ -382,6 +382,7 @@ export function renderGameSelection() {
         const div = document.createElement('div');
         div.className = 'selection-item selection-item-game' + (currentEntry.game === game ? ' selected' : '');
         div.setAttribute('data-game', game);
+        div.setAttribute('title', game);
         if (gameImage) {
             const img = document.createElement('img');
             img.src = gameImage;
@@ -404,6 +405,10 @@ export function renderGameSelection() {
             fallback.textContent = game;
             div.appendChild(fallback);
         }
+        const tooltip = document.createElement('span');
+        tooltip.className = 'selection-item-game-tooltip';
+        tooltip.textContent = game;
+        div.appendChild(tooltip);
         div.addEventListener('click', function () {
             selectGame(this.getAttribute('data-game'));
         });
@@ -454,6 +459,7 @@ async function loadOtherCampaignGamesForAddWin() {
             const div = document.createElement('div');
             div.className = 'selection-item selection-item-game' + (currentEntry.game === name ? ' selected' : '');
             div.setAttribute('data-game', name);
+            div.setAttribute('title', name);
             if (image) {
                 const img = document.createElement('img');
                 img.src = image;
@@ -476,6 +482,10 @@ async function loadOtherCampaignGamesForAddWin() {
                 fallback.textContent = name;
                 div.appendChild(fallback);
             }
+            const tooltip = document.createElement('span');
+            tooltip.className = 'selection-item-game-tooltip';
+            tooltip.textContent = name;
+            div.appendChild(tooltip);
             div.addEventListener('click', async function () {
                 const gameName = this.getAttribute('data-game');
                 if (data.games.includes(gameName)) {
