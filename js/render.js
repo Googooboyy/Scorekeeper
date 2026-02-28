@@ -154,7 +154,7 @@ export function renderPlayers() {
             color: playerData.color,
             userId: playerData.userId || null
         };
-    }).filter(stat => stat.wins > 0).sort((a, b) => b.wins - a.wins);
+    }).sort((a, b) => b.wins - a.wins);
 
     if (toggleBtn) toggleBtn.style.display = 'none';
 

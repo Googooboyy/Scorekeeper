@@ -9,7 +9,6 @@ import {
 } from './data.js';
 import { getActivePlaygroup } from './playgroups.js';
 import { showLoginPrompt } from './auth-ui.js';
-import { isAdminMode } from './admin.js';
 import {
     insertGame,
     insertPlayer,
@@ -211,22 +210,10 @@ export function setupEventListeners() {
     const exportBtn = document.getElementById('exportBtn');
     const importBtn = document.getElementById('importBtn');
     if (exportBtn) {
-        exportBtn.addEventListener('click', () => {
-            if (!isAdminMode()) {
-                showModal('Coming Soon', 'Export & Import are temporarily disabled. Check back soon!', () => {});
-                return;
-            }
-            exportData();
-        });
+        exportBtn.addEventListener('click', () => exportData());
     }
     if (importBtn) {
-        importBtn.addEventListener('click', () => {
-            if (!isAdminMode()) {
-                showModal('Coming Soon', 'Export & Import are temporarily disabled. Check back soon!', () => {});
-                return;
-            }
-            importData();
-        });
+        importBtn.addEventListener('click', () => importData());
     }
     document.getElementById('importFileInput').addEventListener('change', handleFileImport);
     document.getElementById('clearAllBtn').addEventListener('click', clearAllData);
@@ -611,10 +598,6 @@ async function saveEntry() {
 }
 
 function exportData() {
-    if (!isAdminMode()) {
-        showNotification('Export is currently available to admins only.');
-        return;
-    }
     const pg = getActivePlaygroup();
     if (!pg) { showNotification('Select a campaign to export'); return; }
     const exportObj = {
@@ -640,10 +623,6 @@ function exportData() {
 }
 
 function importData() {
-    if (!isAdminMode()) {
-        showNotification('Import is currently available to admins only.');
-        return;
-    }
     if (!getActivePlaygroup()) { showLoginPrompt(); return; }
     document.getElementById('importFileInput').click();
 }
