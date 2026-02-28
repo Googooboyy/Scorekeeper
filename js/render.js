@@ -114,9 +114,7 @@ export function renderPlayers() {
 
     if (data.players.length === 0) {
         if (!data.currentUserId) {
-            container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><button class="about-cta-btn" id="dashboardSignInBtn">Log in to add wins, players and games!</button></div>';
-            const signInBtn = document.getElementById('dashboardSignInBtn');
-            if (signInBtn) signInBtn.addEventListener('click', () => document.getElementById('loginBtn')?.click());
+            container.innerHTML = '';
         } else {
             container.innerHTML = '' +
                 '<div class="empty-state" style="grid-column: 1/-1;">' +

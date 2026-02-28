@@ -91,6 +91,10 @@
                     </div>
                 </div>
             </div>
+            <div id="dashboardGuestPrompt" class="dashboard-guest-prompt" style="display: none;">
+                <img src="logo-scorekpr/grok-imagine-meeple-crown-trophy.jpg" alt="ScoreKpr" class="dashboard-guest-logo">
+                <button type="button" class="about-cta-btn dashboard-guest-login-btn" id="dashboardGuestLoginBtn">Log in to add wins, players and games!</button>
+            </div>
             <div id="playersContainer" class="players-grid"></div>
 
             <div class="celebration-pills" aria-label="Celebration effects">
@@ -255,8 +259,10 @@
                     <span class="about-star about-star--secondary" style="top:92%;left:66%;--d:2.4s;--delay:1.3s"></span>
                 </div>
                 <div class="about-hero-content">
-                    <div class="about-beta-pill">🧪 Public Beta · v0.9.1 — Free while we build</div>
-                    <div class="about-hero-logo"><img src="logo-scorekpr/logo-ScoreKpr-tagline-350x240px-png.png" alt="ScoreKpr" /></div>
+                    <div class="about-beta-pill">🧪 Public Beta · v0.9.5 — Free while we build</div>
+                    <div class="about-hero-logo">
+                        <video class="about-hero-logo-video" src="logo-scorekpr/grok-imagine-meeple-crown-trophy_MOVIE01.mp4" autoplay muted playsinline></video>
+                    </div>
                     <p class="about-hero-sub">The friendly rivalry tracker for your board game nights, tabletop campaigns, and game-obsessed friend groups.</p>
                     <!-- Logged-out CTA -->
                     <button class="about-cta-btn" id="aboutGetStartedBtn">Sign in to start tracking</button>
@@ -491,7 +497,7 @@
                     </div>
                     <div class="footer-col">
                         <h4>Resources</h4>
-                        <a href="#" data-coming-soon>Help</a>
+                        <a href="help.html">Help</a>
                         <a href="ethos.html">Our Ethos</a>
                         <a href="roadmap.html">Roadmap</a>
                         <a href="investors.html">Investors</a>
@@ -507,7 +513,7 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <span class="footer-copy">© 2026 Googoodevv &nbsp;·&nbsp; <span class="footer-version">v0.9.1 Beta</span></span>
+                <span class="footer-copy">© 2026 Mar.sg &nbsp;·&nbsp; <span class="footer-version">v0.9.5 Beta</span></span>
                 <div class="footer-social">
                     <a href="#" class="footer-social-link" aria-label="X (Twitter)" title="X (Twitter)">𝕏</a>
                     <a href="#" class="footer-social-link" aria-label="Instagram" title="Instagram">
@@ -717,15 +723,7 @@
 
                 <!-- Stats summary row -->
                 <div class="profile-stats-row" id="profileStatsRow">
-                    <div class="profile-stat-card">
-                        <div class="profile-stat-number" id="profileTotalWins">—</div>
-                        <div class="profile-stat-label">Total Wins</div>
-                    </div>
-                    <div class="profile-stat-card" id="profileCampaignStatCard">
-                        <div class="profile-stat-number" id="profileCampaignCount">—</div>
-                        <div class="profile-stat-label">Campaigns</div>
-                    </div>
-                    <div class="profile-stat-card" id="profileFaveGameCard">
+                    <div class="profile-stat-card profile-fave-game-card-row" id="profileFaveGameCard">
                         <div class="profile-fave-game-inner">
                             <div class="profile-fave-game-thumb-wrap">
                                 <img id="profileFaveGameImg" class="profile-fave-game-img" alt="" style="display:none;">
@@ -736,6 +734,14 @@
                                 <div class="profile-stat-label">Favourite Game</div>
                             </div>
                         </div>
+                    </div>
+                    <div class="profile-stat-card">
+                        <div class="profile-stat-number" id="profileTotalWins">—</div>
+                        <div class="profile-stat-label">Total Wins</div>
+                    </div>
+                    <div class="profile-stat-card" id="profileCampaignStatCard">
+                        <div class="profile-stat-number" id="profileCampaignCount">—</div>
+                        <div class="profile-stat-label">Campaigns</div>
                     </div>
                     <div class="profile-stat-card">
                         <div class="profile-stat-number" id="profileGamesPlayed">—</div>

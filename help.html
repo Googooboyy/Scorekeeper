@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Help — The Scorekeeper</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&display=swap">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* ── Help page shell ── */
+        .help-body { background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+        .help-body .container { max-width: none; padding: 0; }
+        .legal-back {
+            display: inline-flex; align-items: center; gap: 8px;
+            color: var(--text-secondary); text-decoration: none; margin-bottom: 40px; font-size: 0.9rem;
+            transition: color 0.2s; position: relative; z-index: 10;
+        }
+        .legal-back:hover { color: var(--accent-primary); }
+
+        /* ── Fixed TOC ── */
+        #help-toc-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40;
+            display: none; cursor: pointer;
+        }
+        #help-toc-overlay.open { display: block; }
+        #help-toc {
+            position: fixed; left: 0; top: 0; width: 280px; height: 100vh;
+            background: var(--bg-secondary); border-right: 1px solid var(--border);
+            z-index: 50; overflow-y: auto; overflow-x: hidden;
+            transform: translateX(-100%); transition: transform 0.3s ease;
+        }
+        @media (min-width: 1024px) {
+            #help-toc { transform: translateX(0); }
+        }
+        #help-toc.open { transform: translateX(0); }
+        .help-toc-inner { padding: 24px 20px; }
+        .help-toc-title {
+            font-family: 'Cinzel Decorative', serif; font-size: 1.1rem; font-weight: 600;
+            color: var(--accent-gold); margin-bottom: 20px;
+        }
+        .help-toc-list { list-style: none; padding: 0; margin: 0; }
+        .help-toc-list li { margin: 0; }
+        .help-toc-link {
+            display: block; padding: 8px 12px; font-size: 0.875rem;
+            color: var(--text-secondary); text-decoration: none;
+            transition: background 0.2s, color 0.2s; border-radius: 6px;
+        }
+        .help-toc-link:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .help-toc-link.active { background: rgba(99,102,241,0.2); color: var(--accent-primary); }
+        .help-toc-link.pl-4 { padding-left: 28px; font-size: 0.8rem; }
+
+        /* ── Mobile TOC toggle ── */
+        #help-toc-toggle {
+            position: fixed; top: 20px; left: 20px; z-index: 55;
+            background: var(--bg-secondary); border: 1px solid var(--border);
+            padding: 10px 14px; border-radius: 8px; cursor: pointer;
+            color: var(--text-primary); font-size: 1rem;
+        }
+        @media (min-width: 1024px) { #help-toc-toggle { display: none; } }
+
+        /* ── Main content area ── */
+        .help-main { margin-left: 0; min-height: 100vh; }
+        @media (min-width: 1024px) { .help-main { margin-left: 280px; } }
+
+        /* ── Hero ── */
+        .help-hero {
+            min-height: 70vh; display: flex; align-items: center;
+            padding: 80px 24px 60px; position: relative;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+        }
+        .help-hero-content { max-width: 900px; margin: 0 auto; width: 100%; }
+        .help-hero h1 {
+            font-family: 'Cinzel Decorative', serif; font-size: clamp(2rem, 5vw, 3rem);
+            font-weight: 700; color: var(--text-primary); margin-bottom: 16px;
+            background: linear-gradient(135deg, var(--accent-gold-light), var(--accent-gold), var(--accent-primary));
+            background-size: 200% auto; -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .help-hero-sub {
+            font-size: 1.1rem; color: var(--text-secondary); max-width: 600px;
+            margin-bottom: 40px; line-height: 1.7;
+        }
+        .help-hero-cards {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px; margin-top: 32px;
+        }
+        .help-hero-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            padding: 20px; border-radius: 12px;
+        }
+        .help-hero-card-icon { font-size: 1.5rem; margin-bottom: 8px; color: var(--accent-primary); }
+        .help-hero-card h3 { font-size: 0.95rem; color: var(--text-primary); margin: 0 0 4px; }
+        .help-hero-card p { font-size: 0.8rem; color: var(--text-muted); margin: 0; line-height: 1.4; }
+
+        /* ── Article sections ── */
+        .help-article { background: var(--bg-primary); }
+        .help-section {
+            padding: 48px 24px; max-width: 760px; margin: 0 auto;
+        }
+        .help-section h2 {
+            font-family: 'Cinzel Decorative', serif; font-size: 1.75rem;
+            color: var(--accent-gold); margin-bottom: 24px;
+        }
+        .help-section h3 {
+            font-size: 1.15rem; color: var(--accent-primary); margin: 24px 0 12px;
+        }
+        .help-section p {
+            color: var(--text-secondary); font-size: 0.95rem; line-height: 1.7; margin: 0 0 12px;
+        }
+        .help-section-divider {
+            height: 2px; margin: 0 5% 0; max-width: 760px; margin-left: auto; margin-right: auto;
+            background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
+            opacity: 0.5;
+        }
+        .help-quote {
+            border-left: 4px solid var(--accent-primary);
+            background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(99,102,241,0.03));
+            padding: 16px 20px; margin: 16px 0; border-radius: 0 8px 8px 0;
+        }
+        .help-quote p { margin: 0; font-style: italic; color: var(--text-secondary); }
+        .help-box {
+            background: var(--bg-secondary); border: 1px solid var(--border);
+            padding: 20px; border-radius: 12px; margin: 16px 0;
+        }
+
+        /* ── Image placeholder ── */
+        .help-img-placeholder {
+            display: block; width: 100%; max-width: 560px; height: 280px;
+            background: var(--bg-tertiary); border: 2px dashed var(--border);
+            border-radius: 12px; margin: 16px 0;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-muted); font-size: 0.9rem;
+        }
+
+        /* ── Video placeholder ── */
+        .help-video-placeholder {
+            display: flex; align-items: center; justify-content: center;
+            width: 100%; max-width: 560px; height: 315px;
+            background: var(--bg-tertiary); border: 2px dashed var(--border);
+            border-radius: 12px; margin: 16px 0;
+            color: var(--text-muted); font-size: 0.9rem;
+        }
+
+        /* ── Footer ── */
+        .help-page-footer {
+            background: var(--bg-secondary); padding: 40px 24px;
+            border-top: 1px solid var(--border); text-align: center;
+        }
+        .help-page-footer p { color: var(--text-secondary); font-size: 0.95rem; margin: 0 0 16px; }
+        .help-page-footer .page-footer-nav {
+            display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; align-items: center;
+        }
+        .help-page-footer .page-footer-nav a {
+            color: var(--text-secondary); text-decoration: none; font-size: 0.9rem;
+        }
+        .help-page-footer .page-footer-nav a:hover { color: var(--accent-primary); }
+    </style>
+</head>
+<body class="help-body">
+    <div class="container">
+        <div id="help-toc-overlay" onclick="helpToggleTOC()"></div>
+        <nav id="help-toc">
+            <div class="help-toc-inner">
+                <h3 class="help-toc-title">Contents</h3>
+                <ul class="help-toc-list">
+                    <li><a href="#getting-started" class="help-toc-link">1. Getting Started</a></li>
+                    <li><a href="#sign-in" class="help-toc-link pl-4">1.1 Sign in</a></li>
+                    <li><a href="#create-campaign" class="help-toc-link pl-4">1.2 Create a Campaign</a></li>
+                    <li><a href="#join-campaign" class="help-toc-link pl-4">1.3 Join a Campaign</a></li>
+                    <li><a href="#adding-a-win" class="help-toc-link">2. Adding a Win</a></li>
+                    <li><a href="#select-game" class="help-toc-link pl-4">2.1 Select Game</a></li>
+                    <li><a href="#select-winner" class="help-toc-link pl-4">2.2 Select Winner &amp; Players</a></li>
+                    <li><a href="#select-date" class="help-toc-link pl-4">2.3 Select Date</a></li>
+                    <li><a href="#leaderboard" class="help-toc-link">3. Leaderboard</a></li>
+                    <li><a href="#meeple-cards" class="help-toc-link pl-4">3.1 Meeple Cards</a></li>
+                    <li><a href="#top-games" class="help-toc-link pl-4">3.2 Top Games</a></li>
+                    <li><a href="#meeple-profiles" class="help-toc-link pl-4">3.3 Meeple Profiles</a></li>
+                    <li><a href="#celebration-pills" class="help-toc-link pl-4">3.4 Celebration Pills</a></li>
+                    <li><a href="#tally-scores" class="help-toc-link">4. Tally Scores</a></li>
+                    <li><a href="#tally-setup" class="help-toc-link pl-4">4.1 Setup</a></li>
+                    <li><a href="#tally-rounds" class="help-toc-link pl-4">4.2 Scoring Rounds</a></li>
+                    <li><a href="#tally-record" class="help-toc-link pl-4">4.3 Record Winner</a></li>
+                    <li><a href="#history" class="help-toc-link">5. History</a></li>
+                    <li><a href="#view-entries" class="help-toc-link pl-4">5.1 View Entries</a></li>
+                    <li><a href="#edit-win" class="help-toc-link pl-4">5.2 Edit a Win</a></li>
+                    <li><a href="#participants" class="help-toc-link pl-4">5.3 Participants</a></li>
+                    <li><a href="#data-management" class="help-toc-link">6. Data Management</a></li>
+                    <li><a href="#export" class="help-toc-link pl-4">6.1 Export</a></li>
+                    <li><a href="#import" class="help-toc-link pl-4">6.2 Import</a></li>
+                    <li><a href="#clear-all" class="help-toc-link pl-4">6.3 Clear All</a></li>
+                    <li><a href="#personalisation" class="help-toc-link">7. Personalisation</a></li>
+                    <li><a href="#meeple-custom" class="help-toc-link pl-4">7.1 Meeple Customisation</a></li>
+                    <li><a href="#game-images" class="help-toc-link pl-4">7.2 Game Images</a></li>
+                    <li><a href="#favourite-quotes" class="help-toc-link pl-4">7.3 Favourite Quotes</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <button id="help-toc-toggle" type="button" onclick="helpToggleTOC()" aria-label="Open menu">☰ Contents</button>
+
+        <main class="help-main">
+            <div class="help-hero">
+                <div class="help-hero-content">
+                    <a href="index.html" class="legal-back">← Back to ScoreKpr</a>
+                    <h1>Help &amp; Guide</h1>
+                    <p class="help-hero-sub">A short walkthrough to get the most out of ScoreKpr — from signing in to tallying scores.</p>
+                    <div class="help-hero-cards">
+                        <div class="help-hero-card">
+                            <div class="help-hero-card-icon">🎲</div>
+                            <h3>Add Wins</h3>
+                            <p>Three steps: game, winner, date. Done.</p>
+                        </div>
+                        <div class="help-hero-card">
+                            <div class="help-hero-card-icon">👑</div>
+                            <h3>Leaderboard</h3>
+                            <p>See who rules your campaign.</p>
+                        </div>
+                        <div class="help-hero-card">
+                            <div class="help-hero-card-icon">📊</div>
+                            <h3>Tally Scores</h3>
+                            <p>Round-by-round scoring for complex games.</p>
+                        </div>
+                        <div class="help-hero-card">
+                            <div class="help-hero-card-icon">🔗</div>
+                            <h3>Invite &amp; Share</h3>
+                            <p>One link to invite your group.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <article class="help-article">
+                <!-- 1. Getting Started -->
+                <section id="getting-started" class="help-section">
+                    <h2>1. Getting Started</h2>
+
+                    <div id="sign-in">
+                        <h3>1.1 Sign in</h3>
+                        <p>Click <strong>Sign in with Google</strong> to create or access your account. No passwords — just your Google login.</p>
+                        <div class="help-img-placeholder">Screenshot: Sign-in button</div>
+                        <div class="help-video-placeholder">Video walkthrough coming soon</div>
+                    </div>
+
+                    <div id="create-campaign">
+                        <h3>1.2 Create a Campaign</h3>
+                        <p>Select your campaign from the header dropdown, then click <strong>+ New</strong>. Give it a name (e.g. "Friday Game Night") and you're set.</p>
+                    </div>
+
+                    <div id="join-campaign">
+                        <h3>1.3 Join a Campaign</h3>
+                        <p>Ask your host for the invite link. Open it, view the leaderboard, then click <strong>Join campaign</strong> (or sign in first if prompted).</p>
+                    </div>
+                </section>
+
+                <div class="help-section-divider"></div>
+
+                <!-- 2. Adding a Win -->
+                <section id="adding-a-win" class="help-section">
+                    <h2>2. Adding a Win</h2>
+
+                    <div id="select-game">
+                        <h3>2.1 Select Game</h3>
+                        <p>Go to <strong>Add a Win</strong>. Pick a game from the grid or click <strong>+ Add New Game</strong> to add one. You can upload an image or paste a URL.</p>
+                        <div class="help-img-placeholder">Screenshot: Game selection</div>
+                        <div class="help-video-placeholder">Video walkthrough coming soon</div>
+                    </div>
+
+                    <div id="select-winner">
+                        <h3>2.2 Select Winner &amp; Players</h3>
+                        <p>Choose the meeple who won. Optionally select who else played. Add new meeples with <strong>+ Add Meeple</strong>.</p>
+                    </div>
+
+                    <div id="select-date">
+                        <h3>2.3 Select Date</h3>
+                        <p>Pick the date the game was played, then hit <strong>Save Win 🎉</strong>. Use <strong>Back</strong> to change game or winner.</p>
+                    </div>
+                </section>
+
+                <div class="help-section-divider"></div>
+
+                <!-- 3. Leaderboard -->
+                <section id="leaderboard" class="help-section">
+                    <h2>3. Leaderboard</h2>
+
+                    <div id="meeple-cards">
+                        <h3>3.1 Meeple Cards</h3>
+                        <p>Each card shows wins and top games. The #1 player gets the golden card. Click a meeple to open their profile.</p>
+                        <div class="help-img-placeholder">Screenshot: Leaderboard cards</div>
+                    </div>
+
+                    <div id="top-games">
+                        <h3>3.2 Top Games</h3>
+                        <p>Below the meeples, see which games have been played most and who's won them.</p>
+                    </div>
+
+                    <div id="meeple-profiles">
+                        <h3>3.3 Meeple Profiles</h3>
+                        <p>Click a meeple card. If they've linked their account, you'll see cross-campaign stats — total wins, win rate, favourite game.</p>
+                        <div class="help-video-placeholder">Video walkthrough coming soon</div>
+                    </div>
+
+                    <div id="celebration-pills">
+                        <h3>3.4 Celebration Pills</h3>
+                        <p>Use Confetti, Shake, Fanfare, or Roll Quotes for a bit of fun when viewing the leaderboard.</p>
+                    </div>
+                </section>
+
+                <div class="help-section-divider"></div>
+
+                <!-- 4. Tally Scores -->
+                <section id="tally-scores" class="help-section">
+                    <h2>4. Tally Scores</h2>
+
+                    <div id="tally-setup">
+                        <h3>4.1 Setup</h3>
+                        <p>Click <strong>Tally Scores</strong> in the nav. Pick a game and who's playing (2+ meeples). Add guests if needed. Click <strong>Start Tally</strong>.</p>
+                        <div class="help-img-placeholder">Screenshot: Tally setup</div>
+                    </div>
+
+                    <div id="tally-rounds">
+                        <h3>4.2 Scoring Rounds</h3>
+                        <p>Choose round types — VP, Objectives, Cards, Resources, Coins, or custom. Enter scores per player per round. Totals update automatically.</p>
+                        <div class="help-video-placeholder">Video walkthrough coming soon</div>
+                    </div>
+
+                    <div id="tally-record">
+                        <h3>4.3 Record Winner</h3>
+                        <p>When done, click <strong>Review win and set date</strong>. Confirm the winner, pick a date, then <strong>Save Win 🎉</strong>.</p>
+                    </div>
+                </section>
+
+                <div class="help-section-divider"></div>
+
+                <!-- 5. History -->
+                <section id="history" class="help-section">
+                    <h2>5. History</h2>
+
+                    <div id="view-entries">
+                        <h3>5.1 View Entries</h3>
+                        <p>Open the <strong>History</strong> tab to see all wins. Each entry shows game, winner, date, and who played.</p>
+                    </div>
+
+                    <div id="edit-win">
+                        <h3>5.2 Edit a Win</h3>
+                        <p>Click the ⚙️ icon on any entry. Update game, winner, date, or participants. Edits are stamped with who changed what and when.</p>
+                        <div class="help-img-placeholder">Screenshot: Edit entry</div>
+                    </div>
+
+                    <div id="participants">
+                        <h3>5.3 Participants</h3>
+                        <p>When adding or editing a win, you can mark who played (not just the winner). This powers games-played and win-rate stats.</p>
+                    </div>
+                </section>
+
+                <div class="help-section-divider"></div>
+
+                <!-- 6. Data Management -->
+                <section id="data-management" class="help-section">
+                    <h2>6. Data Management</h2>
+
+                    <div id="export">
+                        <h3>6.1 Export</h3>
+                        <p>Use <strong>Export Data</strong> to download a JSON backup of your campaign.</p>
+                    </div>
+
+                    <div id="import">
+                        <h3>6.2 Import</h3>
+                        <p>Use <strong>Import Data</strong> to restore from a previously exported JSON file.</p>
+                    </div>
+
+                    <div id="clear-all">
+                        <h3>6.3 Clear All</h3>
+                        <p><strong>Clear All</strong> removes all data from the current campaign — wins, games, meeples, and history. This cannot be undone.</p>
+                        <div class="help-quote">
+                            <p><strong>Back up first.</strong> Export your data before using Clear All. Go to Export Data, download the JSON file, and store it safely. You can restore later with Import Data.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="help-section-divider"></div>
+
+                <!-- 7. Personalisation -->
+                <section id="personalisation" class="help-section">
+                    <h2>7. Personalisation</h2>
+
+                    <div id="meeple-custom">
+                        <h3>7.1 Meeple Customisation</h3>
+                        <p>Click a meeple card, then <strong>Customize meeple</strong>. Set a photo (file or URL) and pick a colour. Changes apply to their leaderboard card.</p>
+                        <div class="help-video-placeholder">Video walkthrough coming soon</div>
+                    </div>
+
+                    <div id="game-images">
+                        <h3>7.2 Game Images</h3>
+                        <p>Click the image area on a game card to set or change its image. Upload a file or paste an image URL.</p>
+                    </div>
+
+                    <div id="favourite-quotes">
+                        <h3>7.3 Favourite Quotes</h3>
+                        <p>Linked meeples can pick a favourite quote to show on their card. Use the quote selector in the Customize meeple modal.</p>
+                    </div>
+                </section>
+
+                <footer class="help-page-footer">
+                    <p>Need more help? <a href="contact.html">Contact us</a>.</p>
+                    <nav class="page-footer-nav">
+                        <a href="index.html">Back to app</a>
+                        <a href="roadmap.html">Roadmap</a>
+                        <a href="ethos.html">Our Ethos</a>
+                    </nav>
+                </footer>
+            </article>
+        </main>
+    </div>
+
+    <script>
+        function helpToggleTOC() {
+            var toc = document.getElementById('help-toc');
+            var overlay = document.getElementById('help-toc-overlay');
+            toc.classList.toggle('open');
+            overlay.classList.toggle('open');
+        }
+        document.querySelectorAll('.help-toc-link').forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                var href = this.getAttribute('href');
+                if (href && href.startsWith('#')) {
+                    var target = document.querySelector(href);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        if (window.innerWidth < 1024) helpToggleTOC();
+                    }
+                }
+            });
+        });
+        window.addEventListener('scroll', function() {
+            var sections = document.querySelectorAll('.help-article [id]');
+            var links = document.querySelectorAll('.help-toc-link[href^="#"]');
+            var current = '';
+            sections.forEach(function(s) {
+                var top = s.offsetTop;
+                if (scrollY >= top - 120) current = s.getAttribute('id');
+            });
+            links.forEach(function(link) {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) link.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

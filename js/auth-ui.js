@@ -38,6 +38,10 @@ export function setupAuthButtons() {
     if (loginBtn) {
         loginBtn.addEventListener('click', () => handleLogin(loginBtn, 'Log in with Google'));
     }
+    const dashboardGuestLoginBtn = document.getElementById('dashboardGuestLoginBtn');
+    if (dashboardGuestLoginBtn) {
+        dashboardGuestLoginBtn.addEventListener('click', () => handleLogin(dashboardGuestLoginBtn, 'Log in with Google'));
+    }
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => signOut());
     }
@@ -80,6 +84,10 @@ export function updateAuthUI(isLoggedIn, hasInviteToken) {
     const aboutBottomLoggedIn = document.getElementById('aboutBottomLoggedIn');
     if (aboutBottomLoggedOut) aboutBottomLoggedOut.style.display = isLoggedIn ? 'none' : 'block';
     if (aboutBottomLoggedIn) aboutBottomLoggedIn.style.display = isLoggedIn ? 'block' : 'none';
+
+    // Dashboard guest prompt (login CTA + logo) — show only when not logged in
+    const dashboardGuestPrompt = document.getElementById('dashboardGuestPrompt');
+    if (dashboardGuestPrompt) dashboardGuestPrompt.style.display = isLoggedIn ? 'none' : 'flex';
 }
 
 export function updateEditability(canEdit) {
