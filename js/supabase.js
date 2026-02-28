@@ -240,9 +240,12 @@ export async function claimPlayer(playerId) {
         .eq('id', playerId)
         .is('user_id', null)
         .select()
-        .single();
+        .maybeSingle();
 
     if (error) throw error;
+    if (data == null) {
+        throw new Error("Couldn't link this meeple. If you're a campaign member, try again. Otherwise, ask a campaign member for an invite link to join.");
+    }
     return data;
 }
 

@@ -534,7 +534,7 @@ export async function openPlayerProfileModal(playerName) {
                 const msg = (err && err.message) ? err.message : String(err);
                 const friendly = /not authenticated/i.test(msg)
                     ? 'Sign in to link this meeple to your account.'
-                    : 'Could not link meeple: ' + msg;
+                    : msg;
                 showNotification(friendly);
             }
         };
