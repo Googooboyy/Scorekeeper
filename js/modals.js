@@ -20,7 +20,9 @@ import {
     fetchPlayerRecentEntries,
     fetchUserProfile,
     upsertUserProfile,
-    insertPlayer
+    insertPlayer,
+    fetchGamesFromOtherCampaigns,
+    insertGame
 } from './supabase.js';
 import { getSupabase } from './auth.js';
 import { renderGames, renderGameSelection, renderAll } from './render.js';
@@ -789,11 +791,13 @@ function _renderRecentHistoryHtml(entries, showCampaign) {
 
 let _tallyState = null;
 let _tallyCleanup = null;
+let _tallyShowOtherCampaigns = false;
 
 export function openScoreTabulator(preselectGame = null) {
     const modal = document.getElementById('scoreTallyModal');
     if (!modal) return;
 
+    _tallyShowOtherCampaigns = false;
     _tallyState = {
         game: preselectGame || null,
         participants: [], // { name, isTemp }
@@ -1037,6 +1041,98 @@ function _renderTallyGameSelection(preselectGame) {
     if (selectedGame && games.includes(selectedGame)) {
         _tallyState.game = selectedGame;
     }
+
+    _loadOtherCampaignGamesForTally();
+}
+
+async function _loadOtherCampaignGamesForTally() {
+    const wrap = document.getElementById('tallyGameSelectionOtherWrap');
+    const section = document.getElementById('tallyGameSelectionOtherSection');
+    const otherGrid = document.getElementById('tallyGameSelectionOther');
+    const toggleBtn = document.getElementById('tallyShowOtherCampaignsBtn');
+    if (!wrap || !otherGrid || !_tallyState) return;
+    const pg = getActivePlaygroup();
+    if (!pg || !data.games) {
+        wrap.style.display = 'none';
+        return;
+    }
+    try {
+        const otherGames = await fetchGamesFromOtherCampaigns(pg.id, data.games);
+        if (!otherGames.length) {
+            wrap.style.display = 'none';
+            return;
+        }
+        wrap.style.display = '';
+        if (toggleBtn) {
+            toggleBtn.style.display = '';
+            toggleBtn.textContent = _tallyShowOtherCampaigns ? 'Hide other campaigns' : 'Show other campaigns';
+            toggleBtn.onclick = () => {
+                _tallyShowOtherCampaigns = !_tallyShowOtherCampaigns;
+                if (section) section.style.display = _tallyShowOtherCampaigns ? '' : 'none';
+                toggleBtn.textContent = _tallyShowOtherCampaigns ? 'Hide other campaigns' : 'Show other campaigns';
+            };
+        }
+        if (section) section.style.display = _tallyShowOtherCampaigns ? '' : 'none';
+        otherGrid.innerHTML = '';
+        otherGames.forEach(({ name, image }) => {
+            const div = document.createElement('div');
+            div.className = 'selection-item selection-item-game' + (name === _tallyState.game ? ' selected' : '');
+            div.setAttribute('data-game', name);
+            if (image) {
+                const img = document.createElement('img');
+                img.src = image;
+                img.alt = name;
+                img.className = 'selection-item-game-img';
+                img.onerror = function () {
+                    this.style.display = 'none';
+                    const fb = div.querySelector('.selection-item-game-fallback');
+                    if (fb) fb.style.display = 'flex';
+                };
+                div.appendChild(img);
+                const fallback = document.createElement('span');
+                fallback.className = 'selection-item-game-fallback';
+                fallback.style.display = 'none';
+                fallback.textContent = name;
+                div.appendChild(fallback);
+            } else {
+                const fallback = document.createElement('span');
+                fallback.className = 'selection-item-game-fallback';
+                fallback.textContent = name;
+                div.appendChild(fallback);
+            }
+            div.addEventListener('click', async function () {
+                const gameName = this.getAttribute('data-game');
+                if (data.games.includes(gameName)) {
+                    _tallyState.game = gameName;
+                    _renderTallyGameSelection(gameName);
+                    _updateTallyStartBtn();
+                    return;
+                }
+                try {
+                    const row = await insertGame(pg.id, gameName);
+                    const other = otherGames.find(g => g.name === gameName);
+                    if (other?.image) {
+                        await upsertGameMetadata(row.id, other.image);
+                    }
+                    data.games.push(gameName);
+                    data._gameIdByName[gameName] = row.id;
+                    if (other?.image) {
+                        if (!data.gameData) data.gameData = {};
+                        data.gameData[gameName] = { image: other.image };
+                    }
+                    saveData();
+                    _tallyState.game = gameName;
+                    _renderTallyGameSelection(gameName);
+                    _updateTallyStartBtn();
+                } catch (err) {
+                    showNotification('Could not add game: ' + (err.message || err));
+                }
+            });
+            otherGrid.appendChild(div);
+        });
+    } catch {
+        wrap.style.display = 'none';
+    }
 }
 
 function _renderTallyChips() {
@@ -1140,6 +1236,11 @@ function _renderScoreTableHead() {
 
 function _renderScoreTableBody() {
     const body = document.getElementById('scoreTableBody');
+    if (_tallyState.scores.length === 0) {
+        const colSpan = 1 + _tallyState.participants.length;
+        body.innerHTML = '<tr><td colspan="' + colSpan + '" class="score-empty-state">Add a scoring round below to start counting</td></tr>';
+        return;
+    }
     body.innerHTML = _tallyState.scores.map((row, ri) =>
         '<tr>' +
         '<td class="score-td-round"><span class="score-round-cell"><input class="score-round-name" type="text" data-ri="' + ri + '" value="' + escapeHtml(_tallyState.roundNames[ri] || ('Rnd ' + (ri + 1))) + '" maxlength="18" placeholder="Rnd ' + (ri + 1) + '"><button class="score-round-remove" data-ri="' + ri + '" type="button" aria-label="Remove row">×</button></span></td>' +

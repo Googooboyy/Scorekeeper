@@ -142,6 +142,47 @@ export async function fetchGames(playgroupId) {
 }
 
 /**
+ * Fetch games from the user's other campaigns (excluding the current one).
+ * Returns unique game names with optional image, excluding games already in current campaign.
+ * Used for the "Other campaigns' games" section in game selection modals.
+ */
+export async function fetchGamesFromOtherCampaigns(currentPlaygroupId, currentGameNames = []) {
+    const currentSet = new Set(currentGameNames || []);
+    const playgroups = await fetchPlaygroups();
+    const otherPgs = playgroups.filter(pg => pg.id !== currentPlaygroupId);
+    if (!otherPgs.length) return [];
+
+    const otherNames = new Set();
+    const idToName = {};
+    const allGameIds = [];
+
+    for (const pg of otherPgs) {
+        const games = await fetchGames(pg.id);
+        games.forEach(g => {
+            if (!currentSet.has(g.name)) {
+                otherNames.add(g.name);
+                allGameIds.push(g.id);
+            }
+            idToName[g.id] = g.name;
+        });
+    }
+
+    if (allGameIds.length === 0) return [];
+
+    const gameMeta = await fetchGameMetadata(allGameIds);
+    const nameToImage = {};
+    for (const [gameId, meta] of Object.entries(gameMeta)) {
+        const name = idToName[gameId];
+        if (name && otherNames.has(name) && meta?.image && !nameToImage[name]) {
+            nameToImage[name] = meta.image;
+        }
+    }
+
+    const names = [...otherNames].sort((a, b) => a.localeCompare(b));
+    return names.map(name => ({ name, image: nameToImage[name] || null }));
+}
+
+/**
  * Fetch players for a playgroup
  */
 export async function fetchPlayers(playgroupId) {

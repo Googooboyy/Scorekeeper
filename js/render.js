@@ -9,10 +9,13 @@ import {
     toggleShowAllHistory,
     toggleShowAllGamesInAdd,
     escapeHtml,
-    formatDate
+    formatDate,
+    saveData
 } from './data.js';
 import { deletePlayer, deleteGame, deleteEntryById } from './actions.js';
 import { openPlayerImageModal, openGameImageModal, openEditEntryModal, openPlayerProfileModal } from './modals.js';
+import { getActivePlaygroup } from './playgroups.js';
+import { fetchGamesFromOtherCampaigns, insertGame, upsertGameMetadata } from './supabase.js';
 
 const DEFAULT_LEADERBOARD_QUOTES = [
     'Roll with it.',
@@ -151,7 +154,7 @@ export function renderPlayers() {
             color: playerData.color,
             userId: playerData.userId || null
         };
-    }).sort((a, b) => b.wins - a.wins);
+    }).filter(stat => stat.wins > 0).sort((a, b) => b.wins - a.wins);
 
     if (toggleBtn) toggleBtn.style.display = 'none';
 
@@ -353,6 +356,7 @@ export function renderGameSelection() {
     container.appendChild(addBtn);
 
     if (data.games.length === 0) {
+        loadOtherCampaignGamesForAddWin();
         return;
     }
 
@@ -424,6 +428,84 @@ export function renderGameSelection() {
             }
         });
         container.appendChild(showAllCard);
+    }
+
+    loadOtherCampaignGamesForAddWin();
+}
+
+async function loadOtherCampaignGamesForAddWin() {
+    const wrap = document.getElementById('gameSelectionOtherWrap');
+    const otherGrid = document.getElementById('gameSelectionOther');
+    if (!wrap || !otherGrid) return;
+    const pg = getActivePlaygroup();
+    if (!pg || !data.games) {
+        wrap.style.display = 'none';
+        return;
+    }
+    try {
+        const otherGames = await fetchGamesFromOtherCampaigns(pg.id, data.games);
+        if (!otherGames.length) {
+            wrap.style.display = 'none';
+            return;
+        }
+        wrap.style.display = showAllGamesInAdd ? '' : 'none';
+        otherGrid.innerHTML = '';
+        otherGames.forEach(({ name, image }) => {
+            const div = document.createElement('div');
+            div.className = 'selection-item selection-item-game' + (currentEntry.game === name ? ' selected' : '');
+            div.setAttribute('data-game', name);
+            if (image) {
+                const img = document.createElement('img');
+                img.src = image;
+                img.alt = name;
+                img.className = 'selection-item-game-img';
+                img.onerror = function () {
+                    this.style.display = 'none';
+                    const fb = div.querySelector('.selection-item-game-fallback');
+                    if (fb) fb.style.display = 'flex';
+                };
+                div.appendChild(img);
+                const fallback = document.createElement('span');
+                fallback.className = 'selection-item-game-fallback';
+                fallback.style.display = 'none';
+                fallback.textContent = name;
+                div.appendChild(fallback);
+            } else {
+                const fallback = document.createElement('span');
+                fallback.className = 'selection-item-game-fallback';
+                fallback.textContent = name;
+                div.appendChild(fallback);
+            }
+            div.addEventListener('click', async function () {
+                const gameName = this.getAttribute('data-game');
+                if (data.games.includes(gameName)) {
+                    selectGame(gameName);
+                    return;
+                }
+                try {
+                    const row = await insertGame(pg.id, gameName);
+                    const other = otherGames.find(g => g.name === gameName);
+                    if (other?.image) {
+                        await upsertGameMetadata(row.id, other.image);
+                    }
+                    data.games.push(gameName);
+                    data._gameIdByName[gameName] = row.id;
+                    if (other?.image) {
+                        if (!data.gameData) data.gameData = {};
+                        data.gameData[gameName] = { image: other.image };
+                    }
+                    saveData();
+                    selectGame(gameName);
+                    loadOtherCampaignGamesForAddWin();
+                } catch (err) {
+                    const { showNotification } = await import('./modals.js');
+                    showNotification('Could not add game: ' + (err.message || err));
+                }
+            });
+            otherGrid.appendChild(div);
+        });
+    } catch {
+        wrap.style.display = 'none';
     }
 }
 

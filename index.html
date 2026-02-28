@@ -1,4 +1,4 @@
-<!-- <!DOCTYPE html> -->
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -127,8 +127,15 @@
                         <h2>Select Game</h2>
                         <p>Choose the board game that was played</p>
                     </div>
-                    <div id="gameSelection" class="selection-grid selection-grid-add-game">
-                        <div class="selection-item add-new-btn" id="showNewGameBtn">+ Add New Game</div>
+                    <div class="game-selection-area">
+                        <div id="gameSelection" class="selection-grid selection-grid-add-game">
+                            <div class="selection-item add-new-btn" id="showNewGameBtn">+ Add New Game</div>
+                        </div>
+                        <div id="gameSelectionOtherWrap" class="game-selection-other-wrap" style="display:none;">
+                            <div class="game-selection-divider"></div>
+                            <p class="game-selection-other-title">Other campaigns' games that you might be interested in..</p>
+                            <div id="gameSelectionOther" class="selection-grid selection-grid-add-game"></div>
+                        </div>
                     </div>
                     <div id="newGameInput" class="new-item-input">
                         <div style="position:relative;">
@@ -785,6 +792,14 @@
                     <div id="tallyGameSelectWrap" class="tally-game-select-wrap">
                         <div id="tallyGameSelection" class="selection-grid selection-grid-add-game tally-game-grid">
                             <div class="selection-item add-new-btn" id="tallyAddNewGameBtn">+ Add new game</div>
+                        </div>
+                        <div id="tallyGameSelectionOtherWrap" class="game-selection-other-wrap" style="display:none;">
+                            <button type="button" id="tallyShowOtherCampaignsBtn" class="selection-item selection-item-show-all" style="display:none;">Show other campaigns</button>
+                            <div id="tallyGameSelectionOtherSection" style="display:none;">
+                                <div class="game-selection-divider"></div>
+                                <p class="game-selection-other-title">Other campaigns' games that you might be interested in..</p>
+                                <div id="tallyGameSelectionOther" class="selection-grid selection-grid-add-game tally-game-grid"></div>
+                            </div>
                         </div>
                     </div>
                     <div id="tallyGameEmptyState" class="tally-empty-state" hidden>

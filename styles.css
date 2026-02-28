@@ -699,6 +699,14 @@ body.read-only .add-new-btn { pointer-events: none; opacity: 0.5; }
     padding: 12px; font-size: 0.85rem; font-weight: 500; word-break: break-word; text-align: center;
 }
 .selection-item-game { position: relative; }
+.game-selection-area { width: 100%; }
+.game-selection-other-wrap { margin-top: 20px; }
+.game-selection-divider {
+    height: 1px; background: var(--border); margin: 20px 0 16px; border: none;
+}
+.game-selection-other-title {
+    font-size: 0.95rem; color: var(--text-secondary); margin: 0 0 12px;
+}
 .selection-item-show-all {
     border-style: dashed; color: var(--text-muted); font-size: 0.9rem;
 }
@@ -1886,16 +1894,16 @@ html { overflow-x: hidden; }
 .tally-table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
 .score-table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 320px; }
 .score-table th, .score-table td { padding: 8px 10px; text-align: center; }
-.score-th-round { text-align: left; font-size: 0.75rem; color: var(--text-muted); width: 72px; }
+.score-th-round { text-align: left; font-size: 0.75rem; color: var(--text-muted); min-width: 100px; width: 110px; }
 .score-th-player {
     font-size: 0.82rem; color: var(--text-secondary); font-weight: 600;
     border-bottom: 2px solid var(--border); overflow: hidden;
     text-overflow: ellipsis; white-space: nowrap;
 }
 .score-th-player.is-temp { color: var(--accent-warning); }
-.score-td-round { font-size: 0.75rem; color: var(--text-muted); text-align: left; white-space: nowrap; }
+.score-td-round { font-size: 0.75rem; color: var(--text-muted); text-align: left; overflow: visible; }
 .score-round-name {
-    width: 64px; background: transparent; border: none;
+    min-width: 80px; width: 100%; max-width: 140px; background: transparent; border: none;
     border-bottom: 1px dashed rgba(255,255,255,0.15);
     color: var(--text-muted); font-size: 0.74rem; text-align: left;
     padding: 2px 3px; outline: none; cursor: text; transition: border-color 0.2s, color 0.2s;
@@ -1912,6 +1920,12 @@ html { overflow-x: hidden; }
 .score-round-remove:hover { opacity: 1; color: var(--accent-warning); }
 .score-td { border-top: 1px solid rgba(255,255,255,0.04); }
 .score-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+.score-empty-state {
+    padding: 28px 16px !important; text-align: center;
+    color: var(--text-muted); font-size: 0.92rem; font-weight: 500;
+    border-top: 1px solid rgba(255,255,255,0.04);
+    background: rgba(255,255,255,0.02);
+}
 .score-input {
     width: 100%; max-width: 90px; padding: 6px 8px; text-align: center; border-radius: 6px;
     border: 1px solid var(--border); background: var(--bg-tertiary);
@@ -2023,7 +2037,7 @@ html { overflow-x: hidden; }
     .tally-modal { max-height: 95vh; border-radius: 12px 12px 0 0; }
     .tally-overlay { align-items: flex-end; }
     .score-input { max-width: 60px; }
-    .score-round-name { width: 52px; }
+    .score-round-name { min-width: 70px; max-width: 120px; }
 }
 
 /* ── Admin mode ──────────────────────────────────────────────────────────────── */
