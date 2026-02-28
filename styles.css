@@ -516,11 +516,11 @@ body.screen-shake {
 .data-btn.airtable:hover { background: rgba(24, 191, 255, 0.15); }
 #importFileInput { display: none; }
 
-/* Read-only mode: hide edit/delete, disable Add Win */
+/* Read-only mode: hide edit/delete, disable Add Win and Tally Scores */
 body.read-only .edit-player-btn, body.read-only .delete-player-btn,
 body.read-only .edit-game-btn, body.read-only .delete-game-btn,
 body.read-only .history-edit-btn, body.read-only .history-delete-btn { display: none !important; }
-body.read-only .nav-tab[data-section="add"] { opacity: 0.5; pointer-events: none; cursor: not-allowed; }
+body.read-only .nav-tab[data-section="add"], body.read-only .nav-tab-tally { opacity: 0.5; pointer-events: none; cursor: not-allowed; }
 body.read-only .data-management .data-btn { opacity: 0.5; pointer-events: none; cursor: not-allowed; }
 body.read-only .add-new-btn { pointer-events: none; opacity: 0.5; }
 .read-only-banner {
@@ -2002,7 +2002,7 @@ html { overflow-x: hidden; }
 .tally-round-custom .input-field { margin: 0; flex: 1; min-width: 120px; padding: 10px 14px; font-size: 0.9rem; }
 .tally-round-confirm-btn {
     background: linear-gradient(135deg, var(--accent-gold-dark), var(--accent-gold));
-    color: #000; font-weight: 700; padding: 10px 16px; border-radius: 8px;
+    color: #000; font-weight: 600; font-size: 0.82rem; padding: 6px 12px; border-radius: 6px;
     border: none; cursor: pointer; white-space: nowrap; flex-shrink: 0;
 }
 .tally-round-cancel-btn { font-size: 0.82rem; padding: 6px 12px; flex-shrink: 0; }

@@ -140,8 +140,14 @@ export function setupEventListeners() {
         if (e.target === document.getElementById('modalOverlay')) hideModal();
     });
 
-    // Score Tabulator launch
-    document.getElementById('tallyLaunchBtn').addEventListener('click', () => openScoreTabulator());
+    // Score Tabulator launch — guests/read-only cannot tally
+    document.getElementById('tallyLaunchBtn').addEventListener('click', () => {
+        if (document.body.classList.contains('read-only')) {
+            showLoginPrompt();
+            return;
+        }
+        openScoreTabulator();
+    });
     document.addEventListener('scorekeeper:openAddGame', function onOpenAddGame() {
         showSection('add');
         document.body.classList.add('tally-add-game-mode');
