@@ -1628,8 +1628,16 @@ html { overflow-x: hidden; }
 .player-profile-actions {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 8px;
     margin-top: 10px;
+}
+.player-profile-delete-remark {
+    flex-basis: 100%;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-top: -2px;
 }
 .player-profile-action-btn {
     display: inline-flex;
@@ -1649,9 +1657,14 @@ html { overflow-x: hidden; }
     border-color: var(--accent-primary);
     color: var(--text-primary);
 }
-.player-profile-action-danger:hover {
-    border-color: var(--accent-danger);
+.player-profile-action-danger {
+    border: 1px solid var(--accent-danger);
     color: var(--accent-danger);
+    background: rgba(239, 68, 68, 0.08);
+}
+.player-profile-action-danger:hover {
+    background: var(--accent-danger);
+    color: white;
 }
 .player-profile-close {
     background: none;
