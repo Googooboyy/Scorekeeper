@@ -1642,6 +1642,7 @@ async function loadConfig() {
     document.getElementById('cfgLeaderboardQuotesEnabled').checked = _config.leaderboard_quotes_enabled !== 'false';
     document.getElementById('cfgAllowGuestViewing').checked = _config.allow_guest_viewing !== 'false';
     document.getElementById('cfgBggSearchEnabled').checked = _config.bgg_search_enabled !== 'false';
+    document.getElementById('cfgShowCampaignAcceptsText').checked = _config.show_campaign_accepts_text !== 'false';
 }
 
 async function saveConfig() {
@@ -1657,6 +1658,7 @@ async function saveConfig() {
         await setAppConfig('leaderboard_quotes_enabled', document.getElementById('cfgLeaderboardQuotesEnabled').checked ? 'true' : 'false');
         await setAppConfig('allow_guest_viewing', document.getElementById('cfgAllowGuestViewing').checked ? 'true' : 'false');
         await setAppConfig('bgg_search_enabled', document.getElementById('cfgBggSearchEnabled').checked ? 'true' : 'false');
+        await setAppConfig('show_campaign_accepts_text', document.getElementById('cfgShowCampaignAcceptsText').checked ? 'true' : 'false');
         status.textContent = 'Saved!';
         status.style.color = 'var(--accent-success)';
     } catch (e) {

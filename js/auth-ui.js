@@ -61,6 +61,8 @@ export function updateAuthUI(isLoggedIn, hasInviteToken) {
     if (googleLoginNote) googleLoginNote.style.display = isLoggedIn ? 'none' : 'block';
     if (authUser) authUser.style.display = isLoggedIn ? 'flex' : 'none';
     if (playgroupArea) playgroupArea.style.display = isLoggedIn ? 'flex' : 'none';
+    const authArea = document.getElementById('authArea');
+    if (authArea) authArea.style.display = isLoggedIn ? 'none' : 'flex';
 
     if (isLoggedIn) {
         getSession().then(session => {
@@ -181,17 +183,20 @@ export function syncReadOnlyBanner(canEdit, isLoggedIn, hasInviteToken, guestCam
         return;
     }
 
+    const showAccepts = window._scorekeeperShowCampaignAcceptsText !== false;
+
     if (guestCampaignName && viewingViaInvite) {
         const btnText = isLoggedIn ? 'Join campaign' : 'Login and join campaign';
-        const acceptLabel = joinInfo ? formatTierLabels(joinInfo.allowedTiers) : 'Commoners, Nobles and Royals';
+        const acceptLabel = showAccepts && joinInfo ? formatTierLabels(joinInfo.allowedTiers) : null;
         banner.classList.add('guest-banner');
-        banner.innerHTML = 'Viewing <strong>' + guestCampaignName + '</strong> as guest. Accepts: ' + acceptLabel + '. <button type="button" class="btn-accept-invite" id="joinOrLoginInviteBtn">' + btnText + '</button>';
+        banner.innerHTML = 'Viewing <strong>' + guestCampaignName + '</strong> as guest.' +
+            (acceptLabel ? ' Accepts: ' + acceptLabel + '.' : '') + ' <button type="button" class="btn-accept-invite" id="joinOrLoginInviteBtn">' + btnText + '</button>';
         banner.style.display = 'block';
         return;
     }
 
     if (guestCampaignName) {
-        const acceptLabel = joinInfo ? formatTierLabels(joinInfo.allowedTiers) : '';
+        const acceptLabel = showAccepts && joinInfo ? formatTierLabels(joinInfo.allowedTiers) : '';
         banner.innerHTML = 'Viewing <strong>' + guestCampaignName + '</strong> as guest — sign in to add wins and track your glory!' +
             (acceptLabel ? ' <span class="guest-accepts">Accepts: ' + acceptLabel + '</span>' : '');
         banner.classList.add('guest-banner');

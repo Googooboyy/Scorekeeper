@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<!--
+  MOBILE MOCKUP — iPhone X viewport (375×812) simulation
+  Open this file to see how the compact header renders on mobile.
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Header mockup — iPhone X mobile</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a25;
+            --bg-card: #151520;
+            --accent-primary: #6366f1;
+            --accent-secondary: #8b5cf6;
+            --accent-success: #10b981;
+            --accent-danger: #ef4444;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: #27273a;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        /* iPhone X frame: 375×812 logical px */
+        .phone-frame {
+            width: 375px;
+            height: 812px;
+            max-height: 90vh;
+            background: var(--bg-primary);
+            border-radius: 40px;
+            padding: 12px;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.5), 0 0 0 3px #333, 0 0 0 12px #1a1a1a;
+            overflow: hidden;
+        }
+        .phone-screen {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-primary);
+            border-radius: 32px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .container {
+            max-width: 100%;
+            padding: 12px 14px;
+        }
+
+        /* ----- MOBILE HEADER ----- */
+        header.mockup-header {
+            padding: 8px 0 10px;
+        }
+        .header-bar {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+        }
+        .header-left {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .campaign-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .campaign-wrap label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+        .campaign-select {
+            flex: 1;
+            min-width: 0;
+            padding: 6px 10px;
+            font-size: 0.78rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+        .header-actions-inline {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .btn-compact {
+            padding: 6px 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+        }
+        .btn-compact.invite { color: var(--accent-primary); }
+        .btn-compact.new { color: var(--accent-success); }
+        .btn-compact.leave { color: var(--accent-danger); }
+        .header-right {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-left: 0;
+        }
+        .pills-inline {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 6px;
+            justify-content: flex-start;
+        }
+        .pill-with-desc {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+        .pill-desc {
+            font-size: 0.52rem;
+            color: var(--text-muted);
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 8px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            border-radius: 999px;
+            white-space: nowrap;
+            background: rgba(139, 92, 246, 0.14);
+            border: 1px solid rgba(139, 92, 246, 0.4);
+            color: var(--accent-secondary);
+        }
+        .auth-inline {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .auth-email {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 200px;
+        }
+        .btn-logout {
+            padding: 4px 10px;
+            font-size: 0.68rem;
+            font-weight: 600;
+            border-radius: 6px;
+            border: 1px solid var(--text-muted);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+        .header-summary {
+            margin-top: 8px;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            word-break: break-word;
+        }
+        .header-summary a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-left: 4px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(148, 163, 184, 0.12);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+        }
+        .banner-compact {
+            margin-top: 6px;
+            padding: 6px 10px;
+            font-size: 0.68rem;
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+
+        /* Nav — horizontal scroll on mobile */
+        .nav-tabs {
+            display: flex;
+            gap: 4px;
+            margin-top: 8px;
+            margin-bottom: 6px;
+            padding: 4px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .nav-tab {
+            flex: 0 0 auto;
+            padding: 8px 10px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+        .nav-tab.active { background: var(--accent-primary); color: white; }
+
+        /* Players grid — single column on mobile */
+        .players-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .player-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .players-grid .player-card:first-child {
+            border: 2px solid rgba(255, 215, 0, 0.5);
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(184, 134, 11, 0.08));
+        }
+        .player-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border);
+            object-fit: cover;
+        }
+        .players-grid .player-card:first-child .player-avatar { width: 64px; height: 64px; }
+        .player-info { flex: 1; min-width: 0; }
+        .player-info h3 { font-size: 0.95rem; margin-bottom: 2px; }
+        .players-grid .player-card:first-child .player-info h3 { font-size: 1.1rem; }
+        .player-info .tag { font-size: 0.58rem; color: var(--text-muted); }
+        .player-info .stats { font-size: 0.72rem; color: var(--text-secondary); }
+        .celebration-pills {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 16px;
+        }
+        .celebration-pill {
+            padding: 4px 10px;
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            cursor: pointer;
+        }
+        .gold-divider {
+            height: 2px;
+            margin: 20px 0;
+            background: linear-gradient(90deg, transparent, #ffd700, transparent);
+        }
+        .games-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .games-section-title { font-size: 1rem; font-weight: 600; }
+        .games-toggle-btn {
+            padding: 4px 8px;
+            font-size: 0.7rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+        .games-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .game-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+        .game-card-image {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            background: var(--bg-tertiary);
+            object-fit: cover;
+        }
+        .game-card-info { flex: 1; min-width: 0; }
+        .game-card-info h3 { font-size: 0.9rem; margin-bottom: 2px; }
+        .game-card-meta { font-size: 0.68rem; color: var(--text-muted); }
+        .game-card-stats { text-align: right; }
+        .game-card-number { font-size: 1.1rem; font-weight: 700; color: var(--accent-primary); }
+        .game-card-label { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; }
+        .footer-faq { margin: 20px 0 24px; }
+        .footer-faq-title {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+        .footer-accordion {
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid var(--border);
+        }
+        .footer-accordion-item {
+            border-bottom: 1px solid var(--border);
+            list-style: none;
+        }
+        .footer-accordion-item summary {
+            padding: 12px 0;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .footer-accordion-item summary::after {
+            content: '∨';
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+        .footer-accordion-item[open] summary::after { transform: rotate(180deg); }
+        .footer-accordion-item p {
+            padding: 0 0 12px 0;
+            margin: 0;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .footer-main { margin-top: 20px; }
+        .footer-links {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .footer-col h4 {
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .footer-col a {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 2px 0;
+        }
+        .footer-bottom {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+        .phone-label {
+            text-align: center;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="phone-frame">
+            <div class="phone-screen">
+                <div class="container">
+                    <header class="mockup-header">
+                        <div class="header-bar">
+                            <div class="header-left">
+                                <div class="campaign-wrap">
+                                    <label for="campaign">Campaign</label>
+                                    <select id="campaign" class="campaign-select">
+                                        <option>FourPlay</option>
+                                        <option>Other Campaign</option>
+                                    </select>
+                                </div>
+                                <div class="header-actions-inline">
+                                    <button type="button" class="btn-compact invite">Copy link</button>
+                                    <button type="button" class="btn-compact new">+ New</button>
+                                    <button type="button" class="btn-compact leave">Leave</button>
+                                </div>
+                            </div>
+                            <div class="header-right">
+                                <div class="pills-inline pills-tier-noble">
+                                    <div class="pill-with-desc">
+                                        <span class="pill pill-tier">Noble</span>
+                                        <span class="pill-desc">class</span>
+                                    </div>
+                                    <div class="pill-with-desc">
+                                        <span class="pill pill-campaigns">1 of 4</span>
+                                        <span class="pill-desc">campaigns</span>
+                                    </div>
+                                    <div class="pill-with-desc">
+                                        <span class="pill pill-permit">10 meeples</span>
+                                        <span class="pill-desc">per party</span>
+                                    </div>
+                                </div>
+                                <div class="auth-inline">
+                                    <span class="auth-email">user@example.com</span>
+                                    <button type="button" class="btn-logout">Log out</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="header-summary">
+                            1 Traveller, 3 Meeples (3 Nobles). Accepts Nobles &amp; Royals.
+                            <a href="#">Update class</a>
+                        </div>
+                        <div class="banner-compact">
+                            Select a campaign to add wins, players and games!
+                        </div>
+                    </header>
+
+                    <nav class="nav-tabs">
+                        <button type="button" class="nav-tab">About</button>
+                        <button type="button" class="nav-tab active">Leaderboard</button>
+                        <button type="button" class="nav-tab">Add a Game Win</button>
+                        <button type="button" class="nav-tab">Tally Scores</button>
+                        <button type="button" class="nav-tab">History</button>
+                        <button type="button" class="nav-tab">Data</button>
+                    </nav>
+
+                    <section class="section">
+                        <div class="players-grid">
+                            <div class="player-card">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=syahid" alt="" class="player-avatar">
+                                <div class="player-info">
+                                    <h3>Syahid 👑</h3>
+                                    <div class="tag">Noble</div>
+                                    <p class="stats">7 Games Won • 39% win rate</p>
+                                </div>
+                            </div>
+                            <div class="player-card">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=mar" alt="" class="player-avatar">
+                                <div class="player-info">
+                                    <h3>Mar <span class="tag">(YOU)</span></h3>
+                                    <div class="tag">Noble</div>
+                                    <p class="stats">6 Games Won • 33% win rate</p>
+                                </div>
+                            </div>
+                            <div class="player-card">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=hamzah" alt="" class="player-avatar">
+                                <div class="player-info">
+                                    <h3>Hamzah</h3>
+                                    <div class="tag">Noble</div>
+                                    <p class="stats">3 Games Won • 21% win rate</p>
+                                </div>
+                            </div>
+                            <div class="player-card">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=farid" alt="" class="player-avatar">
+                                <div class="player-info">
+                                    <h3>Farid</h3>
+                                    <div class="tag">Traveller</div>
+                                    <p class="stats">3 Games Won • 18% win rate</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="celebration-pills">
+                            <button type="button" class="celebration-pill">🎊 Confetti</button>
+                            <button type="button" class="celebration-pill">📳 Shake</button>
+                            <button type="button" class="celebration-pill">🎺 Fanfare</button>
+                            <button type="button" class="celebration-pill">🎲 Roll Quotes</button>
+                        </div>
+
+                        <div class="gold-divider"></div>
+                        <div class="games-section-header">
+                            <h2 class="games-section-title">🏅 Top Games</h2>
+                            <button type="button" class="games-toggle-btn">More ▼</button>
+                        </div>
+                        <div class="games-grid">
+                            <div class="game-card">
+                                <div class="game-card-image" style="background:var(--bg-tertiary); display:flex; align-items:center; justify-content:center; font-size:1.2rem;">🎲</div>
+                                <div class="game-card-info">
+                                    <h3>Finspan</h3>
+                                    <p class="game-card-meta">Last: Jul 11, 2025</p>
+                                </div>
+                                <div class="game-card-stats">
+                                    <div class="game-card-number">4</div>
+                                    <div class="game-card-label">Wins</div>
+                                </div>
+                            </div>
+                            <div class="game-card">
+                                <div class="game-card-image" style="background:var(--bg-tertiary); display:flex; align-items:center; justify-content:center; font-size:1.2rem;">🎲</div>
+                                <div class="game-card-info">
+                                    <h3>Endeavour: Deep Sea</h3>
+                                    <p class="game-card-meta">Last: Jun 28, 2025</p>
+                                </div>
+                                <div class="game-card-stats">
+                                    <div class="game-card-number">2</div>
+                                    <div class="game-card-label">Wins</div>
+                                </div>
+                            </div>
+                            <div class="game-card">
+                                <div class="game-card-image" style="background:var(--bg-tertiary); display:flex; align-items:center; justify-content:center; font-size:1.2rem;">🎲</div>
+                                <div class="game-card-info">
+                                    <h3>SETI</h3>
+                                    <p class="game-card-meta">Last: Jun 15, 2025</p>
+                                </div>
+                                <div class="game-card-stats">
+                                    <div class="game-card-number">2</div>
+                                    <div class="game-card-label">Wins</div>
+                                </div>
+                            </div>
+                            <div class="game-card">
+                                <div class="game-card-image" style="background:var(--bg-tertiary); display:flex; align-items:center; justify-content:center; font-size:1.2rem;">🎲</div>
+                                <div class="game-card-info">
+                                    <h3>H.E.A.T</h3>
+                                    <p class="game-card-meta">Last: Jun 8, 2025</p>
+                                </div>
+                                <div class="game-card-stats">
+                                    <div class="game-card-number">2</div>
+                                    <div class="game-card-label">Wins</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="gold-divider"></div>
+                        <div class="footer-faq">
+                            <h3 class="footer-faq-title">Questions? We have answers.</h3>
+                            <div class="footer-accordion">
+                                <details class="footer-accordion-item">
+                                    <summary>How do I add a game win?</summary>
+                                    <p>Add a Win uses a 3-step flow: Select Game, Select Winner, Select Date. Use the Add a Game Win tab to get started.</p>
+                                </details>
+                                <details class="footer-accordion-item">
+                                    <summary>Can I export my data?</summary>
+                                    <p>Yes. Use Export Data in the Data tab to download a JSON backup.</p>
+                                </details>
+                                <details class="footer-accordion-item">
+                                    <summary>Stuck or seeing old data?</summary>
+                                    <p>Try logging out and back in, or refresh the page (Ctrl+F5).</p>
+                                </details>
+                            </div>
+                        </div>
+                        <div class="gold-divider"></div>
+                        <div class="footer-main">
+                            <div class="footer-links">
+                                <div class="footer-col">
+                                    <h4>Product</h4>
+                                    <a href="#">About</a>
+                                    <a href="#">Leaderboard</a>
+                                    <a href="#">Add a Win</a>
+                                    <a href="#">History</a>
+                                    <a href="#">Data</a>
+                                </div>
+                                <div class="footer-col">
+                                    <h4>Resources</h4>
+                                    <a href="#">Help</a>
+                                    <a href="#">Roadmap</a>
+                                    <a href="#">Contact</a>
+                                </div>
+                                <div class="footer-col">
+                                    <h4>Legal</h4>
+                                    <a href="#">Terms</a>
+                                    <a href="#">Privacy</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="footer-bottom">
+                            © 2026 Mar.sg · v0.9.5 Beta
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+        <p class="phone-label">iPhone X viewport (375×812)</p>
+    </div>
+</body>
+</html>

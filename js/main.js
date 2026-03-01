@@ -118,6 +118,7 @@ async function loadBetaLimits() {
             window._scorekeeperLeaderboardQuotes = null;
         }
         window._scorekeeperBggSearchEnabled = config.bgg_search_enabled !== 'false';
+        window._scorekeeperShowCampaignAcceptsText = config.show_campaign_accepts_text !== 'false';
         renderAll();
     } catch {}
 }

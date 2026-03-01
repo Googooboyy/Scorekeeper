@@ -12,47 +12,58 @@
 <body class="read-only">
     <div class="container">
         <header>
-            <div class="header-row">
-                <div class="header-actions">
-                    <div id="authArea" class="auth-area">
-                        <button class="btn-auth btn-google-black" id="loginBtn" type="button">
-                            <svg class="google-g" width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-                                <path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/>
-                                <path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/>
-                                <path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/>
-                                <path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.3z"/>
-                            </svg>
-                            Sign in with Google
-                        </button>
-                        <div class="auth-user" id="authUser" style="display: none;">
-                            <span class="auth-email" id="authEmail"></span>
-                            <button class="btn-auth" id="adminDashboardLink" style="display:none;" type="button">Admin Page</button>
-                            <button class="btn-auth btn-admin-mode" id="adminModeBtn" style="display:none;" type="button">🛡 Admin</button>
-                            <button class="btn-auth logout" id="logoutBtn">Log out</button>
-                        </div>
+            <div id="authArea" class="auth-area auth-area-standalone">
+                <button class="btn-auth btn-google-black" id="loginBtn" type="button">
+                    <svg class="google-g" width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                        <path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/>
+                        <path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/>
+                        <path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/>
+                        <path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.3z"/>
+                    </svg>
+                    Sign in with Google
+                </button>
+            </div>
+            <div id="playgroupArea" class="header-bar playgroup-area" style="display: none;">
+                <div class="header-left">
+                    <div class="campaign-wrap playgroup-select-row">
+                        <label class="playgroup-label" for="playgroupSelect">Campaign</label>
+                        <select id="playgroupSelect" class="playgroup-select campaign-select-compact">
+                            <option value="">Select campaign...</option>
+                        </select>
                     </div>
-                    <div id="playgroupArea" class="playgroup-area" style="display: none;">
-                        <div class="playgroup-select-row">
-                            <label class="playgroup-label">Campaign:</label>
-                            <select id="playgroupSelect" class="playgroup-select">
-                                <option value="">Select campaign...</option>
-                            </select>
-                        </div>
-                        <div class="playgroup-actions-row">
-                            <button class="btn-auth invite-playgroup" id="invitePlaygroupBtn" title="Copy link to view or join this campaign">Copy Campaign Invite Link</button>
-                            <button class="btn-auth create-playgroup" id="createPlaygroupBtn">+ New Campaign</button>
-                            <button class="btn-auth leave-playgroup" id="leavePlaygroupBtn" title="Leave this campaign" style="display: none;">Leave Campaign</button>
-                        </div>
-                        <div class="playgroup-meta-row plan-summary" id="planSummary" aria-live="polite" style="display:none;">
+                    <div class="header-actions-inline playgroup-actions-row">
+                        <button class="btn-auth btn-compact invite-playgroup" id="invitePlaygroupBtn" title="Copy link to view or join this campaign">Copy link</button>
+                        <button class="btn-auth btn-compact create-playgroup" id="createPlaygroupBtn">+ New</button>
+                        <button class="btn-auth btn-compact leave-playgroup" id="leavePlaygroupBtn" title="Leave this campaign" style="display: none;">Leave</button>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="auth-inline auth-user" id="authUser" style="display: none;">
+                        <span class="auth-email" id="authEmail"></span>
+                        <button class="btn-auth btn-logout-compact logout" id="logoutBtn">Log out</button>
+                        <button class="btn-auth" id="adminDashboardLink" style="display:none;" type="button">Admin Page</button>
+                        <button class="btn-auth btn-admin-mode" id="adminModeBtn" style="display:none;" type="button">🛡 Admin</button>
+                    </div>
+                    <div class="pills-inline plan-summary" id="planSummary" aria-live="polite" style="display:none;">
+                        <div class="pill-with-desc">
                             <span id="planPillTier" class="plan-pill plan-pill-tier" title="Your membership tier"></span>
-                            <span id="planPillCampaigns" class="plan-pill plan-pill-campaigns" title="Campaigns used vs limit"></span>
-                            <span id="planPillPartyPermit" class="plan-pill plan-pill-party-permit" title="Max meeples for this campaign" style="display:none;"></span>
+                            <span class="pill-desc">class</span>
                         </div>
-                        <div class="playgroup-meeples-row" id="meeplesRow" aria-live="polite" style="display:none;">
-                            <div class="playgroup-meeples-line1" id="meeplesPopulationText"></div>
-                            <div class="playgroup-meeples-line2"><span id="meeplesAcceptsText"></span><button type="button" class="playgroup-change-btn" id="meeplesChangeBtn" title="Edit who can join this campaign" style="display:none;">Update class requirements</button></div>
+                        <div class="pill-with-desc">
+                            <span id="planPillCampaigns" class="plan-pill plan-pill-campaigns" title="Campaigns used vs limit"></span>
+                            <span class="pill-desc">campaigns</span>
+                        </div>
+                        <div class="pill-with-desc pill-party-permit-wrap" style="display:none;">
+                            <span id="planPillPartyPermit" class="plan-pill plan-pill-party-permit" title="Max meeples for this campaign" style="display:none;"></span>
+                            <span class="pill-desc">per party</span>
                         </div>
                     </div>
+                </div>
+            </div>
+            <div class="header-summary-wrap" id="headerSummaryWrap" style="display:none;">
+                <div class="playgroup-meeples-row" id="meeplesRow" aria-live="polite">
+                    <div class="playgroup-meeples-line1" id="meeplesPopulationText"></div>
+                    <div class="playgroup-meeples-line2"><span id="meeplesAcceptsText"></span><button type="button" class="playgroup-change-btn" id="meeplesChangeBtn" title="Edit who can join this campaign" style="display:none;">Update class requirements</button></div>
                 </div>
             </div>
         <div class="header-banners">
@@ -342,7 +353,7 @@
                     <div class="about-feature-card">
                         <span class="about-feature-icon">📥</span>
                         <div>
-                            <h4>Export &amp; Import <span class="about-feature-coming-soon">Coming soon</span></h4>
+                            <h4>Export &amp; Import</h4>
                             <p>Download a full JSON backup of your campaign data whenever you like, and restore it just as easily.</p>
                         </div>
                     </div>
@@ -415,6 +426,26 @@
                         <summary>Can I delete my data?</summary>
                         <p>Yes. Use "Clear All" in Data Management to wipe a campaign's records, or delete individual wins from the History tab.</p>
                     </details>
+                    <details class="footer-accordion-item">
+                        <summary>What are membership tiers?</summary>
+                        <p>Commoner (free), Noble, and Royal. Your tier sets your campaign limit and party permit (max meeples per campaign). Commoners: 2 campaigns, party permit 5. Nobles: 4 campaigns, party permit 10. Royals: unlimited. Commoners choose preset avatars; Nobles and Royals can upload custom photos. <a href="help.html#membership-tiers">More in Help →</a></p>
+                    </details>
+                    <details class="footer-accordion-item">
+                        <summary>What do the header pills mean?</summary>
+                        <p>They show your tier name, campaigns used (e.g. 1/2), and party permit (max meeples for the current campaign).</p>
+                    </details>
+                    <details class="footer-accordion-item">
+                        <summary>Can Commoners upload custom meeple photos?</summary>
+                        <p>No. Commoners choose from preset avatars. Nobles and Royals can upload custom photos or pick a preset.</p>
+                    </details>
+                    <details class="footer-accordion-item">
+                        <summary>What are announcements vs personal messages?</summary>
+                        <p>Blue banners are global announcements for all users. Orange banners are personal messages sent just to you. Both can be dismissed with ✕.</p>
+                    </details>
+                    <details class="footer-accordion-item">
+                        <summary>Stuck or seeing old data?</summary>
+                        <p>Try logging out and back in, or refresh the page (Ctrl+F5 or Cmd+Shift+R to bypass cache). Clearing browser cache can also help.</p>
+                    </details>
                 </div>
             </div>
 
@@ -482,7 +513,7 @@
                     </details>
                     <details class="footer-accordion-item">
                         <summary>Can I export my data?</summary>
-                        <p>Not yet — export &amp; import is coming soon. <a href="roadmap.html">Check the roadmap</a> for when it's landing.</p>
+                        <p>Yes. Use <strong>Export Data</strong> in the Data tab to download a JSON backup. Use <strong>Import Data</strong> to restore from a previously exported file.</p>
                     </details>
                     <details class="footer-accordion-item">
                         <summary>What happens if I leave a campaign?</summary>
@@ -495,6 +526,10 @@
                     <details class="footer-accordion-item">
                         <summary>Can I edit a win entry after it's been recorded?</summary>
                         <p>Yes. Go to the History tab, click the ⚙️ icon on any entry, and update the game, meeple, or date. Every edit is automatically stamped with who made the change and when — visible as a small note beneath each history entry.</p>
+                    </details>
+                    <details class="footer-accordion-item">
+                        <summary>Stuck or seeing old data?</summary>
+                        <p>Try logging out and back in, or refresh the page (Ctrl+F5 or Cmd+Shift+R to bypass cache). Clearing browser cache can also help.</p>
                     </details>
                 </div>
             </div>

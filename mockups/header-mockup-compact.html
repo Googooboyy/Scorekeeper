@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<!--
+  COMPACT HEADER MOCKUP — for review before applying to index.html
+  Design: single top bar (campaign + actions left, pills + user right), one-line summary, compact banner, nav tight below.
+  CSS uses same :root vars as styles.css so you can copy .mockup-header and related classes into the app.
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Header mockup — compact / minimalist</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&display=swap">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a25;
+            --bg-card: #151520;
+            --accent-primary: #6366f1;
+            --accent-secondary: #8b5cf6;
+            --accent-success: #10b981;
+            --accent-danger: #ef4444;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: #27273a;
+            --accent-gold: #ffd700;
+            --accent-gold-dark: #b8860b;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 16px 20px; }
+
+        /* ----- COMPACT HEADER (mockup) ----- */
+        header.mockup-header {
+            padding: 10px 0 12px;
+            margin-bottom: 0;
+        }
+        /* Single top bar: campaign + actions + user */
+        .header-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px 20px;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .campaign-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .campaign-wrap label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .campaign-select {
+            min-width: 140px;
+            padding: 6px 10px;
+            font-size: 0.8rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+        .campaign-select:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+        .header-actions-inline {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-compact {
+            padding: 5px 10px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            /* Clean card look: same as player cards & pills */
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+        }
+        .btn-compact.invite { color: var(--accent-primary); }
+        .btn-compact.invite:hover { border-color: var(--accent-primary); background: var(--bg-secondary); }
+        .btn-compact.new { color: var(--accent-success); }
+        .btn-compact.new:hover { border-color: var(--accent-success); background: var(--bg-secondary); }
+        .btn-compact.leave { color: var(--accent-danger); }
+        .btn-compact.leave:hover { border-color: var(--accent-danger); background: var(--bg-secondary); }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+        .pills-inline {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: 0;
+        }
+        .pill-with-desc {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+        }
+        .pill-desc {
+            font-size: 0.58rem;
+            font-weight: 400;
+            color: var(--text-muted);
+            line-height: 1.2;
+            white-space: nowrap;
+            opacity: 0.85;
+        }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 6px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+        /* Player's class theme: same as player-tier pills (Noble in mockup) */
+        .pills-inline.pills-tier-noble .pill {
+            background: rgba(139, 92, 246, 0.14);
+            border: 1px solid rgba(139, 92, 246, 0.4);
+            color: var(--accent-secondary);
+        }
+        .auth-inline {
+            display: flex;
+            align-items: center;
+            gap: 0;
+        }
+        .auth-email {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            max-width: 160px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .btn-logout {
+            padding: 2px 6px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            border-radius: 6px;
+            border: 1px solid var(--text-muted);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-logout:hover {
+            border-color: var(--accent-danger);
+            color: var(--accent-danger);
+        }
+        /* One-line campaign summary under the bar */
+        .header-summary {
+            margin-top: 8px;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        .header-summary a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-left: 6px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(148, 163, 184, 0.12);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+        }
+        .header-summary a:hover { background: rgba(148, 163, 184, 0.2); color: var(--text-primary); }
+
+        /* Compact banner */
+        .banner-compact {
+            margin-top: 8px;
+            padding: 6px 12px;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+
+        /* Nav — same style, less margin */
+        .nav-tabs {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+            margin-bottom: 6px;
+            padding: 5px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+        .nav-tab {
+            flex: 1;
+            padding: 10px 14px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .nav-tab.active { background: var(--accent-primary); color: white; }
+        .nav-tab:hover:not(.active) { color: var(--text-primary); background: var(--bg-tertiary); }
+
+        /* Placeholder leaderboard */
+        .players-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+        .players-grid .player-card:first-child {
+            grid-column: 1 / -1;
+            max-width: 460px;
+            margin: 0 auto;
+        }
+        .player-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .players-grid .player-card:first-child {
+            border: 2px solid rgba(255, 215, 0, 0.5);
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(184, 134, 11, 0.08));
+        }
+        .player-avatar {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border);
+            object-fit: cover;
+        }
+        .players-grid .player-card:first-child .player-avatar { width: 95px; height: 95px; }
+        .player-info h3 { font-size: 1.1rem; margin-bottom: 4px; }
+        .players-grid .player-card:first-child .player-info h3 { font-size: 1.4rem; }
+        .player-info .tag {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+        .player-info .stats { font-size: 0.8rem; color: var(--text-secondary); }
+        .player-crown { font-size: 1.2rem; margin-left: 4px; }
+        .celebration-pills {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 20px;
+        }
+        .celebration-pill {
+            padding: 5px 12px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="mockup-header">
+            <div class="header-bar">
+                <div class="header-left">
+                    <div class="campaign-wrap">
+                        <label for="campaign">Campaign</label>
+                        <select id="campaign" class="campaign-select">
+                            <option>FourPlay</option>
+                            <option>Other Campaign</option>
+                        </select>
+                    </div>
+                    <div class="header-actions-inline">
+                        <button type="button" class="btn-compact invite">Copy link</button>
+                        <button type="button" class="btn-compact new">+ New</button>
+                        <button type="button" class="btn-compact leave">Leave</button>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="pills-inline pills-tier-noble">
+                        <div class="pill-with-desc">
+                            <span class="pill pill-tier">Noble</span>
+                            <span class="pill-desc">class</span>
+                        </div>
+                        <div class="pill-with-desc">
+                            <span class="pill pill-campaigns">1 of 4</span>
+                            <span class="pill-desc">campaigns</span>
+                        </div>
+                        <div class="pill-with-desc">
+                            <span class="pill pill-permit">10 meeples</span>
+                            <span class="pill-desc">per party</span>
+                        </div>
+                    </div>
+                    <div class="auth-inline">
+                        <span class="auth-email">user@example.com</span>
+                        <button type="button" class="btn-logout">Log out</button>
+                    </div>
+                </div>
+            </div>
+            <div class="header-summary">
+                1 Traveller, 3 Meeples (3 Nobles). Accepts Nobles &amp; Royals.
+                <a href="#">Update class</a>
+            </div>
+            <div class="banner-compact">
+                Select a campaign to add wins, players and games!
+            </div>
+        </header>
+
+        <nav class="nav-tabs">
+            <button type="button" class="nav-tab">About</button>
+            <button type="button" class="nav-tab active">Leaderboard</button>
+            <button type="button" class="nav-tab">Add a Game Win</button>
+            <button type="button" class="nav-tab">Tally Scores</button>
+            <button type="button" class="nav-tab">History</button>
+            <button type="button" class="nav-tab">Data</button>
+        </nav>
+
+        <section class="section">
+            <div class="players-grid">
+                <div class="player-card">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=syahid" alt="" class="player-avatar">
+                    <div class="player-info">
+                        <h3>Syahid <span class="player-crown">👑</span></h3>
+                        <div class="tag">Noble</div>
+                        <p class="stats">7 Games Won • 39% win rate</p>
+                    </div>
+                </div>
+                <div class="player-card">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=mar" alt="" class="player-avatar">
+                    <div class="player-info">
+                        <h3>Mar <span class="tag">(YOU)</span></h3>
+                        <div class="tag">Noble</div>
+                        <p class="stats">6 Games Won • 33% win rate</p>
+                    </div>
+                </div>
+                <div class="player-card">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=hamzah" alt="" class="player-avatar">
+                    <div class="player-info">
+                        <h3>Hamzah</h3>
+                        <div class="tag">Noble</div>
+                        <p class="stats">3 Games Won • 21% win rate</p>
+                    </div>
+                </div>
+                <div class="player-card">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=farid" alt="" class="player-avatar">
+                    <div class="player-info">
+                        <h3>Farid</h3>
+                        <div class="tag">Traveller</div>
+                        <p class="stats">3 Games Won • 18% win rate</p>
+                    </div>
+                </div>
+            </div>
+            <div class="celebration-pills">
+                <button type="button" class="celebration-pill">🎊 Confetti</button>
+                <button type="button" class="celebration-pill">📳 Shake</button>
+                <button type="button" class="celebration-pill">🎺 Fanfare</button>
+                <button type="button" class="celebration-pill">🎲 Roll Quotes</button>
+            </div>
+        </section>
+    </div>
+</body>
+</html>

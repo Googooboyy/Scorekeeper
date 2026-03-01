@@ -12,9 +12,66 @@ body {
 }
 .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
 header {
-    padding: 30px 0; margin-bottom: 5px; position: relative;
+    padding: 10px 0 14px; margin-bottom: 0; position: relative;
 }
-.header-banners { margin-top: 14px; }
+.header-banners { margin-top: 10px; }
+.auth-area-standalone { display: flex; flex-direction: column; align-items: flex-end; margin-bottom: 8px; }
+.header-bar {
+    display: flex; flex-wrap: wrap; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px 16px;
+}
+/* Override playgroup-area when used as header-bar: left=campaign, right=user */
+.header-bar.playgroup-area {
+    flex-direction: row; align-items: center; justify-content: space-between;
+}
+.header-left {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.header-right {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-left: auto; flex-shrink: 0;
+}
+.campaign-wrap { display: flex; align-items: center; gap: 6px; }
+.campaign-wrap .playgroup-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 500; }
+.campaign-select-compact {
+    min-width: 140px; padding: 6px 10px; font-size: 0.8rem; background: var(--bg-secondary);
+    border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); cursor: pointer;
+}
+.campaign-select-compact:focus { outline: none; border-color: var(--accent-primary); }
+.header-actions-inline { display: flex; align-items: center; gap: 4px; }
+.btn-compact {
+    padding: 5px 10px; font-size: 0.72rem; font-weight: 600; border-radius: 6px; cursor: pointer; transition: all 0.2s;
+    background: var(--bg-card); border: 1px solid var(--border);
+}
+.btn-compact.invite-playgroup { color: var(--accent-primary); }
+.btn-compact.invite-playgroup:hover { border-color: var(--accent-primary); background: var(--bg-secondary); }
+.btn-compact.create-playgroup { color: var(--accent-success); }
+.btn-compact.create-playgroup:hover { border-color: var(--accent-success); background: var(--bg-secondary); }
+.btn-compact.leave-playgroup { color: var(--accent-danger); }
+.btn-compact.leave-playgroup:hover { border-color: var(--accent-danger); background: var(--bg-secondary); }
+.pills-inline {
+    display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0;
+}
+.pills-inline.plan-summary { gap: 0 8px; }
+.pill-with-desc {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.pill-desc {
+    font-size: 0.58rem; font-weight: 400; color: var(--text-muted); line-height: 1.2; white-space: nowrap; opacity: 0.85;
+}
+.pills-inline .plan-pill { padding: 2px 6px; font-size: 0.7rem; }
+.auth-inline { display: flex; align-items: center; gap: 0; }
+.auth-inline .auth-email { max-width: 160px; font-size: 0.78rem; }
+.btn-logout-compact {
+    padding: 2px 6px; font-size: 0.72rem; font-weight: 600; border-radius: 6px;
+    border: 1px solid var(--text-muted); background: transparent; color: var(--text-secondary); cursor: pointer; transition: all 0.2s;
+}
+.btn-logout-compact:hover { border-color: var(--accent-danger); color: var(--accent-danger); }
+.header-summary-wrap { margin-top: 6px; }
+.header-summary-wrap .playgroup-meeples-row {
+    margin-top: 0; font-size: 0.72rem; color: var(--text-muted); line-height: 1.5;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px;
+}
+.header-summary-wrap .playgroup-meeples-line1,
+.header-summary-wrap .playgroup-meeples-line2 { margin-top: 0; }
 .gold-divider {
     height: 2px; margin: 44px 5% 44px; flex-shrink: 0;
     background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
@@ -47,8 +104,20 @@ header {
 .btn-auth.create-playgroup:hover { background: var(--accent-success); color: white; }
 .btn-auth.leave-playgroup { border-color: var(--accent-danger); color: var(--accent-danger); background: rgba(239, 68, 68, 0.08); }
 .btn-auth.leave-playgroup:hover { background: var(--accent-danger); color: white; }
+/* Compact buttons: unified dark background, light border, colored text only (no tinted fills) */
+.btn-compact.invite-playgroup,
+.btn-compact.create-playgroup,
+.btn-compact.leave-playgroup {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+}
+.btn-compact.invite-playgroup:hover,
+.btn-compact.create-playgroup:hover,
+.btn-compact.leave-playgroup:hover {
+    background: var(--bg-secondary);
+}
 .invite-modal { max-width: 480px; }
-.playgroup-area { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.playgroup-area:not(.header-bar) { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .playgroup-select-row { display: flex; align-items: center; gap: 10px; }
 .playgroup-meta-row { align-self: flex-end; font-size: 0.8rem; color: var(--text-muted); margin-top: -2px; }
 .plan-summary {
@@ -635,9 +704,9 @@ body.read-only .nav-tab[data-section="add"], body.read-only .nav-tab-tally { opa
 body.read-only .data-management .data-btn { opacity: 0.5; pointer-events: none; cursor: not-allowed; }
 body.read-only .add-new-btn { pointer-events: none; opacity: 0.5; }
 .read-only-banner {
-    background: rgba(99, 102, 241, 0.15); border: none;
-    color: var(--text-secondary); padding: 12px 20px; border-radius: 12px;
-    margin: 0 0 20px 0; text-align: center; font-size: 0.9rem;
+    background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border);
+    color: var(--text-secondary); padding: 6px 12px; border-radius: 6px;
+    margin-top: 8px; margin-bottom: 0; text-align: center; font-size: 0.78rem;
 }
 .read-only-banner .strikethrough {
     text-decoration: line-through;
@@ -1126,9 +1195,15 @@ body.tally-add-game-mode #step3 {
 /* ── Mobile / iPhone fixes ──────────────────────────────────────────────── */
 html { overflow-x: hidden; }
 
+/* Medium & mobile: user info on top row, campaign info below */
+@media (max-width: 1024px) {
+    .header-bar { flex-direction: column-reverse; align-items: stretch; }
+    .header-right { margin-left: 0; justify-content: flex-end; }
+}
+
 @media (max-width: 640px) {
     .container { padding: 14px; }
-    header { padding: 18px 0; margin-bottom: 18px; }
+    header { padding: 12px 0 14px; margin-bottom: 12px; }
 
     /* Logo — scale down on small screens */
     h1.logo { font-size: 1.6rem; letter-spacing: 2px; }
@@ -1137,26 +1212,26 @@ html { overflow-x: hidden; }
     header .subtitle { font-size: 0.525rem; }
     .beta-badge { font-size: 0.52rem; padding: 2px 6px; top: -4px; }
 
-    /* Stack header vertically so nothing bleeds off-screen */
+    /* Compact header — stack on mobile (user on top, campaign below) */
+    .header-bar { flex-direction: column-reverse; align-items: stretch; gap: 10px; }
+    .header-left { flex-direction: column; gap: 8px; }
+    .header-right { margin-left: 0; flex-direction: column; align-items: flex-start; gap: 8px; }
+    .pills-inline { gap: 8px 6px; }
+    .auth-inline { gap: 8px; }
+    .auth-area-standalone { align-items: stretch; }
+    .auth-area-standalone .btn-google-black { justify-content: center; }
+    .campaign-select-compact { flex: 1; min-width: 0; }
+    .header-actions-inline { flex-wrap: wrap; }
+    .header-actions-inline .btn-compact { flex: 1; min-width: 60px; }
+    .header-summary-wrap .playgroup-meeples-row { font-size: 0.65rem; word-break: break-word; }
+
+    /* Nav tabs — horizontal scroll on mobile */
+    .nav-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .nav-tab { flex: 0 0 auto; padding: 10px 12px; font-size: 0.78rem; white-space: nowrap; }
+
+    /* Legacy playgroup fallbacks (if any) */
     .header-row { flex-direction: column; align-items: stretch; gap: 12px; }
-    .header-row > div:first-child { text-align: left; }
-    .header-actions { align-items: stretch; }
-
-    /* Auth row */
-    .auth-area { flex-direction: column; align-items: center; gap: 8px; }
-    .auth-user { justify-content: center; }
-    #googleLoginNote { text-align: center; }
-
-    /* Playgroup row */
-    .playgroup-area { align-items: stretch; }
     .playgroup-select-row { justify-content: space-between; }
-    .playgroup-meta-row { align-self: flex-start; margin-top: 2px; }
-    .playgroup-select { flex: 1; min-width: 0; }
-    .playgroup-actions-row { gap: 8px; justify-content: stretch; }
-    .playgroup-actions-row .btn-auth { flex: 1; padding: 10px 6px; font-size: 0.65rem; text-align: center; }
-
-    /* Nav tabs — shrink text so "Add a Game Win" fits */
-    .nav-tab { padding: 10px 6px; font-size: 0.78rem; }
 
     /* Game cards — tighter so action buttons don't overflow */
     .game-card { padding: 10px 12px; gap: 10px; }
