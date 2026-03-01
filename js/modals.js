@@ -13,6 +13,7 @@ import {
     upsertPlayerMetadata,
     updateEntry,
     fetchPlayerById,
+    fetchPresetAvatars,
     claimPlayer,
     unclaimPlayer,
     fetchCrossCampaignStats,
@@ -117,13 +118,49 @@ export async function saveGameImage() {
     closeGameImageModal();
 }
 
-export function openPlayerImageModal(player) {
+export async function openPlayerImageModal(player) {
     uiState.currentPlayerForImage = player;
     document.getElementById('playerImagePlayerName').textContent = player;
 
     const playerData = data.playerData && data.playerData[player] ? data.playerData[player] : {};
     const currentImage = playerData.image || '';
     const currentColor = playerData.color || '#6366f1';
+
+    const tier = typeof window._scorekeeperUserTier !== 'undefined' ? window._scorekeeperUserTier : 1;
+    const canUpload = tier >= 2;
+
+    const uploadSection = document.getElementById('playerImageUploadSection');
+    const presetSection = document.getElementById('playerImagePresetPickerSection');
+    const presetGrid = document.getElementById('playerImagePresetPicker');
+    if (uploadSection) uploadSection.style.display = canUpload ? '' : 'none';
+    if (presetSection) presetSection.style.display = '';
+    if (presetGrid) presetGrid.innerHTML = '';
+
+    try {
+        const presets = await fetchPresetAvatars();
+        (uiState.playerImagePresets = presets).length; // store for lookup
+        presetGrid.innerHTML = presets.map((a, i) => `<button type="button" class="preset-avatar-option" data-idx="${i}" title="${escapeHtml(a.label || '')}"><img src="${a.image_url}" alt=""></button>`).join('');
+        presetGrid.querySelectorAll('.preset-avatar-option').forEach(btn => {
+            btn.addEventListener('click', () => {
+                presetGrid.querySelectorAll('.preset-avatar-option').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                const idx = parseInt(btn.dataset.idx, 10);
+                const url = (uiState.playerImagePresets || [])[idx]?.image_url || '';
+                uiState.tempPlayerImage = url;
+                const prev = document.getElementById('playerImagePreview');
+                if (prev) { prev.src = url; prev.style.display = 'block'; }
+                const removeBtn = document.getElementById('playerImageRemoveInSection');
+                if (removeBtn) removeBtn.style.display = 'inline-block';
+            });
+        });
+        if (currentImage && presets.some(a => a.image_url === currentImage)) {
+            const idx = presets.findIndex(a => a.image_url === currentImage);
+            if (idx >= 0) {
+                const match = presetGrid.querySelector(`.preset-avatar-option[data-idx="${idx}"]`);
+                if (match) match.classList.add('selected');
+            }
+        }
+    } catch (e) { /* ignore */ }
 
     const preview = document.getElementById('playerImagePreview');
     const removeImageBtn = document.getElementById('playerImageRemoveInSection');
@@ -516,10 +553,12 @@ export async function openPlayerProfileModal(playerName) {
         const isOwnLinked = user && player.user_id === user.id;
         const isUnclaimed = !player.user_id;
         const canDelete = isOwnLinked || (!user && isUnclaimed);
+        const deleteRemark = document.getElementById('profileDeleteRemark');
         if (actionsRow && customizeBtn && deleteBtn) {
             actionsRow.style.display = (canEdit || canDelete) ? 'flex' : 'none';
             customizeBtn.style.display = canEdit ? 'inline-flex' : 'none';
             deleteBtn.style.display = canDelete ? 'inline-flex' : 'none';
+            if (deleteRemark) deleteRemark.style.display = (player.user_id != null && player.user_id !== '') ? 'inline' : 'none';
             customizeBtn.onclick = () => {
                 openPlayerImageModal(playerName);
             };
@@ -628,6 +667,8 @@ function _renderProfileLoading(playerName) {
     document.getElementById('profileUnlinkBtn').style.display = 'none';
     const actionsRowLoading = document.getElementById('profileActionsRow');
     if (actionsRowLoading) actionsRowLoading.style.display = 'none';
+    const deleteRemarkLoading = document.getElementById('profileDeleteRemark');
+    if (deleteRemarkLoading) deleteRemarkLoading.style.display = 'none';
     document.getElementById('profileTotalWins').textContent = '—';
     document.getElementById('profileCampaignCount').textContent = '—';
     document.getElementById('profileFaveGame').textContent = '—';
@@ -874,6 +915,10 @@ function _renderProfileUnlinked(player, playerName, meta, currentEntries, curren
 
     // Campaign section: hidden
     document.getElementById('profileCampaignSection').style.display = 'none';
+
+    // Warning only applies to linked meeples (delete removes claimed identity)
+    const deleteRemarkUnlinked = document.getElementById('profileDeleteRemark');
+    if (deleteRemarkUnlinked) deleteRemarkUnlinked.style.display = 'none';
 
     // Games Win Rate (unlinked: merge wins + games played, sort by wins > games played > alphabetical)
     const gamesPlayedCounts = {};

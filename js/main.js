@@ -8,12 +8,32 @@ function hasInviteToken() {
 }
 import { loadPlaygroups, setActivePlaygroup, setOnPlaygroupChange, setupPlaygroupUI, getActivePlaygroup, ensureLastCampaignSelected, updateUserPlanLabelFromTier } from './playgroups.js';
 import { setupAuthButtons, updateAuthUI, updateEditability, syncReadOnlyBanner, updateAdminUI } from './auth-ui.js';
-import { redeemInviteToken, resolveInviteToken, fetchPlaygroupName, fetchActiveAnnouncement, fetchAppConfig, fetchUserProfile, ensureUserTier, fetchUserTier, fetchCampaignJoinInfo } from './supabase.js';
+import { redeemInviteToken, resolveInviteToken, fetchPlaygroupName, fetchActiveAnnouncement, fetchActivePersonalMessage, fetchAppConfig, fetchUserProfile, ensureUserTier, fetchUserTier, fetchCampaignJoinInfo, fetchTierDefinition } from './supabase.js';
 import { showNotification, fireConfetti } from './modals.js';
 import { isAdminConfigured, isAdminEmail, isAdminMode, activateAdminMode, deactivateAdminMode, showAdminPassphraseModal, hasAdminPromptDismissed, clearAdminPromptDismissed } from './admin.js';
 
 // Expose toggleVictoryRoster for onclick handlers in player cards
 window.toggleVictoryRoster = toggleVictoryRoster;
+
+async function loadPersonalMessage() {
+    try {
+        const pm = await fetchActivePersonalMessage();
+        const banner = document.getElementById('personalMessageBanner');
+        const text = document.getElementById('personalMessageText');
+        const closeBtn = document.getElementById('personalMessageClose');
+        if (!banner || !text) return;
+        if (pm?.message) {
+            const dismissed = sessionStorage.getItem('scorekeeper_dismiss_personal');
+            if (dismissed === pm.id) return;
+            text.textContent = pm.message;
+            banner.style.display = 'block';
+            closeBtn?.addEventListener('click', () => {
+                banner.style.display = 'none';
+                try { sessionStorage.setItem('scorekeeper_dismiss_personal', pm.id); } catch {}
+            }, { once: true });
+        }
+    } catch {}
+}
 
 async function loadAnnouncement() {
     try {
@@ -43,8 +63,8 @@ export function getTierLabel(tier) {
     return 'Commoner';
 }
 
-/** Tier limits: T1=2,5 T2=4,10 T3=unlimited. */
-const TIER_LIMITS = { 1: { campaigns: 2, meeples: 5 }, 2: { campaigns: 4, meeples: 10 }, 3: { campaigns: 999999, meeples: 999999 } };
+/** Fallback tier limits when tier_definitions RPC is unavailable. */
+const FALLBACK_TIER_LIMITS = { 1: { campaigns: 2, meeples: 5 }, 2: { campaigns: 4, meeples: 10 }, 3: { campaigns: 999999, meeples: 999999 } };
 
 async function loadBetaLimits() {
     try {
@@ -59,11 +79,20 @@ async function loadBetaLimits() {
                 const { tier } = await fetchUserTier();
                 userTier = tier ?? 1;
                 window._scorekeeperUserTier = userTier;
-                const limits = TIER_LIMITS[userTier] || TIER_LIMITS[1];
-                maxCampaigns = limits.campaigns;
-                maxMeeples = limits.meeples;
+                try {
+                    const def = await fetchTierDefinition(userTier);
+                    maxCampaigns = def?.maxCampaigns ?? FALLBACK_TIER_LIMITS[userTier]?.campaigns ?? 2;
+                    maxMeeples = def?.maxMeeples ?? FALLBACK_TIER_LIMITS[userTier]?.meeples ?? 5;
+                } catch (_) {
+                    const limits = FALLBACK_TIER_LIMITS[userTier] || FALLBACK_TIER_LIMITS[1];
+                    maxCampaigns = limits.campaigns;
+                    maxMeeples = limits.meeples;
+                }
             } catch (e) { /* fallback to config */ }
         }
+
+        // Store tier-derived limit for Party Permit display (ignores app_config override so Royal sees unlimited)
+        window._scorekeeperMaxMeeplesTier = maxMeeples ?? 5;
 
         if (config.max_campaigns_per_user) {
             const override = parseInt(config.max_campaigns_per_user, 10);
@@ -79,13 +108,16 @@ async function loadBetaLimits() {
         if (session?.user && typeof window._scorekeeperUserTier === 'undefined') window._scorekeeperUserTier = userTier;
         updateUserPlanLabelFromTier();
 
-        if (config.leaderboard_quotes) {
+        if (config.leaderboard_quotes_enabled !== 'false' && config.leaderboard_quotes) {
             try {
                 window._scorekeeperLeaderboardQuotes = JSON.parse(config.leaderboard_quotes);
             } catch (_) {
                 window._scorekeeperLeaderboardQuotes = null;
             }
+        } else {
+            window._scorekeeperLeaderboardQuotes = null;
         }
+        window._scorekeeperBggSearchEnabled = config.bgg_search_enabled !== 'false';
         renderAll();
     } catch {}
 }
@@ -99,6 +131,11 @@ function getInviteTokenFromUrl() {
 /** Load campaign as guest by invite token (resolve token then load data). Returns { name, joinInfo } or null. */
 async function loadGuestCampaignByInvite(token) {
     try {
+        const config = await fetchAppConfig();
+        if (config.allow_guest_viewing === 'false') {
+            showNotification('Guest viewing is disabled. Sign in to view this campaign.');
+            return null;
+        }
         const res = await resolveInviteToken(token);
         if (!res?.playgroup_id) return null;
         await loadData(res.playgroup_id);
@@ -165,6 +202,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         window._scorekeeperShowNewPlayerInput = showNewPlayerInput;
     }
     loadAnnouncement();
+    loadPersonalMessage();
     loadBetaLimits();
 
     const urlToken = getInviteTokenFromUrl();
@@ -229,6 +267,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         const viewingViaInvite = !!token;
 
         if (session) {
+            loadPersonalMessage();
             const userEmail = session.user?.email || null;
             updateAdminUI(userEmail, () => doActivateAdmin(userEmail));
             if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {

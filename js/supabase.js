@@ -924,6 +924,107 @@ export async function updateCampaignJoinRequirements(playgroupId, allowedTiers) 
     if (error) throw error;
 }
 
+/** Fetch all tier definitions (limits and feature flags). Callable by anon. */
+export async function fetchTierDefinitions() {
+    const { data, error } = await getActiveClient()
+        .rpc('get_all_tier_definitions');
+    if (error) throw error;
+    const rows = Array.isArray(data) ? data : (data ? [data] : []);
+    const byTier = {};
+    rows.forEach(r => {
+        byTier[r.tier] = {
+            displayName: r.display_name || 'Commoner',
+            maxCampaigns: r.max_campaigns ?? 2,
+            maxMeeples: r.max_meeples ?? 5,
+            canUploadImage: !!r.can_upload_image,
+            canSetColor: r.can_set_color !== false
+        };
+    });
+    return byTier;
+}
+
+/** Fetch single tier definition (for can_upload_image check). */
+export async function fetchTierDefinition(tier) {
+    const t = parseInt(tier, 10) || 1;
+    const { data, error } = await getActiveClient()
+        .rpc('get_tier_definition', { p_tier: t });
+    if (error) throw error;
+    const row = Array.isArray(data) && data[0] ? data[0] : data;
+    return {
+        displayName: row?.display_name || 'Commoner',
+        maxCampaigns: row?.max_campaigns ?? 2,
+        maxMeeples: row?.max_meeples ?? 5,
+        canUploadImage: !!row?.can_upload_image,
+        canSetColor: row?.can_set_color !== false
+    };
+}
+
+/** Update tier definition (admin only). */
+export async function updateTierDefinition(tier, payload) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const t = parseInt(tier, 10) || 1;
+    const updates = {};
+    if (payload.displayName != null) updates.display_name = String(payload.displayName);
+    if (payload.maxCampaigns != null) updates.max_campaigns = parseInt(payload.maxCampaigns, 10) || 2;
+    if (payload.maxMeeples != null) updates.max_meeples = parseInt(payload.maxMeeples, 10) || 5;
+    if (payload.canUploadImage != null) updates.can_upload_image = !!payload.canUploadImage;
+    if (payload.canSetColor != null) updates.can_set_color = payload.canSetColor !== false;
+    updates.updated_at = new Date().toISOString();
+    const { error } = await ac.from('tier_definitions')
+        .update(updates)
+        .eq('tier', t);
+    if (error) throw error;
+}
+
+/** Fetch preset avatars (for Commoner picker). Callable by anon. */
+export async function fetchPresetAvatars() {
+    const { data, error } = await getActiveClient()
+        .from('preset_avatars')
+        .select('id, sort_order, label, image_url')
+        .order('sort_order', { ascending: true });
+    if (error) throw error;
+    return data || [];
+}
+
+/** Create preset avatar (admin only). */
+export async function createPresetAvatar(payload) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { data, error } = await ac.from('preset_avatars')
+        .insert({
+            sort_order: payload.sortOrder ?? 0,
+            label: payload.label || null,
+            image_url: payload.imageUrl || ''
+        })
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+}
+
+/** Update preset avatar (admin only). */
+export async function updatePresetAvatar(id, payload) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const updates = {};
+    if (payload.sortOrder != null) updates.sort_order = parseInt(payload.sortOrder, 10) || 0;
+    if (payload.label != null) updates.label = String(payload.label);
+    if (payload.imageUrl != null) updates.image_url = String(payload.imageUrl);
+    const { error } = await ac.from('preset_avatars')
+        .update(updates)
+        .eq('id', id);
+    if (error) throw error;
+}
+
+/** Delete preset avatar (admin only). */
+export async function deletePresetAvatar(id) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { error } = await ac.from('preset_avatars').delete().eq('id', id);
+    if (error) throw error;
+}
+
 export async function setAppConfig(key, value) {
     const ac = getAdminClient();
     if (!ac) throw new Error('Admin client not available');
@@ -935,15 +1036,80 @@ export async function setAppConfig(key, value) {
 }
 
 export async function fetchActiveAnnouncement() {
+    const now = new Date().toISOString();
     const { data, error } = await getActiveClient()
         .from('announcements')
-        .select('id, message, active, created_at')
+        .select('id, message, active, created_at, expires_at')
         .eq('active', true)
+        .or(`expires_at.is.null,expires_at.gt.${now}`)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
     if (error) throw error;
     return data;
+}
+
+/**
+ * Fetch the active personal message for the current user (orange banner above nav).
+ * Returns the most recent non-expired message, or null.
+ */
+export async function fetchActivePersonalMessage() {
+    const supabase = getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
+        .from('user_personal_messages')
+        .select('id, message, created_at')
+        .eq('user_id', user.id)
+        .gt('expires_at', now)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    if (error) throw error;
+    return data;
+}
+
+/**
+ * Send a personal message to selected users. Admin only.
+ * @param {string[]} userIds - User IDs to send to
+ * @param {string} message - Message text
+ * @param {number} daysToPersist - Days until message expires
+ */
+export async function sendPersonalMessages(userIds, message, daysToPersist) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const supabase = getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    const createdBy = user?.id || null;
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + (daysToPersist || 7));
+    const rows = userIds.map(uid => ({
+        user_id: uid,
+        message: (message || '').trim(),
+        expires_at: expiresAt.toISOString(),
+        created_by: createdBy
+    }));
+    const { error } = await ac.from('user_personal_messages').insert(rows);
+    if (error) throw error;
+}
+
+/**
+ * Fetch last personal message date per user. Admin only.
+ * Returns map of userId -> lastMessageAt (ISO string).
+ */
+export async function fetchLastPersonalMessagePerUser() {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { data, error } = await ac.rpc('get_last_personal_message_per_user');
+    if (error) throw error;
+    const map = {};
+    (data || []).forEach(row => {
+        if (row?.user_id && row?.last_message_at) {
+            map[row.user_id] = row.last_message_at;
+        }
+    });
+    return map;
 }
 
 export async function fetchAllAnnouncements() {
@@ -955,12 +1121,18 @@ export async function fetchAllAnnouncements() {
     return data || [];
 }
 
-export async function publishAnnouncement(message) {
+/**
+ * Publish a global announcement. Admin only.
+ * @param {string} message - Announcement text
+ * @param {string|null} expiresAt - Optional ISO timestamp. Null = no expiry.
+ */
+export async function publishAnnouncement(message, expiresAt = null) {
     const ac = getAdminClient();
     if (!ac) throw new Error('Admin client not available');
     await ac.from('announcements').update({ active: false }).eq('active', true);
-    const { error } = await ac.from('announcements')
-        .insert({ message, active: true });
+    const row = { message, active: true };
+    if (expiresAt) row.expires_at = expiresAt;
+    const { error } = await ac.from('announcements').insert(row);
     if (error) throw error;
 }
 
@@ -984,6 +1156,18 @@ export async function reactivateAnnouncement(id) {
     if (!ac) throw new Error('Admin client not available');
     await ac.from('announcements').update({ active: false }).eq('active', true);
     const { error } = await ac.from('announcements').update({ active: true }).eq('id', id);
+    if (error) throw error;
+}
+
+/**
+ * Update an announcement's message and/or expires_at. Admin only.
+ */
+export async function updateAnnouncement(id, message, expiresAt = null) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const updates = { message: (message || '').trim() };
+    updates.expires_at = expiresAt;
+    const { error } = await ac.from('announcements').update(updates).eq('id', id);
     if (error) throw error;
 }
 

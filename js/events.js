@@ -18,10 +18,11 @@ import {
     upsertGameMetadata,
     upsertPlayerMetadata,
     upsertGlobalGame,
-    fetchAppConfig
+    fetchAppConfig,
+    fetchPresetAvatars
 } from './supabase.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
-import { showModal, hideModal, handleImageFileSelect, showNotification, fireConfetti, playVictoryFanfare, closeGameImageModal, closePlayerImageModal, resetPlayerCustomization, closeEditEntryModal, saveGameImage, savePlayerImage, saveEditedEntry, closePlayerProfileModal, openScoreTabulator } from './modals.js';
+import { showModal, hideModal, handleImageFileSelect, showNotification, fireConfetti, playVictoryFanfare, closeGameImageModal, closePlayerImageModal, resetPlayerCustomization, closeEditEntryModal, saveGameImage, savePlayerImage, saveEditedEntry, closePlayerProfileModal, openScoreTabulator, showJoinRejectionModal } from './modals.js';
 import {
     renderGameSelection,
     renderPlayerSelection,
@@ -298,6 +299,12 @@ export function setupEventListeners() {
     });
 
     document.getElementById('playerImageFileInput').addEventListener('change', function (e) {
+        const tier = typeof window._scorekeeperUserTier !== 'undefined' ? window._scorekeeperUserTier : 1;
+        if (tier === 1) {
+            showJoinRejectionModal('Nay! Custom photo uploads are for Nobles and Royals only. Pick an avatar from the list instead.');
+            e.target.value = '';
+            return;
+        }
         handleImageFileSelect(e.target.files[0], 'playerImagePreview', function (result) {
             uiState.tempPlayerImage = result;
             const removeBtn = document.getElementById('playerImageRemoveInSection');
@@ -339,6 +346,12 @@ export function setupEventListeners() {
     });
 
     document.getElementById('newPlayerImage').addEventListener('change', function (e) {
+        const tier = typeof window._scorekeeperUserTier !== 'undefined' ? window._scorekeeperUserTier : 1;
+        if (tier === 1) {
+            showJoinRejectionModal('Nay! Custom photo uploads are for Nobles and Royals only. Pick an avatar from the list instead.');
+            e.target.value = '';
+            return;
+        }
         handleImageFileSelect(e.target.files[0], 'newPlayerImagePreview', function (result) {
             uiState.tempPlayerImage = result;
             document.getElementById('newPlayerImageUrl').value = ''; // clear URL input
@@ -346,6 +359,15 @@ export function setupEventListeners() {
     });
 
     document.getElementById('newPlayerImageUrl').addEventListener('input', function () {
+        const tier = typeof window._scorekeeperUserTier !== 'undefined' ? window._scorekeeperUserTier : 1;
+        if (tier === 1) {
+            const v = this.value.trim();
+            if (v) {
+                showJoinRejectionModal('Nay! Custom photo uploads are for Nobles and Royals only. Pick an avatar from the list instead.');
+                this.value = '';
+            }
+            return;
+        }
         _handleImageUrl(this.value.trim(), 'newPlayerImagePreview', function (url) {
             uiState.tempPlayerImage = url;
             document.getElementById('newPlayerImage').value = ''; // clear file input
@@ -416,7 +438,7 @@ function setupBggTypeahead() {
         const q = input.value.trim();
         const hidden = document.getElementById('newGameGlobalId');
         if (hidden) hidden.value = '';
-        if (q.length < 3) { dropdown.style.display = 'none'; return; }
+        if (q.length < 3 || window._scorekeeperBggSearchEnabled === false) { dropdown.style.display = 'none'; return; }
         _bggTimer = setTimeout(() => fetchBggSuggestions(q, dropdown, input), 500);
     });
 
@@ -426,6 +448,7 @@ function setupBggTypeahead() {
 }
 
 async function fetchBggSuggestions(query, dropdown, input) {
+    if (window._scorekeeperBggSearchEnabled === false) { dropdown.style.display = 'none'; return; }
     try {
         const url = SUPABASE_URL + '/functions/v1/bgg-search?q=' + encodeURIComponent(query);
         const resp = await fetch(url, {
@@ -531,7 +554,42 @@ async function addNewGame() {
     }
 }
 
-export function showNewPlayerInput() {
+export async function showNewPlayerInput() {
+    const tier = typeof window._scorekeeperUserTier !== 'undefined' ? window._scorekeeperUserTier : 1;
+    const sourceRow = document.getElementById('newPlayerImageSourceRow');
+    const presetSection = document.getElementById('newPlayerPresetPickerSection');
+    const presetGrid = document.getElementById('newPlayerPresetPicker');
+    const isCommoner = tier === 1;
+
+    if (sourceRow) sourceRow.style.display = isCommoner ? 'none' : '';
+    if (presetSection) presetSection.style.display = isCommoner ? '' : 'none';
+    if (presetGrid) presetGrid.innerHTML = '';
+
+    uiState.tempPlayerImage = null;
+    document.getElementById('newPlayerImagePreview').style.display = 'none';
+    document.getElementById('newPlayerImageUrl').value = '';
+    const fileInput = document.getElementById('newPlayerImage');
+    if (fileInput) fileInput.value = '';
+
+    if (isCommoner && presetGrid) {
+        try {
+            const presets = await fetchPresetAvatars();
+            presetGrid.innerHTML = presets.map((a, i) => `<button type="button" class="preset-avatar-option" data-idx="${i}" title="${(a.label || '').replace(/"/g, '&quot;')}"><img src="${a.image_url}" alt=""></button>`).join('');
+            (uiState.newPlayerPresets = presets).length;
+            presetGrid.querySelectorAll('.preset-avatar-option').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    presetGrid.querySelectorAll('.preset-avatar-option').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    const idx = parseInt(btn.dataset.idx, 10);
+                    const url = (uiState.newPlayerPresets || [])[idx]?.image_url || '';
+                    uiState.tempPlayerImage = url;
+                    const prev = document.getElementById('newPlayerImagePreview');
+                    if (prev) { prev.src = url; prev.style.display = 'block'; }
+                });
+            });
+        } catch (e) { /* ignore */ }
+    }
+
     document.getElementById('newPlayerInput').classList.add('active');
     document.getElementById('newPlayerName').focus();
 }

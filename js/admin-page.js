@@ -9,8 +9,12 @@ import {
     fetchAllGames, fetchAllPlayers, fetchAllEntries, fetchAllInviteTokens,
     fetchAppConfig, setAppConfig,
     fetchUserTiersMap, updateUserTier,
+    fetchTierDefinitions, updateTierDefinition,
+    fetchPresetAvatars, createPresetAvatar, updatePresetAvatar, deletePresetAvatar,
     fetchAllAnnouncements, publishAnnouncement, clearAnnouncement, fetchActiveAnnouncement,
-    deleteAnnouncement, reactivateAnnouncement,
+    deleteAnnouncement, reactivateAnnouncement, updateAnnouncement,
+    fetchLastPersonalMessagePerUser,
+    sendPersonalMessages,
     fetchUnlinkedGames, fetchGlobalGames, upsertGlobalGame, linkGameToGlobal, createGlobalGameByName,
     deletePlaygroupAdmin, deleteInviteToken, replaceInviteToken,
     adminDeleteEntry, adminDeleteGame, adminDeletePlayer, adminMergeGames, adminUpdateGame,
@@ -32,6 +36,7 @@ function adminToast(msg) {
 let _playgroups = [], _users = [], _members = [], _games = [], _players = [];
 let _entries = [], _invites = [], _config = {}, _globalGames = [];
 let _userLastSeen = {};
+let _userLastMessage = {}; // userId -> last message received date (ISO string)
 let _userTiersMap = {};
 let _usersSortBy = 'last_seen';
 let _usersSortDir = 'asc'; // asc = oldest first (for pruning), desc = newest first
@@ -91,11 +96,12 @@ onAuthStateChange((event, session) => {
 
 // ── Dashboard init ───────────────────────────────────────────────────────────
 
-function showDashboard() {
+async function showDashboard() {
     document.getElementById('adminGate').style.display = 'none';
     document.getElementById('adminDenied').style.display = 'none';
     document.getElementById('adminDashboard').style.display = 'block';
     setupTabs();
+    try { _config = await fetchAppConfig(); } catch (_) {}
     loadOverview();
     updateLastSeen().catch(() => {}); // fire-and-forget, throttled once/day
 }
@@ -130,14 +136,17 @@ function setupTabs() {
     });
 
     document.getElementById('saveConfigBtn').addEventListener('click', saveConfig);
+    document.getElementById('saveTierDefinitionsBtn').addEventListener('click', saveTierDefinitions);
     document.getElementById('addQuoteBtn').addEventListener('click', addQuoteRow);
     document.getElementById('saveQuotesBtn').addEventListener('click', saveQuotes);
+    document.getElementById('addPresetAvatarBtn').addEventListener('click', addPresetAvatarRow);
     document.getElementById('publishAnnounceBtn').addEventListener('click', doPublishAnnouncement);
     document.getElementById('clearAnnounceBtn').addEventListener('click', doClearAnnouncement);
 
     document.getElementById('campaignSearch').addEventListener('input', renderCampaigns);
     document.getElementById('userSearch').addEventListener('input', renderUsers);
     document.getElementById('entryCampaignFilter').addEventListener('change', renderEntries);
+    document.getElementById('entrySearch')?.addEventListener('input', renderEntries);
 
     document.querySelector('#usersTable .admin-sortable[data-sort="last_seen"]')?.addEventListener('click', (e) => {
         if (e.target.closest('input')) return;
@@ -163,6 +172,7 @@ function onTabActivate(tab) {
         linking: loadLinking,
         invites: loadInvites,
         tiers: loadTiers,
+        'preset-avatars': loadPresetAvatars,
         config: loadConfig,
         quotes: loadQuotes,
         announcements: loadAnnouncements
@@ -324,31 +334,191 @@ function renderCampaigns() {
 
 async function loadUsers() {
     if (!guardAdmin()) return;
+    const fetchPromises = [fetchLastPersonalMessagePerUser()];
     if (!_users.length) {
-        const [users, members, lastSeen, tiersMap] = await Promise.all([
+        fetchPromises.unshift(
             fetchAllUsers(), fetchAllPlaygroupMembers(), fetchUserLastSeenMap(), fetchUserTiersMap()
-        ]);
+        );
+    }
+    const results = await Promise.all(fetchPromises);
+    if (!_users.length) {
+        const [users, members, lastSeen, tiersMap, lastMsg] = results;
         _users = users;
         _members = members;
         _userLastSeen = lastSeen;
         _userTiersMap = tiersMap || {};
+        _userLastMessage = lastMsg || {};
+    } else {
+        _userLastMessage = results[0] || {};
     }
     renderUsers();
 }
 
+let _tierDefinitions = {};
+
 async function loadTiers() {
     if (!guardAdmin()) return;
     try {
-        _userTiersMap = await fetchUserTiersMap();
+        [_userTiersMap, _tierDefinitions] = await Promise.all([
+            fetchUserTiersMap(),
+            fetchTierDefinitions()
+        ]);
         const free = Object.values(_userTiersMap).filter(t => t === 1).length;
         const noble = Object.values(_userTiersMap).filter(t => t === 2).length;
         const royal = Object.values(_userTiersMap).filter(t => t === 3).length;
         document.getElementById('tierFreeCount').textContent = free;
         document.getElementById('tierNobleCount').textContent = noble;
         document.getElementById('tierRoyalCount').textContent = royal;
+        renderTierDefinitionsForm();
     } catch (e) {
         console.error('Tiers load error:', e);
     }
+}
+
+function renderTierDefinitionsForm() {
+    const form = document.getElementById('tierDefinitionsForm');
+    const tiers = [
+        { key: 1, label: 'Commoner' },
+        { key: 2, label: 'Noble' },
+        { key: 3, label: 'Royal' }
+    ];
+    form.innerHTML = tiers.map(({ key, label }) => {
+        const def = _tierDefinitions[key] || { displayName: label, maxCampaigns: 2, maxMeeples: 5, canUploadImage: key > 1, canSetColor: true };
+        const maxCamp = def.maxCampaigns;
+        const maxMeep = def.maxMeeples;
+        const canUpload = def.canUploadImage;
+        const canColor = def.canSetColor;
+        return `<div class="admin-tier-def-card" data-tier="${key}">
+            <h4 style="margin-bottom:12px;">${esc(label)}</h4>
+            <div class="admin-tier-def-fields">
+                <div class="admin-config-field"><label>Display name</label><input type="text" class="admin-tier-display-name" value="${esc(def.displayName)}" data-tier="${key}"></div>
+                <div class="admin-config-field"><label>Max campaigns</label><input type="number" class="admin-tier-max-campaigns" value="${maxCamp}" min="1" max="999" data-tier="${key}"></div>
+                <div class="admin-config-field"><label>Max meeples</label><input type="number" class="admin-tier-max-meeples" value="${maxMeep}" min="1" max="999" data-tier="${key}"></div>
+                <div class="admin-config-field"><label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="admin-tier-can-upload" ${canUpload ? 'checked' : ''} data-tier="${key}">Can upload custom image</label></div>
+                <div class="admin-config-field"><label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" class="admin-tier-can-color" ${canColor ? 'checked' : ''} data-tier="${key}">Can set meeple color</label></div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function saveTierDefinitions() {
+    if (!guardAdmin()) return;
+    const status = document.getElementById('tierDefinitionsStatus');
+    status.textContent = 'Saving…';
+    status.style.color = '';
+    try {
+        for (const t of [1, 2, 3]) {
+            const def = _tierDefinitions[t] || {};
+            const displayName = document.querySelector(`.admin-tier-display-name[data-tier="${t}"]`)?.value ?? def.displayName;
+            const maxCampaigns = parseInt(document.querySelector(`.admin-tier-max-campaigns[data-tier="${t}"]`)?.value, 10) || 2;
+            const maxMeeples = parseInt(document.querySelector(`.admin-tier-max-meeples[data-tier="${t}"]`)?.value, 10) || 5;
+            const canUploadImage = !!document.querySelector(`.admin-tier-can-upload[data-tier="${t}"]`)?.checked;
+            const canSetColor = !!document.querySelector(`.admin-tier-can-color[data-tier="${t}"]`)?.checked;
+            await updateTierDefinition(t, { displayName, maxCampaigns, maxMeeples, canUploadImage, canSetColor });
+        }
+        _tierDefinitions = await fetchTierDefinitions();
+        renderTierDefinitionsForm();
+        status.textContent = 'Saved.';
+        status.style.color = 'var(--accent)';
+    } catch (e) {
+        console.error('Save tier definitions error:', e);
+        status.textContent = 'Failed: ' + (e.message || 'unknown error');
+        status.style.color = 'var(--error)';
+    }
+}
+
+// ── Preset Avatars ───────────────────────────────────────────────────────────
+
+let _presetAvatars = [];
+
+async function loadPresetAvatars() {
+    if (!guardAdmin()) return;
+    try {
+        _presetAvatars = await fetchPresetAvatars();
+        renderPresetAvatars();
+    } catch (e) {
+        console.error('Preset avatars load error:', e);
+    }
+}
+
+function renderPresetAvatars() {
+    const list = document.getElementById('presetAvatarsList');
+    list.innerHTML = _presetAvatars.map((a, i) => {
+        const isDataUrl = (a.image_url || '').startsWith('data:');
+        const preview = isDataUrl
+            ? `<img src="${a.image_url}" alt="" class="admin-preset-avatar-preview" onerror="this.parentElement.querySelector('.admin-preset-avatar-placeholder').style.display='block'"><span class="admin-preset-avatar-placeholder" style="display:none;">No preview</span>`
+            : `<img src="${a.image_url}" alt="" class="admin-preset-avatar-preview" onerror="this.parentElement.querySelector('.admin-preset-avatar-placeholder').style.display='block'"><span class="admin-preset-avatar-placeholder" style="display:none;">Load failed</span>`;
+        return `<div class="admin-preset-avatar-card" data-id="${a.id}">
+            <div class="admin-preset-avatar-thumb">${preview}</div>
+            <div class="admin-preset-avatar-fields">
+                <div class="admin-config-field"><label>Label</label><input type="text" class="admin-preset-avatar-label" value="${esc(a.label || '')}" data-id="${a.id}"></div>
+                <div class="admin-config-field"><label>Image URL (data: or https://)</label><input type="text" class="admin-preset-avatar-url" value="${esc(a.image_url || '')}" data-id="${a.id}" placeholder="data:image/svg+xml,... or https://..."></div>
+                <div class="admin-preset-avatar-actions">
+                    <button type="button" class="btn btn-secondary admin-preset-save" data-id="${a.id}">Save</button>
+                    <button type="button" class="btn admin-action-danger admin-preset-delete" data-id="${a.id}">Delete</button>
+                </div>
+            </div>
+        </div>`;
+    }).join('') || '<p style="color:var(--text-muted);">No preset avatars yet. Add one below.</p>';
+
+    list.querySelectorAll('.admin-preset-save').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = btn.dataset.id;
+            const card = btn.closest('.admin-preset-avatar-card');
+            const label = card?.querySelector('.admin-preset-avatar-label')?.value ?? '';
+            const imageUrl = card?.querySelector('.admin-preset-avatar-url')?.value ?? '';
+            const status = document.getElementById('presetAvatarsStatus');
+            status.textContent = 'Saving…';
+            try {
+                await updatePresetAvatar(id, { label, imageUrl });
+                _presetAvatars = await fetchPresetAvatars();
+                renderPresetAvatars();
+                status.textContent = 'Saved.';
+                setTimeout(() => status.textContent = '', 2000);
+            } catch (e) {
+                status.textContent = 'Failed: ' + (e.message || 'unknown error');
+                status.style.color = 'var(--error)';
+            }
+        });
+    });
+    list.querySelectorAll('.admin-preset-delete').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = btn.dataset.id;
+            if (!confirm('Delete this preset avatar?')) return;
+            const status = document.getElementById('presetAvatarsStatus');
+            status.textContent = 'Deleting…';
+            try {
+                await deletePresetAvatar(id);
+                _presetAvatars = await fetchPresetAvatars();
+                renderPresetAvatars();
+                status.textContent = 'Deleted.';
+                setTimeout(() => status.textContent = '', 2000);
+            } catch (e) {
+                status.textContent = 'Failed: ' + (e.message || 'unknown error');
+                status.style.color = 'var(--error)';
+            }
+        });
+    });
+}
+
+function addPresetAvatarRow() {
+    if (!guardAdmin()) return;
+    const status = document.getElementById('presetAvatarsStatus');
+    status.textContent = 'Adding…';
+    const maxOrder = _presetAvatars.length ? Math.max(..._presetAvatars.map(a => a.sort_order || 0)) : 0;
+    createPresetAvatar({
+        sortOrder: maxOrder + 1,
+        label: 'New Avatar',
+        imageUrl: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"%3E%3Ccircle cx="32" cy="32" r="30" fill="%239ca3af"/%3E%3C/svg%3E'
+    }).then(async () => {
+        _presetAvatars = await fetchPresetAvatars();
+        renderPresetAvatars();
+        status.textContent = 'Added.';
+        setTimeout(() => status.textContent = '', 2000);
+    }).catch(e => {
+        status.textContent = 'Failed: ' + (e.message || 'unknown error');
+        status.style.color = 'var(--error)';
+    });
 }
 
 function getTierLabel(tier) {
@@ -394,9 +564,10 @@ function renderUsers() {
             <td>${owned}</td>
             <td>${memberOf}</td>
             <td>${fmtDate(u.created_at)}</td>
+            <td>${_userLastMessage[u.id] ? fmtDate(_userLastMessage[u.id]) : '—'}</td>
             <td>${lastSeen ? fmtDate(lastSeen) : '—'}</td>
         </tr>`;
-    }).join('') || '<tr><td colspan="8" style="text-align:center; color:var(--text-muted);">No users found.</td></tr>';
+    }).join('') || '<tr><td colspan="9" style="text-align:center; color:var(--text-muted);">No users found.</td></tr>';
 
     tbody.querySelectorAll('.admin-tier-select').forEach(sel => {
         sel.addEventListener('change', async () => {
@@ -414,9 +585,18 @@ function renderUsers() {
     });
 
     setupBulkSelect('users', 'usersBulkBar', 'usersBulkCount', 'usersTable');
+    const sendMsgBtn = document.getElementById('usersBulkSendMessage');
     const removeBtn = document.getElementById('usersBulkRemoveCampaigns');
     const deleteBtn = document.getElementById('usersBulkDeleteAccounts');
     const clearBtn = document.getElementById('usersBulkClear');
+
+    if (sendMsgBtn) {
+        sendMsgBtn.onclick = () => {
+            const ids = getChecked('users');
+            if (!ids.length) { adminToast('Select users first.'); return; }
+            openSendMessageModal(ids);
+        };
+    }
 
     if (removeBtn) {
         removeBtn.onclick = async () => {
@@ -480,8 +660,19 @@ async function loadEntries() {
 
 function renderEntries() {
     const pgFilter = document.getElementById('entryCampaignFilter').value;
+    const q = (document.getElementById('entrySearch')?.value || '').toLowerCase();
     const tbody = document.querySelector('#entriesTable tbody');
-    const filtered = pgFilter ? _entries.filter(e => e.playgroup_id === pgFilter) : _entries;
+    let filtered = pgFilter ? _entries.filter(e => e.playgroup_id === pgFilter) : _entries;
+    if (q) {
+        filtered = filtered.filter(e => {
+            const campaign = (pgName(e.playgroup_id) || '').toLowerCase();
+            const game = (gameName(e.game_id) || '').toLowerCase();
+            const player = (playerName(e.player_id) || '').toLowerCase();
+            const createdBy = (e.created_by_name || '').toLowerCase();
+            const date = fmtDate(e.date).toLowerCase();
+            return campaign.includes(q) || game.includes(q) || player.includes(q) || createdBy.includes(q) || date.includes(q);
+        });
+    }
     const shown = filtered.slice(0, 200);
     tbody.innerHTML = shown.map(e => `<tr data-id="${e.id}">
         <td><input type="checkbox" class="admin-row-check" data-table="entries" value="${e.id}"></td>
@@ -544,6 +735,21 @@ async function loadGamesPlayers() {
         sortEl.dataset.bound = '1';
         sortEl.addEventListener('change', () => renderGamesTable());
     }
+    const gamesSearchEl = document.getElementById('gamesSearch');
+    if (gamesSearchEl && !gamesSearchEl.dataset.bound) {
+        gamesSearchEl.dataset.bound = '1';
+        gamesSearchEl.addEventListener('input', () => renderGamesTable());
+    }
+    const consolidatedSearchEl = document.getElementById('consolidatedSearch');
+    if (consolidatedSearchEl && !consolidatedSearchEl.dataset.bound) {
+        consolidatedSearchEl.dataset.bound = '1';
+        consolidatedSearchEl.addEventListener('input', () => renderConsolidatedGames());
+    }
+    const playersSearchEl = document.getElementById('playersSearch');
+    if (playersSearchEl && !playersSearchEl.dataset.bound) {
+        playersSearchEl.dataset.bound = '1';
+        playersSearchEl.addEventListener('input', () => renderPlayersTable());
+    }
     renderGamesTable();
     renderPlayersTable();
     renderConsolidatedGames();
@@ -564,14 +770,25 @@ function renderGamesTable() {
     });
 
     const sortBy = document.getElementById('gamesSortSelect')?.value || 'name-az';
-    const sorted = [..._games].sort((a, b) => {
+    let sorted = [..._games].sort((a, b) => {
         if (sortBy === 'name-az') return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
         if (sortBy === 'name-za') return (b.name || '').localeCompare(a.name || '', undefined, { sensitivity: 'base' });
+        if (sortBy === 'campaign-az') return (pgName(a.playgroup_id) || '').localeCompare(pgName(b.playgroup_id) || '', undefined, { sensitivity: 'base' });
+        if (sortBy === 'campaign-za') return (pgName(b.playgroup_id) || '').localeCompare(pgName(a.playgroup_id) || '', undefined, { sensitivity: 'base' });
         const ta = gameFirstEntryAt[a.id] || (sortBy === 'date-newest' ? 0 : 1e15);
         const tb = gameFirstEntryAt[b.id] || (sortBy === 'date-newest' ? 0 : 1e15);
         if (sortBy === 'date-newest') return tb - ta; // newest first
         return ta - tb; // oldest first
     });
+
+    const gamesQ = (document.getElementById('gamesSearch')?.value || '').toLowerCase();
+    if (gamesQ) {
+        sorted = sorted.filter(g => {
+            const name = (g.name || '').toLowerCase();
+            const campaign = (pgName(g.playgroup_id) || '').toLowerCase();
+            return name.includes(gamesQ) || campaign.includes(gamesQ);
+        });
+    }
 
     const sameCampaignCount = {};
     _games.forEach(g => {
@@ -763,6 +980,8 @@ function updateLinkConfirmButton() {
 }
 
 function setupMergeBGGLink() {
+    const bggWrap = document.getElementById('adminMergeBGGSearchWrap');
+    if (bggWrap) bggWrap.style.display = _config.bgg_search_enabled === 'false' ? 'none' : 'block';
     const existingSel = document.getElementById('adminMergeExistingSelect');
     const createSel = document.getElementById('adminMergeCreateNewSelect');
     const input = document.getElementById('adminMergeBGGSearch');
@@ -995,7 +1214,15 @@ function renderConsolidatedGames() {
         groups[key].campaigns.add(g.playgroup_id);
     });
 
-    const rows = Object.values(groups).sort((a, b) => b.totalWins - a.totalWins);
+    let rows = Object.values(groups).sort((a, b) => b.totalWins - a.totalWins);
+    const consolidatedQ = (document.getElementById('consolidatedSearch')?.value || '').toLowerCase();
+    if (consolidatedQ) {
+        rows = rows.filter(row => {
+            const name = (row.canonicalName || '').toLowerCase();
+            const campaigns = [...row.campaigns].map(pgId => pgName(pgId)).join(' ').toLowerCase();
+            return name.includes(consolidatedQ) || campaigns.includes(consolidatedQ);
+        });
+    }
 
     tbody.innerHTML = rows.map((row, idx) => {
         const campaigns = [...row.campaigns].map(pgId => pgName(pgId)).join(', ');
@@ -1032,7 +1259,19 @@ function renderPlayersTable() {
     const winsMap = {};
     _entries.forEach(e => { winsMap[e.player_id] = (winsMap[e.player_id] || 0) + 1; });
 
-    tbody.innerHTML = _players.map(p => `<tr data-id="${p.id}">
+    let players = _players;
+    const playersQ = (document.getElementById('playersSearch')?.value || '').toLowerCase();
+    if (playersQ) {
+        players = players.filter(p => {
+            const name = (p.name || '').toLowerCase();
+            const campaign = (pgName(p.playgroup_id) || '').toLowerCase();
+            const userCell = renderPlayerUserCell(p);
+            const userText = (userCell.replace(/<[^>]+>/g, '') || '').toLowerCase();
+            return name.includes(playersQ) || campaign.includes(playersQ) || userText.includes(playersQ);
+        });
+    }
+
+    tbody.innerHTML = players.map(p => `<tr data-id="${p.id}">
         <td><input type="checkbox" class="admin-row-check" data-table="players" value="${p.id}"></td>
         <td>${esc(p.name)}</td>
         <td>${esc(pgName(p.playgroup_id))}</td>
@@ -1121,6 +1360,7 @@ function renderLinkingList() {
         container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:20px;">All games are linked!</p>';
         return;
     }
+    const bggEnabled = _config.bgg_search_enabled !== 'false';
     container.innerHTML = unlinked.map(g => `
         <div class="admin-link-row" data-game-id="${g.id}">
             <div class="admin-link-info">
@@ -1128,20 +1368,20 @@ function renderLinkingList() {
                 <span class="admin-link-campaign">${esc(pgName(g.playgroup_id))}</span>
             </div>
             <div class="admin-link-actions">
-                <input type="text" class="admin-link-search" placeholder="Search BGG..." data-search-for="${g.id}">
-                <div class="admin-link-results" data-results-for="${g.id}"></div>
+                ${bggEnabled ? `<input type="text" class="admin-link-search" placeholder="Search BGG..." data-search-for="${g.id}">
+                <div class="admin-link-results" data-results-for="${g.id}"></div>` : ''}
                 <button class="admin-action-btn" data-skip-game="${g.id}" title="Skip">Skip</button>
             </div>
         </div>
     `).join('');
 
-    container.querySelectorAll('.admin-link-search').forEach(input => {
+    container.querySelectorAll('.admin-link-search').forEach(inputEl => {
         let timer;
-        input.addEventListener('input', () => {
+        inputEl.addEventListener('input', () => {
             clearTimeout(timer);
-            const q = input.value.trim();
+            const q = inputEl.value.trim();
             if (q.length < 2) return;
-            timer = setTimeout(() => searchBGG(q, input.dataset.searchFor), 500);
+            timer = setTimeout(() => searchBGG(q, inputEl.dataset.searchFor), 500);
         });
     });
 
@@ -1223,13 +1463,29 @@ async function loadInvites() {
             fetchAllInviteTokens(), fetchPlaygroups(), fetchAllUsers()
         ]);
     } catch (e) { console.error(e); return; }
+    const invitesSearchEl = document.getElementById('invitesSearch');
+    if (invitesSearchEl && !invitesSearchEl.dataset.bound) {
+        invitesSearchEl.dataset.bound = '1';
+        invitesSearchEl.addEventListener('input', () => renderInvites());
+    }
     renderInvites();
 }
 
 function renderInvites() {
     const baseUrl = typeof window !== 'undefined' && window.location ? (window.location.origin + (window.location.pathname || '/').replace(/admin\.html$/, '') || window.location.origin + '/') : '';
     const tbody = document.querySelector('#invitesTable tbody');
-    tbody.innerHTML = _invites.map(t => {
+    const invitesQ = (document.getElementById('invitesSearch')?.value || '').toLowerCase();
+    let invites = _invites;
+    if (invitesQ) {
+        invites = invites.filter(t => {
+            const campaign = (pgName(t.playgroup_id) || '').toLowerCase();
+            const token = (t.token || '').toLowerCase();
+            const creator = _users.find(u => u.id === t.created_by);
+            const creatorEmail = (creator?.email || '').toLowerCase();
+            return campaign.includes(invitesQ) || token.includes(invitesQ) || creatorEmail.includes(invitesQ);
+        });
+    }
+    tbody.innerHTML = invites.map(t => {
         const masked = t.token ? t.token.slice(0, 8) + '…' : '—';
         const creator = _users.find(u => u.id === t.created_by);
         const creatorLabel = creator?.email || (t.created_by ? t.created_by.slice(0, 8) + '…' : '—');
@@ -1380,6 +1636,12 @@ async function loadConfig() {
     try { _config = await fetchAppConfig(); } catch (e) { console.error(e); return; }
     document.getElementById('cfgMaxCampaigns').value = _config.max_campaigns_per_user || '2';
     document.getElementById('cfgMaxMeeples').value = _config.max_meeples_per_campaign || '4';
+    document.getElementById('cfgPersonalMessageDays').value = _config.personal_message_days || '';
+    document.getElementById('cfgDefaultUserTier').value = _config.default_user_tier || '1';
+    document.getElementById('cfgAnnouncementExpiryDays').value = _config.announcement_expiry_days || '';
+    document.getElementById('cfgLeaderboardQuotesEnabled').checked = _config.leaderboard_quotes_enabled !== 'false';
+    document.getElementById('cfgAllowGuestViewing').checked = _config.allow_guest_viewing !== 'false';
+    document.getElementById('cfgBggSearchEnabled').checked = _config.bgg_search_enabled !== 'false';
 }
 
 async function saveConfig() {
@@ -1389,6 +1651,12 @@ async function saveConfig() {
     try {
         await setAppConfig('max_campaigns_per_user', document.getElementById('cfgMaxCampaigns').value);
         await setAppConfig('max_meeples_per_campaign', document.getElementById('cfgMaxMeeples').value);
+        await setAppConfig('personal_message_days', document.getElementById('cfgPersonalMessageDays').value || '7');
+        await setAppConfig('default_user_tier', document.getElementById('cfgDefaultUserTier').value || '1');
+        await setAppConfig('announcement_expiry_days', document.getElementById('cfgAnnouncementExpiryDays').value || '0');
+        await setAppConfig('leaderboard_quotes_enabled', document.getElementById('cfgLeaderboardQuotesEnabled').checked ? 'true' : 'false');
+        await setAppConfig('allow_guest_viewing', document.getElementById('cfgAllowGuestViewing').checked ? 'true' : 'false');
+        await setAppConfig('bgg_search_enabled', document.getElementById('cfgBggSearchEnabled').checked ? 'true' : 'false');
         status.textContent = 'Saved!';
         status.style.color = 'var(--accent-success)';
     } catch (e) {
@@ -1414,7 +1682,7 @@ async function loadAnnouncements() {
 function renderAnnouncements() {
     const tbody = document.querySelector('#announcementsTable tbody');
     if (!_announcements.length) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">No announcements yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No announcements yet.</td></tr>';
         return;
     }
     tbody.innerHTML = _announcements.map(a => `
@@ -1425,13 +1693,19 @@ function renderAnnouncements() {
                 : '<span class="admin-badge" style="background:rgba(100,116,139,0.15);color:var(--text-muted);">Inactive</span>'
             }</td>
             <td>${fmtDate(a.created_at)}</td>
+            <td>${a.expires_at ? fmtDate(a.expires_at) : '—'}</td>
             <td style="white-space:nowrap; display:flex; gap:6px;">
+                <button class="admin-action-btn" data-edit-ann="${a.id}" title="Edit message and expiry">Edit</button>
                 ${!a.active ? `<button class="admin-action-btn" data-reactivate="${a.id}" title="Set as active">Set Active</button>` : ''}
                 ${a.active ? `<button class="admin-action-btn admin-action-danger" data-deactivate="${a.id}" title="Deactivate">Deactivate</button>` : ''}
                 <button class="admin-action-btn admin-action-danger" data-delete-ann="${a.id}" title="Delete permanently">Delete</button>
             </td>
         </tr>
     `).join('');
+
+    tbody.querySelectorAll('[data-edit-ann]').forEach(btn => {
+        btn.addEventListener('click', () => openEditAnnouncementModal(btn.dataset.editAnn));
+    });
 
     tbody.querySelectorAll('[data-reactivate]').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -1469,14 +1743,70 @@ function renderAnnouncements() {
 async function doPublishAnnouncement() {
     const msg = document.getElementById('announceMessage').value.trim();
     if (!msg) { adminToast('Enter a message first.'); return; }
+    const expiresInput = document.getElementById('announceExpiresAt');
+    let expiresVal = expiresInput?.value?.trim();
+    if (!expiresVal && _config.announcement_expiry_days && parseInt(_config.announcement_expiry_days, 10) > 0) {
+        const d = new Date();
+        d.setDate(d.getDate() + parseInt(_config.announcement_expiry_days, 10));
+        expiresVal = d.toISOString().slice(0, 16);
+    }
+    const expiresAt = expiresVal ? new Date(expiresVal).toISOString() : null;
     const btn = document.getElementById('publishAnnounceBtn');
     btn.disabled = true; btn.textContent = 'Publishing…';
     try {
-        await publishAnnouncement(msg);
+        await publishAnnouncement(msg, expiresAt);
         document.getElementById('announceMessage').value = '';
+        if (expiresInput) expiresInput.value = '';
         await loadAnnouncements();
     } catch (e) { adminToast('Error: ' + e.message); }
     btn.disabled = false; btn.textContent = 'Publish';
+}
+
+function openEditAnnouncementModal(id) {
+    const a = _announcements.find(x => x.id === id);
+    if (!a) return;
+    const modal = document.getElementById('adminEditAnnouncementModal');
+    const msgEl = document.getElementById('editAnnounceMessage');
+    const expiresEl = document.getElementById('editAnnounceExpiresAt');
+    const cancelBtn = document.getElementById('editAnnounceCancel');
+    const saveBtn = document.getElementById('editAnnounceSave');
+    if (!modal || !msgEl || !expiresEl || !saveBtn) return;
+
+    msgEl.value = a.message || '';
+    expiresEl.value = a.expires_at ? new Date(a.expires_at).toISOString().slice(0, 16) : '';
+    modal.dataset.editAnnId = id;
+    modal.classList.add('active');
+
+    const close = () => {
+        modal.classList.remove('active');
+        delete modal.dataset.editAnnId;
+    };
+
+    cancelBtn.onclick = close;
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+
+    const doSave = async () => {
+        const msg = msgEl.value.trim();
+        if (!msg) { adminToast('Message cannot be empty.'); return; }
+        const expiresVal = expiresEl?.value?.trim();
+        const expiresAt = expiresVal ? new Date(expiresVal).toISOString() : null;
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving…';
+        try {
+            await updateAnnouncement(id, msg, expiresAt);
+            const idx = _announcements.findIndex(x => x.id === id);
+            if (idx >= 0) {
+                _announcements[idx] = { ..._announcements[idx], message: msg, expires_at: expiresAt };
+            }
+            renderAnnouncements();
+            close();
+            adminToast('Announcement updated.');
+        } catch (e) { adminToast('Error: ' + e.message); }
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save';
+    };
+
+    saveBtn.onclick = doSave;
 }
 
 async function doClearAnnouncement() {
@@ -1485,6 +1815,80 @@ async function doClearAnnouncement() {
         await clearAnnouncement();
         await loadAnnouncements();
     } catch (e) { adminToast('Error: ' + e.message); }
+}
+
+// ── Send personal message ────────────────────────────────────────────────────
+
+function openSendMessageModal(userIds) {
+    const modal = document.getElementById('adminSendMessageModal');
+    const textArea = document.getElementById('sendMessageText');
+    const daysInput = document.getElementById('sendMessageDays');
+    const cancelBtn = document.getElementById('sendMessageCancel');
+    const confirmBtn = document.getElementById('sendMessageConfirm');
+    if (!modal || !textArea || !daysInput || !confirmBtn) return;
+
+    textArea.value = '';
+    daysInput.value = (_config.personal_message_days && parseInt(_config.personal_message_days, 10)) || 7;
+    modal.classList.add('active');
+
+    const close = () => modal.classList.remove('active');
+
+    cancelBtn.onclick = close;
+    modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+    confirmBtn.onclick = async () => {
+        const msg = textArea.value.trim();
+        const days = parseInt(daysInput.value, 10) || 7;
+        if (!msg) { adminToast('Enter a message.'); return; }
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Sending…';
+        try {
+            await sendPersonalMessages(userIds, msg, days);
+            close();
+            clearChecked('users', 'usersBulkBar', 'usersBulkCount', 'usersTable');
+
+            // Update Last msg column immediately
+            const now = new Date().toISOString();
+            userIds.forEach(uid => { _userLastMessage[uid] = now; });
+            renderUsers();
+
+            showMessageSentModal(userIds, msg);
+        } catch (e) {
+            adminToast('Error: ' + e.message);
+        }
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Send';
+    };
+}
+
+function showMessageSentModal(userIds, message) {
+    const modal = document.getElementById('adminMessageSentModal');
+    const recipientsEl = document.getElementById('messageSentRecipients');
+    const previewEl = document.getElementById('messageSentPreview');
+    const copyBtn = document.getElementById('messageSentCopy');
+    const closeBtn = document.getElementById('messageSentClose');
+    if (!modal || !recipientsEl || !previewEl) return;
+
+    const emails = userIds.map(uid => _users.find(u => u.id === uid)?.email || uid).filter(Boolean);
+    recipientsEl.textContent = emails.length === 1
+        ? `Sent to: ${emails[0]}`
+        : `Sent to ${emails.length} users: ${emails.join(', ')}`;
+    previewEl.textContent = (message || '').slice(0, 500) + (message && message.length > 500 ? '…' : '');
+
+    const summary = `Personal message sent on ${new Date().toLocaleString()}\n\nRecipients: ${emails.join(', ')}\n\nMessage:\n${message || ''}`;
+
+    const close = () => modal.classList.remove('active');
+
+    copyBtn.onclick = () => {
+        navigator.clipboard.writeText(summary).then(() => {
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => { copyBtn.textContent = 'Copy summary'; }, 1500);
+        }).catch(() => adminToast('Could not copy.'));
+    };
+    closeBtn.onclick = close;
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+
+    modal.classList.add('active');
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

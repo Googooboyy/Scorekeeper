@@ -48,9 +48,10 @@
                 <button class="admin-tab" data-tab="users">Users</button>
                 <button class="admin-tab" data-tab="entries">Entries</button>
                 <button class="admin-tab" data-tab="games">Games & Players</button>
-                <button class="admin-tab" data-tab="linking">BGG Linking</button>
+                <button class="admin-tab" data-tab="linking">BGG Global Games Linking</button>
                 <button class="admin-tab" data-tab="invites">Invites</button>
                 <button class="admin-tab" data-tab="tiers">Tiers</button>
+                <button class="admin-tab" data-tab="preset-avatars">Preset Avatars</button>
                 <button class="admin-tab" data-tab="config">Config</button>
                 <button class="admin-tab" data-tab="quotes">Quotes</button>
                 <button class="admin-tab" data-tab="announcements">Announce</button>
@@ -65,7 +66,7 @@
                     <div class="admin-stat-card"><div class="admin-stat-number" id="statEntries">—</div><div class="admin-stat-label">Entries</div></div>
                     <div class="admin-stat-card"><div class="admin-stat-number" id="statGames">—</div><div class="admin-stat-label">Games</div></div>
                     <div class="admin-stat-card"><div class="admin-stat-number" id="statPlayers">—</div><div class="admin-stat-label">Players</div></div>
-                    <div class="admin-stat-card"><div class="admin-stat-number" id="statLinked">—</div><div class="admin-stat-label">BGG Linked</div></div>
+                    <div class="admin-stat-card"><div class="admin-stat-number" id="statLinked">—</div><div class="admin-stat-label">Linked</div></div>
                 </div>
                 <div class="gold-divider" style="margin:24px 0;"></div>
                 <h3 class="admin-section-subtitle">Top 5 Games (by wins across all campaigns)</h3>
@@ -98,13 +99,14 @@
                 <input type="text" id="userSearch" class="admin-search" placeholder="Search users...">
                 <div class="admin-bulk-bar" id="usersBulkBar" style="display:none;">
                     <span id="usersBulkCount">0 selected</span>
+                    <button class="admin-action-btn admin-action-success" id="usersBulkSendMessage" title="Send selected users a personal message">Send message</button>
                     <button class="admin-action-btn admin-action-danger" id="usersBulkRemoveCampaigns">Remove from campaigns</button>
                     <button class="admin-action-btn admin-action-danger" id="usersBulkDeleteAccounts">Delete accounts</button>
                     <button class="admin-action-btn" id="usersBulkClear">Clear</button>
                 </div>
                 <div class="admin-table-wrap">
                     <table class="admin-table" id="usersTable">
-                        <thead><tr><th><input type="checkbox" class="admin-select-all" data-table="users"></th><th>Email</th><th>Name</th><th>Tier</th><th>Owns</th><th>Member Of</th><th>Joined</th><th class="admin-sortable" data-sort="last_seen" title="Sort by last seen">Last seen <span class="sort-icon"></span></th></tr></thead>
+                        <thead><tr><th><input type="checkbox" class="admin-select-all" data-table="users"></th><th>Email</th><th>Name</th><th>Tier</th><th>Owns</th><th>Member Of</th><th>Joined</th><th>Last msg</th><th class="admin-sortable" data-sort="last_seen" title="Sort by last seen">Last seen <span class="sort-icon"></span></th></tr></thead>
                         <tbody></tbody>
                     </table>
                 </div>
@@ -113,10 +115,11 @@
             <!-- Entries -->
             <div id="tab-entries" class="admin-panel">
                 <h2 class="admin-panel-title">Entries</h2>
-                <div class="admin-filter-row">
+                <div class="admin-filter-row" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:12px;">
                     <select id="entryCampaignFilter" class="admin-search" style="max-width:300px;">
                         <option value="">All campaigns</option>
                     </select>
+                    <input type="text" id="entrySearch" class="admin-search" placeholder="Search entries..." style="max-width:280px;">
                 </div>
                 <div class="admin-bulk-bar" id="entriesBulkBar" style="display:none;">
                     <span id="entriesBulkCount">0 selected</span>
@@ -141,11 +144,14 @@
                 <div id="subtab-games-list" class="admin-sub-panel active">
                     <div class="admin-panel-header-row" style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:12px;">
                         <h2 class="admin-panel-title" style="margin:0;">Games</h2>
+                        <input type="text" id="gamesSearch" class="admin-search" placeholder="Search games..." style="max-width:220px;">
                         <label style="display:flex; align-items:center; gap:8px; color:var(--text-muted); font-size:0.9rem;">
                             Sort by:
                             <select id="gamesSortSelect" class="admin-search" style="min-width:180px; padding:6px 10px;">
                                 <option value="name-az">A–Z (Name)</option>
                                 <option value="name-za">Z–A (Name)</option>
+                                <option value="campaign-az">A–Z (Campaign)</option>
+                                <option value="campaign-za">Z–A (Campaign)</option>
                                 <option value="date-newest">Date added (newest first)</option>
                                 <option value="date-oldest">Date added (oldest first)</option>
                             </select>
@@ -159,14 +165,17 @@
                     </div>
                     <div class="admin-table-wrap">
                         <table class="admin-table" id="gamesTable">
-                            <thead><tr><th><input type="checkbox" class="admin-select-all" data-table="games"></th><th>Name</th><th>Campaign</th><th>Wins</th><th>BGG</th><th>Actions</th></tr></thead>
+                            <thead><tr><th><input type="checkbox" class="admin-select-all" data-table="games"></th><th>Name</th><th>Campaign</th><th>Wins</th><th>Linked</th><th>Actions</th></tr></thead>
                             <tbody></tbody>
                         </table>
                     </div>
                 </div>
                 <div id="subtab-consolidated-list" class="admin-sub-panel">
-                    <h2 class="admin-panel-title">Consolidated Games</h2>
-                    <p style="color:var(--text-muted); margin-bottom:16px;">Games grouped by canonical identity (BGG-linked or normalized name). One row per logical game across all campaigns.</p>
+                    <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:12px;">
+                        <h2 class="admin-panel-title" style="margin:0;">Consolidated Games</h2>
+                        <input type="text" id="consolidatedSearch" class="admin-search" placeholder="Search consolidated games..." style="max-width:260px;">
+                    </div>
+                    <p style="color:var(--text-muted); margin-bottom:16px;">Games grouped by canonical identity (linked or normalized name). One row per logical game across all campaigns.</p>
                     <div class="admin-table-wrap">
                         <table class="admin-table" id="consolidatedGamesTable">
                             <thead><tr><th>Canonical Name</th><th>Campaigns</th><th>Total Wins</th><th># Game Rows</th><th>Actions</th></tr></thead>
@@ -175,7 +184,10 @@
                     </div>
                 </div>
                 <div id="subtab-players-list" class="admin-sub-panel">
-                    <h2 class="admin-panel-title">Players</h2>
+                    <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:12px;">
+                        <h2 class="admin-panel-title" style="margin:0;">Players</h2>
+                        <input type="text" id="playersSearch" class="admin-search" placeholder="Search players..." style="max-width:220px;">
+                    </div>
                     <div class="admin-bulk-bar" id="playersBulkBar" style="display:none;">
                         <span id="playersBulkCount">0 selected</span>
                         <button class="admin-action-btn admin-action-danger" id="playersBulkDelete">Delete Selected</button>
@@ -203,6 +215,7 @@
             <!-- Invites -->
             <div id="tab-invites" class="admin-panel">
                 <h2 class="admin-panel-title">Invite Tokens</h2>
+                <input type="text" id="invitesSearch" class="admin-search" placeholder="Search invites..." style="max-width:280px; margin-bottom:12px;">
                 <div class="admin-bulk-bar" id="invitesBulkBar" style="display:none;">
                     <span id="invitesBulkCount">0 selected</span>
                     <button class="admin-action-btn admin-action-danger" id="invitesBulkDelete">Revoke Selected</button>
@@ -224,19 +237,27 @@
                     <div class="admin-stat-card"><div class="admin-stat-number" id="tierNobleCount">—</div><div class="admin-stat-label">Noble</div></div>
                     <div class="admin-stat-card"><div class="admin-stat-number" id="tierRoyalCount">—</div><div class="admin-stat-label">Royal</div></div>
                 </div>
-                <div class="admin-tier-remark" style="background:var(--bg-tertiary); border:1px solid var(--border); border-radius:8px; padding:12px 16px; margin-bottom:20px;">
-                    <p style="color:var(--text-muted); margin-bottom:10px;">Assign tiers in the Users tab. Limits per tier:</p>
-                    <ul style="color:var(--text-secondary); font-size:0.9rem; margin:0; padding-left:20px; line-height:1.8;">
-                        <li><strong>Commoner</strong> — 2 campaigns, 5 meeples</li>
-                        <li><strong>Noble</strong> — 4 campaigns, 10 meeples</li>
-                        <li><strong>Royal</strong> — unlimited campaigns, unlimited meeples</li>
-                    </ul>
+                <p style="color:var(--text-muted); margin-bottom:16px;">Assign tiers in the Users tab. Edit limits below.</p>
+                <div id="tierDefinitionsForm" class="admin-tier-definitions-form"></div>
+                <button class="btn btn-primary" id="saveTierDefinitionsBtn" type="button" style="margin-top:16px;">Save tier definitions</button>
+                <span id="tierDefinitionsStatus" class="admin-config-status" style="margin-left:12px;"></span>
+            </div>
+
+            <!-- Preset Avatars -->
+            <div id="tab-preset-avatars" class="admin-panel">
+                <h2 class="admin-panel-title">Preset Avatars</h2>
+                <p style="color:var(--text-muted); margin-bottom:16px;">Commoners choose from these avatars (no custom upload). Nobles and Royals can upload custom photos or pick a preset.</p>
+                <div id="presetAvatarsList" class="admin-preset-avatars-list"></div>
+                <div style="margin-top:16px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <button class="btn btn-secondary" id="addPresetAvatarBtn" type="button">+ Add avatar</button>
+                    <span id="presetAvatarsStatus" class="admin-config-status"></span>
                 </div>
             </div>
 
             <!-- Config -->
             <div id="tab-config" class="admin-panel">
-                <h2 class="admin-panel-title">Beta Limits</h2>
+                <h2 class="admin-panel-title">Global Config</h2>
+                <p style="color:var(--text-muted); margin-bottom:16px;">These settings override tier limits and control app-wide behavior.</p>
                 <div class="admin-config-form">
                     <div class="admin-config-field">
                         <label>Max campaigns per user</label>
@@ -245,6 +266,33 @@
                     <div class="admin-config-field">
                         <label>Max meeples per campaign</label>
                         <input type="number" id="cfgMaxMeeples" class="admin-config-input" min="1" max="100">
+                    </div>
+                    <div class="admin-config-field">
+                        <label>Personal message default days</label>
+                        <input type="number" id="cfgPersonalMessageDays" class="admin-config-input" min="1" max="365" placeholder="7">
+                        <span class="admin-config-hint">Default when sending personal messages</span>
+                    </div>
+                    <div class="admin-config-field">
+                        <label>Default tier for new users</label>
+                        <select id="cfgDefaultUserTier" class="admin-config-input">
+                            <option value="1">Commoner</option>
+                            <option value="2">Noble</option>
+                            <option value="3">Royal</option>
+                        </select>
+                    </div>
+                    <div class="admin-config-field">
+                        <label>Announcement expiry default days</label>
+                        <input type="number" id="cfgAnnouncementExpiryDays" class="admin-config-input" min="0" max="365" placeholder="0 = no default">
+                        <span class="admin-config-hint">0 = no default expiry when publishing</span>
+                    </div>
+                    <div class="admin-config-field admin-config-checkbox">
+                        <label><input type="checkbox" id="cfgLeaderboardQuotesEnabled" checked> Leaderboard quotes enabled</label>
+                    </div>
+                    <div class="admin-config-field admin-config-checkbox">
+                        <label><input type="checkbox" id="cfgAllowGuestViewing" checked> Allow guest (unauthenticated) viewing</label>
+                    </div>
+                    <div class="admin-config-field admin-config-checkbox">
+                        <label><input type="checkbox" id="cfgBggSearchEnabled" checked> BGG search enabled</label>
                     </div>
                     <button class="btn btn-primary" id="saveConfigBtn">Save Config</button>
                     <span id="configStatus" class="admin-config-status"></span>
@@ -268,6 +316,11 @@
                 <h2 class="admin-panel-title">Announcements</h2>
                 <div class="admin-announce-form">
                     <textarea id="announceMessage" class="admin-announce-input" rows="3" placeholder="Write an announcement visible to all users..."></textarea>
+                    <div class="admin-announce-expiry" style="margin:12px 0; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                        <label style="color:var(--text-muted); font-size:0.9rem;">Expires (optional):</label>
+                        <input type="datetime-local" id="announceExpiresAt" class="input-field admin-passphrase-input" style="max-width:220px;">
+                        <span class="admin-config-status" style="font-size:0.85rem;">Leave empty for no expiry</span>
+                    </div>
                     <div class="admin-announce-actions">
                         <button class="btn btn-primary" id="publishAnnounceBtn">Publish</button>
                         <button class="btn btn-secondary" id="clearAnnounceBtn">Clear Active</button>
@@ -282,6 +335,7 @@
                                 <th>Message</th>
                                 <th>Status</th>
                                 <th>Published</th>
+                                <th>Expires</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -311,13 +365,60 @@
                 <select id="adminMergeCreateNewSelect" class="input-field admin-passphrase-input" style="width:100%; margin-bottom:12px;">
                     <option value="">— Choose a name —</option>
                 </select>
-                <label style="display:block; margin:12px 0 4px; font-weight:500;">Or search BGG (when API available):</label>
-                <input type="text" id="adminMergeBGGSearch" class="input-field admin-passphrase-input" placeholder="Game name..." style="width:100%; margin-bottom:8px;">
-                <div id="adminMergeBGGResults" style="min-height:60px; margin-bottom:12px;"></div>
+                <div id="adminMergeBGGSearchWrap">
+                    <label style="display:block; margin:12px 0 4px; font-weight:500;">Or search BGG (when API available):</label>
+                    <input type="text" id="adminMergeBGGSearch" class="input-field admin-passphrase-input" placeholder="Game name..." style="width:100%; margin-bottom:8px;">
+                    <div id="adminMergeBGGResults" style="min-height:60px; margin-bottom:12px;"></div>
+                </div>
             </div>
             <div class="admin-passphrase-actions">
                 <button class="btn btn-secondary" id="adminMergeCancel" type="button">Cancel</button>
                 <button class="btn admin-passphrase-btn admin-action-success" id="adminMergeConfirm" type="button">Merge</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Send Personal Message Modal -->
+    <div class="modal-overlay" id="adminSendMessageModal">
+        <div class="modal admin-passphrase-modal" style="max-width:480px;">
+            <h3 class="admin-passphrase-title">Send personal message</h3>
+            <p class="admin-passphrase-desc">Message will appear above the nav bar for selected users. Orange theme, distinct from global banner.</p>
+            <textarea id="sendMessageText" class="admin-announce-input" rows="4" placeholder="Write your message..." style="width:100%; margin-bottom:12px;"></textarea>
+            <label style="display:block; margin:8px 0 4px; font-weight:500;">Show for (days):</label>
+            <input type="number" id="sendMessageDays" class="input-field admin-passphrase-input" min="1" max="365" value="7" style="width:100px; margin-bottom:16px;">
+            <div class="admin-passphrase-actions">
+                <button class="btn btn-secondary" id="sendMessageCancel" type="button">Cancel</button>
+                <button class="btn admin-passphrase-btn admin-action-success" id="sendMessageConfirm" type="button">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Sent Confirmation Modal -->
+    <div class="modal-overlay" id="adminMessageSentModal">
+        <div class="modal admin-passphrase-modal" style="max-width:520px;">
+            <h3 class="admin-passphrase-title">Message sent</h3>
+            <p class="admin-passphrase-desc" id="messageSentRecipients">Sent to 0 users.</p>
+            <div class="admin-announce-input" id="messageSentPreview" style="max-height:120px; overflow-y:auto; margin-bottom:16px; white-space:pre-wrap; background:var(--bg-secondary); padding:12px; border-radius:8px;"></div>
+            <div class="admin-passphrase-actions">
+                <button class="btn btn-secondary" id="messageSentCopy" type="button">Copy summary</button>
+                <button class="btn admin-passphrase-btn" id="messageSentClose" type="button">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Announcement Modal -->
+    <div class="modal-overlay" id="adminEditAnnouncementModal">
+        <div class="modal admin-passphrase-modal" style="max-width:520px;">
+            <h3 class="admin-passphrase-title">Edit announcement</h3>
+            <textarea id="editAnnounceMessage" class="admin-announce-input" rows="4" placeholder="Announcement message..." style="width:100%; margin-bottom:12px;"></textarea>
+            <div class="admin-announce-expiry" style="margin:12px 0; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <label style="color:var(--text-muted); font-size:0.9rem;">Expires (optional):</label>
+                <input type="datetime-local" id="editAnnounceExpiresAt" class="input-field admin-passphrase-input" style="max-width:220px;">
+                <span class="admin-config-status" style="font-size:0.85rem;">Leave empty for no expiry</span>
+            </div>
+            <div class="admin-passphrase-actions">
+                <button class="btn btn-secondary" id="editAnnounceCancel" type="button">Cancel</button>
+                <button class="btn admin-passphrase-btn admin-action-success" id="editAnnounceSave" type="button">Save</button>
             </div>
         </div>
     </div>

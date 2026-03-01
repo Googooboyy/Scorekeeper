@@ -56,6 +56,10 @@
                 </div>
             </div>
         <div class="header-banners">
+            <div id="personalMessageBanner" class="personal-message-banner" style="display:none;">
+                <span id="personalMessageText"></span>
+                <button class="personal-message-banner-close" id="personalMessageClose" aria-label="Dismiss">✕</button>
+            </div>
             <div id="announcementBanner" class="announcement-banner" style="display:none;">
                 <span id="announcementText"></span>
                 <button class="announcement-banner-close" id="announcementClose" aria-label="Dismiss">✕</button>
@@ -177,9 +181,9 @@
                     </div>
                     <div id="newPlayerInput" class="new-item-input">
                         <input type="text" id="newPlayerName" class="input-field" placeholder="Enter meeple name...">
-                        <div class="image-upload-section">
+                        <div class="image-upload-section" id="newPlayerImageUploadSection">
                             <label class="image-upload-label">Meeple Image (Optional)</label>
-                            <div class="image-source-row">
+                            <div class="image-source-row" id="newPlayerImageSourceRow">
                                 <div class="file-input-wrapper">
                                     <input type="file" id="newPlayerImage" accept="image/*">
                                     <label for="newPlayerImage" class="file-input-label">
@@ -188,6 +192,10 @@
                                 </div>
                                 <span class="image-or-sep">or</span>
                                 <input type="url" id="newPlayerImageUrl" class="input-field image-url-input" placeholder="Paste image URL…">
+                            </div>
+                            <div id="newPlayerPresetPickerSection" class="preset-avatar-section" style="display: none;">
+                                <label class="image-upload-label">Pick an avatar</label>
+                                <div id="newPlayerPresetPicker" class="preset-avatar-grid"></div>
                             </div>
                             <img id="newPlayerImagePreview" class="image-preview" alt="Preview">
                         </div>
@@ -629,7 +637,7 @@
             <h3>Customize Meeple</h3>
             <p style="margin-bottom: 16px;">Update image for <strong id="playerImagePlayerName"></strong></p>
 
-            <div class="image-upload-section" style="margin-bottom: 16px;">
+            <div class="image-upload-section" id="playerImageUploadSection" style="margin-bottom: 16px;">
                 <label class="image-upload-label">Meeple Image</label>
                 <div class="file-input-wrapper">
                     <input type="file" id="playerImageFileInput" accept="image/*">
@@ -641,6 +649,10 @@
                     <img id="playerImagePreview" class="image-preview" alt="Preview" style="display: none;">
                     <button type="button" id="playerImageRemoveInSection" class="btn-remove-image" style="display: none;">Remove image</button>
                 </div>
+            </div>
+            <div id="playerImagePresetPickerSection" class="preset-avatar-section" style="display: none; margin-bottom: 16px;">
+                <label class="image-upload-label">Pick an avatar</label>
+                <div id="playerImagePresetPicker" class="preset-avatar-grid"></div>
             </div>
 
             <label style="display: block; margin-bottom: 8px; color: var(--text-secondary); font-size: 0.9rem;">Meeple Color</label>
@@ -748,7 +760,7 @@
                     <div class="player-profile-actions" id="profileActionsRow" style="display:none;">
                         <button type="button" class="player-profile-action-btn" id="profileCustomizeBtn" title="Customize avatar and color">⚙️ Customize</button>
                         <button type="button" class="player-profile-action-btn player-profile-action-danger" id="profileDeleteBtn" title="Eliminate this meeple. Permanent and irreversible.">🗑️ Eliminate Meeple</button>
-                        <span class="player-profile-delete-remark">Permanent. Cannot be undone.</span>
+                        <span class="player-profile-delete-remark" id="profileDeleteRemark">(Permanent. Cannot be undone.)</span>
                     </div>
                 </div>
                 <button class="player-profile-close" id="playerProfileClose" aria-label="Close">✕</button>

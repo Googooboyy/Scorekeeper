@@ -1,4 +1,4 @@
-import { fetchPlaygroups, createPlaygroup, getOrCreateInviteToken, leavePlaygroup, fetchCampaignOwnerLimits, fetchCampaignJoinInfo, updateCampaignJoinRequirements } from './supabase.js';
+import { fetchPlaygroups, createPlaygroup, getOrCreateInviteToken, leavePlaygroup, fetchCampaignJoinInfo, updateCampaignJoinRequirements } from './supabase.js';
 import { showNotification, showModal } from './modals.js';
 import { isAdminMode } from './admin.js';
 
@@ -160,22 +160,16 @@ async function updatePlaygroupCountBadge() {
 
     const partyPermitPill = document.getElementById('planPillPartyPermit');
     if (partyPermitPill && pg) {
-        try {
-            const limits = await fetchCampaignOwnerLimits(pg.id);
-            const max = limits?.maxMeeples ?? 5;
-            const UNLIMITED = 999999;
-            if (max >= UNLIMITED) {
-                partyPermitPill.textContent = 'Party Permit: unlimited meeples';
-                partyPermitPill.title = 'This campaign has no meeple limit';
-            } else {
-                partyPermitPill.textContent = 'Party Permit: ' + max + ' meeples limit';
-                partyPermitPill.title = 'Max meeples for this campaign';
-            }
-            partyPermitPill.style.display = '';
-        } catch {
-            partyPermitPill.textContent = '';
-            partyPermitPill.style.display = 'none';
+        const max = window._scorekeeperMaxMeeplesTier ?? window._scorekeeperMaxMeeples ?? 5;
+        const UNLIMITED = 999999;
+        if (max >= UNLIMITED) {
+            partyPermitPill.textContent = 'Party Permit: unlimited meeples';
+            partyPermitPill.title = 'Your plan has no meeple limit';
+        } else {
+            partyPermitPill.textContent = 'Party Permit: ' + max + ' meeples limit';
+            partyPermitPill.title = 'Max meeples allowed for your account tier';
         }
+        partyPermitPill.style.display = '';
     } else if (partyPermitPill) {
         partyPermitPill.textContent = '';
         partyPermitPill.style.display = 'none';
