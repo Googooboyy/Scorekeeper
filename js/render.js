@@ -168,6 +168,7 @@ export function renderPlayers() {
     if (toggleBtn) toggleBtn.style.display = 'none';
 
     const currentUserId = data.currentUserId;
+    const pg = getActivePlaygroup();
     container.innerHTML = playerStats.map((stat, index) => {
         const playerDataObj = data.playerData && data.playerData[stat.player] ? data.playerData[stat.player] : {};
         const isMyAccount = !!(currentUserId && playerDataObj.userId && playerDataObj.userId === currentUserId);
@@ -177,9 +178,15 @@ export function renderPlayers() {
         const isFirst = index === 0;
         const crownHtml = isFirst ? '<div class="player-crown">👑</div>' : '';
         const youBadge = isMyAccount ? '<span class="player-you-badge" title="Your linked account">You</span>' : '';
-        const isUnclaimedMeeple = !!currentUserId && !stat.userId;
-        const meepleUnclaimedBadge = isUnclaimedMeeple
-            ? '<span class="meeple-unclaimed-badge" title="This meeple hasn&#39;t been claimed yet">Unclaimed</span>'
+        const isTraveller = !stat.userId;
+        const travellerBadge = isTraveller
+            ? '<span class="meeple-traveller-badge" title="Unlinked meeple">Traveller</span>'
+            : '';
+        const tierLabel = stat.userId && playerDataObj.tier
+            ? (playerDataObj.tier === 2 ? 'Noble' : playerDataObj.tier === 3 ? 'Royal' : 'Commoner')
+            : '';
+        const tierPill = tierLabel
+            ? '<span class="player-tier-pill player-tier-' + tierLabel.toLowerCase() + '" title="Membership tier">' + escapeHtml(tierLabel) + '</span>'
             : '';
         const imageHtml = stat.image ?
             '<div class="player-card-image-container">' + crownHtml + '<img src="' + escapeHtml(stat.image) + '" alt="' + escapeHtml(stat.player) + '" class="player-card-image" onerror="this.style.display=\'none\'; this.parentElement.querySelector(\'.player-card-image-placeholder\').style.display=\'flex\';"><div class="player-card-image-placeholder" style="display: none;">👤</div></div>' :
@@ -192,7 +199,7 @@ export function renderPlayers() {
             '<div class="player-header">' +
             '<div class="player-info-section player-profile-trigger" data-player="' + escapeHtml(stat.player) + '" title="View profile" style="cursor:pointer;">' + imageHtml +
             '<div class="player-name-section">' +
-            '<div class="player-name">' + escapeHtml(stat.player) + youBadge + meepleUnclaimedBadge + '</div>' +
+            '<div class="player-name">' + escapeHtml(stat.player) + youBadge + travellerBadge + tierPill + '</div>' +
             '<div class="player-card-quote">' + escapeHtml(displayQuote) + '</div>' +
             '</div>' +
             '</div>' +
@@ -216,6 +223,7 @@ export function renderPlayers() {
             openPlayerProfileModal(this.getAttribute('data-player'));
         });
     });
+
 }
 
 export function renderGames() {

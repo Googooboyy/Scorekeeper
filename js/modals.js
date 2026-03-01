@@ -23,7 +23,8 @@ import {
     upsertUserProfile,
     insertPlayer,
     fetchGamesFromOtherCampaigns,
-    insertGame
+    insertGame,
+    fetchCampaignOwnerLimits
 } from './supabase.js';
 import { getSupabase } from './auth.js';
 import { renderGames, renderGameSelection, renderAll } from './render.js';
@@ -40,6 +41,19 @@ export function showModal(title, message, onConfirm, confirmLabel = 'OK') {
 export function hideModal() {
     document.getElementById('modalOverlay').classList.remove('active');
     setModalCallback(null);
+}
+
+/** Show join rejection modal with friendly message. */
+export function showJoinRejectionModal(message) {
+    const overlay = document.getElementById('joinRejectionModal');
+    const msgEl = document.getElementById('joinRejectionMessage');
+    const okBtn = document.getElementById('joinRejectionOk');
+    if (!overlay || !msgEl || !okBtn) return;
+    msgEl.textContent = message || 'You are unable to join this campaign at this time.';
+    overlay.classList.add('active');
+    const close = () => overlay.classList.remove('active');
+    okBtn.onclick = close;
+    overlay.onclick = (e) => { if (e.target === overlay) close(); };
 }
 
 export function openGameImageModal(game) {
@@ -492,6 +506,8 @@ export async function openPlayerProfileModal(playerName) {
             _renderProfileUnlinked(player, playerName, playerMeta, currentEntries, user);
         }
 
+        await _renderProfilePlanInfo(user, player, playerMeta);
+
         // Customize meeple & Delete player (same rules as leaderboard card)
         const actionsRow = document.getElementById('profileActionsRow');
         const customizeBtn = document.getElementById('profileCustomizeBtn');
@@ -518,7 +534,7 @@ export async function openPlayerProfileModal(playerName) {
         claimBtn.onclick = async () => {
             if (claimBtn.disabled) return;
             claimBtn.disabled = true;
-            claimBtn.textContent = 'Linking…';
+            claimBtn.textContent = 'Claiming…';
             try {
                 await claimPlayer(playerId);
                 if (!data.playerData[playerName]) data.playerData[playerName] = {};
@@ -530,12 +546,17 @@ export async function openPlayerProfileModal(playerName) {
                 await openPlayerProfileModal(playerName);
             } catch (err) {
                 claimBtn.disabled = false;
-                claimBtn.textContent = 'This is me — link my account';
+                claimBtn.textContent = 'Claim this meeple!';
                 const msg = (err && err.message) ? err.message : String(err);
-                const friendly = /not authenticated/i.test(msg)
-                    ? 'Sign in to link this meeple to your account.'
-                    : msg;
-                showNotification(friendly);
+                const isPassportReject = /Halt!|Your plan allows|active meeples/i.test(msg);
+                if (isPassportReject) {
+                    showJoinRejectionModal(msg);
+                } else {
+                    const friendly = /not authenticated/i.test(msg)
+                        ? 'Sign in to link this meeple to your account.'
+                        : msg;
+                    showNotification(friendly);
+                }
             }
         };
 
@@ -566,9 +587,41 @@ export async function openPlayerProfileModal(playerName) {
     }
 }
 
+function getTierLabel(tier) {
+    const t = parseInt(tier, 10) || 1;
+    if (t === 2) return 'Noble';
+    if (t === 3) return 'Royal';
+    return 'Commoner';
+}
+
+async function _renderProfilePlanInfo(currentUser, player, playerMeta) {
+    const el = document.getElementById('profilePlanInfo');
+    if (!el) return;
+    const pills = [];
+    // Show the profile subject's tier (not the viewer's)
+    if (player.user_id) {
+        const tier = playerMeta?.tier != null ? playerMeta.tier : 1;
+        const tierLabel = getTierLabel(tier);
+        const tierClass = tier === 2 ? 'profile-plan-pill-noble' : tier === 3 ? 'profile-plan-pill-royal' : 'profile-plan-pill-commoner';
+        pills.push('<span class="profile-plan-pill ' + tierClass + '" title="Membership tier">' + escapeHtml(tierLabel) + '</span>');
+    } else {
+        pills.push('<span class="profile-plan-pill profile-plan-pill-traveller" title="Unlinked meeple">Traveller</span>');
+    }
+    if (pills.length) {
+        el.innerHTML = pills.join('');
+        el.className = 'player-profile-plan-info profile-plan-pills';
+        el.style.display = 'flex';
+    } else {
+        el.innerHTML = '';
+        el.style.display = 'none';
+    }
+}
+
 function _renderProfileLoading(playerName) {
     document.getElementById('profileName').textContent = playerName;
     document.getElementById('profileMeta').textContent = 'Loading…';
+    const planInfo = document.getElementById('profilePlanInfo');
+    if (planInfo) { planInfo.style.display = 'none'; planInfo.textContent = ''; }
     document.getElementById('profileAvatarImg').style.display = 'none';
     document.getElementById('profileAvatarPlaceholder').style.display = 'flex';
     document.getElementById('profileClaimBtn').style.display = 'none';
@@ -639,7 +692,7 @@ function _renderProfileLinked(player, meta, campaignStats, gameBreakdown, gamesP
         profileMetaEl.textContent = 'Meeple yet to join campaign';
         profileMetaEl.classList.add('profile-meta-muted');
     } else {
-        profileMetaEl.textContent = campaignCount + ' campaign' + (campaignCount !== 1 ? 's' : '');
+        profileMetaEl.textContent = 'Engaged in ' + campaignCount + ' campaign' + (campaignCount !== 1 ? 's' : '');
         profileMetaEl.classList.remove('profile-meta-muted');
     }
     const totalGamesPlayed = campaignStats.reduce((s, r) => s + Number(r.total_games_played || r.total_wins || 0), 0);
@@ -808,14 +861,12 @@ function _renderProfileUnlinked(player, playerName, meta, currentEntries, curren
         const alreadyLinkedInCampaign = Object.values(data.playerData || {})
             .some(pd => pd.userId && pd.userId === currentUser.id);
         if (alreadyLinkedInCampaign) {
-            // User is already linked to a different player in this campaign
-            claimBtn.style.display = 'inline-flex';
-            claimBtn.disabled = true;
-            claimBtn.textContent = 'You\'re already linked to a meeple in this campaign';
+            // User cannot claim — hide the claiming message
+            claimBtn.style.display = 'none';
         } else {
             claimBtn.style.display = 'inline-flex';
             claimBtn.disabled = false;
-            claimBtn.textContent = 'This is me — link my account';
+            claimBtn.textContent = 'Claim this meeple!';
         }
     } else {
         claimBtn.style.display = 'none';

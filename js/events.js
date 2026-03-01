@@ -543,11 +543,7 @@ async function addNewPlayer() {
     const name = input.value.trim();
     if (!name) { showNotification('Please enter a meeple name'); return; }
     if (data.players.includes(name)) { showNotification('This meeple already exists'); return; }
-    const maxMeeples = window._scorekeeperMaxMeeples || 4;
-    if (data.players.length >= maxMeeples) {
-        showModal('Meeple limit reached', `This campaign supports up to ${maxMeeples} meeples on the current plan.`, () => {});
-        return;
-    }
+    /* Unlinked meeples have no limit. Passport (entry + size) is checked only when a user claims. */
 
     try {
         const row = await insertPlayer(pg.id, name);

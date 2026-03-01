@@ -8,6 +8,7 @@ import {
     fetchPlaygroups, fetchAllUsers, fetchAllPlaygroupMembers,
     fetchAllGames, fetchAllPlayers, fetchAllEntries, fetchAllInviteTokens,
     fetchAppConfig, setAppConfig,
+    fetchUserTiersMap, updateUserTier,
     fetchAllAnnouncements, publishAnnouncement, clearAnnouncement, fetchActiveAnnouncement,
     deleteAnnouncement, reactivateAnnouncement,
     fetchUnlinkedGames, fetchGlobalGames, upsertGlobalGame, linkGameToGlobal, createGlobalGameByName,
@@ -31,6 +32,7 @@ function adminToast(msg) {
 let _playgroups = [], _users = [], _members = [], _games = [], _players = [];
 let _entries = [], _invites = [], _config = {}, _globalGames = [];
 let _userLastSeen = {};
+let _userTiersMap = {};
 let _usersSortBy = 'last_seen';
 let _usersSortDir = 'asc'; // asc = oldest first (for pruning), desc = newest first
 
@@ -160,6 +162,7 @@ function onTabActivate(tab) {
         games: loadGamesPlayers,
         linking: loadLinking,
         invites: loadInvites,
+        tiers: loadTiers,
         config: loadConfig,
         quotes: loadQuotes,
         announcements: loadAnnouncements
@@ -322,14 +325,37 @@ function renderCampaigns() {
 async function loadUsers() {
     if (!guardAdmin()) return;
     if (!_users.length) {
-        const [users, members, lastSeen] = await Promise.all([
-            fetchAllUsers(), fetchAllPlaygroupMembers(), fetchUserLastSeenMap()
+        const [users, members, lastSeen, tiersMap] = await Promise.all([
+            fetchAllUsers(), fetchAllPlaygroupMembers(), fetchUserLastSeenMap(), fetchUserTiersMap()
         ]);
         _users = users;
         _members = members;
         _userLastSeen = lastSeen;
+        _userTiersMap = tiersMap || {};
     }
     renderUsers();
+}
+
+async function loadTiers() {
+    if (!guardAdmin()) return;
+    try {
+        _userTiersMap = await fetchUserTiersMap();
+        const free = Object.values(_userTiersMap).filter(t => t === 1).length;
+        const noble = Object.values(_userTiersMap).filter(t => t === 2).length;
+        const royal = Object.values(_userTiersMap).filter(t => t === 3).length;
+        document.getElementById('tierFreeCount').textContent = free;
+        document.getElementById('tierNobleCount').textContent = noble;
+        document.getElementById('tierRoyalCount').textContent = royal;
+    } catch (e) {
+        console.error('Tiers load error:', e);
+    }
+}
+
+function getTierLabel(tier) {
+    const t = parseInt(tier, 10) || 1;
+    if (t === 2) return 'Noble';
+    if (t === 3) return 'Royal';
+    return 'Commoner';
 }
 
 function renderUsers() {
@@ -358,16 +384,34 @@ function renderUsers() {
         const owned = _members.filter(m => m.user_id === u.id && m.role === 'owner').length;
         const memberOf = _members.filter(m => m.user_id === u.id).length;
         const lastSeen = _userLastSeen[u.id];
+        const tier = _userTiersMap[u.id] ?? 1;
+        const tierOpts = `<option value="1" ${tier === 1 ? 'selected' : ''}>Commoner</option><option value="2" ${tier === 2 ? 'selected' : ''}>Noble</option><option value="3" ${tier === 3 ? 'selected' : ''}>Royal</option>`;
         return `<tr data-id="${u.id}">
             <td><input type="checkbox" class="admin-row-check" data-table="users" value="${u.id}"></td>
             <td>${esc(u.email || '—')}</td>
             <td>${esc(u.user_metadata?.full_name || '—')}</td>
+            <td><select class="admin-tier-select" data-user-id="${u.id}" title="Assign tier">${tierOpts}</select></td>
             <td>${owned}</td>
             <td>${memberOf}</td>
             <td>${fmtDate(u.created_at)}</td>
             <td>${lastSeen ? fmtDate(lastSeen) : '—'}</td>
         </tr>`;
-    }).join('') || '<tr><td colspan="7" style="text-align:center; color:var(--text-muted);">No users found.</td></tr>';
+    }).join('') || '<tr><td colspan="8" style="text-align:center; color:var(--text-muted);">No users found.</td></tr>';
+
+    tbody.querySelectorAll('.admin-tier-select').forEach(sel => {
+        sel.addEventListener('change', async () => {
+            const uid = sel.dataset.userId;
+            const newTier = parseInt(sel.value, 10) || 1;
+            try {
+                await updateUserTier(uid, newTier);
+                _userTiersMap[uid] = newTier;
+                adminToast('Tier updated to ' + getTierLabel(newTier));
+            } catch (e) {
+                adminToast('Error updating tier: ' + (e.message || e));
+                sel.value = _userTiersMap[uid] ?? 1;
+            }
+        });
+    });
 
     setupBulkSelect('users', 'usersBulkBar', 'usersBulkCount', 'usersTable');
     const removeBtn = document.getElementById('usersBulkRemoveCampaigns');

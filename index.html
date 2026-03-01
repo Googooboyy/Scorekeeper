@@ -38,13 +38,19 @@
                                 <option value="">Select campaign...</option>
                             </select>
                         </div>
-                        <div class="playgroup-meta-row">
-                            <span id="playgroupCount" class="playgroup-count" aria-live="polite"></span>
-                        </div>
                         <div class="playgroup-actions-row">
                             <button class="btn-auth invite-playgroup" id="invitePlaygroupBtn" title="Copy link to view or join this campaign">Copy Campaign Invite Link</button>
-                            <button class="btn-auth create-playgroup" id="createPlaygroupBtn">+ New</button>
-                            <button class="btn-auth leave-playgroup" id="leavePlaygroupBtn" title="Leave this campaign" style="display: none;">Leave</button>
+                            <button class="btn-auth create-playgroup" id="createPlaygroupBtn">+ New Campaign</button>
+                            <button class="btn-auth leave-playgroup" id="leavePlaygroupBtn" title="Leave this campaign" style="display: none;">Leave Campaign</button>
+                        </div>
+                        <div class="playgroup-meta-row plan-summary" id="planSummary" aria-live="polite" style="display:none;">
+                            <span id="planPillTier" class="plan-pill plan-pill-tier" title="Your membership tier"></span>
+                            <span id="planPillCampaigns" class="plan-pill plan-pill-campaigns" title="Campaigns used vs limit"></span>
+                            <span id="planPillPartyPermit" class="plan-pill plan-pill-party-permit" title="Max meeples for this campaign" style="display:none;"></span>
+                        </div>
+                        <div class="playgroup-meeples-row" id="meeplesRow" aria-live="polite" style="display:none;">
+                            <div class="playgroup-meeples-line1" id="meeplesPopulationText"></div>
+                            <div class="playgroup-meeples-line2"><span id="meeplesAcceptsText"></span><button type="button" class="playgroup-change-btn" id="meeplesChangeBtn" title="Edit who can join this campaign" style="display:none;">Update class requirements</button></div>
                         </div>
                     </div>
                 </div>
@@ -525,6 +531,33 @@
     </div>
 
     <!-- Invite Campaign Modal -->
+    <div class="modal-overlay" id="joinRejectionModal">
+        <div class="modal invite-modal">
+            <h3>Unable to join</h3>
+            <p id="joinRejectionMessage" style="margin-bottom: 16px; color: var(--text-secondary);"></p>
+            <div class="modal-buttons">
+                <button class="modal-btn confirm" id="joinRejectionOk">Got it</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="campaignSettingsModal">
+        <div class="modal" style="max-width: 420px;">
+            <h3>Campaign join requirements</h3>
+            <p style="margin-bottom: 12px; color: var(--text-muted); font-size: 0.9rem;">Who can join this campaign? Members must have one of the selected tiers.</p>
+            <div class="campaign-settings-tier-checks" id="campaignSettingsTierChecks">
+                <label><input type="checkbox" data-tier="1"> Commoner</label>
+                <label><input type="checkbox" data-tier="2"> Noble</label>
+                <label><input type="checkbox" data-tier="3"> Royal</label>
+            </div>
+            <p style="margin-top: 8px; font-size: 0.85rem; color: var(--text-muted);">At least one tier must be selected.</p>
+            <div class="modal-buttons" style="margin-top: 20px;">
+                <button class="modal-btn cancel" id="campaignSettingsCancel">Cancel</button>
+                <button class="modal-btn confirm btn-progress" id="campaignSettingsSave">Save</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="invitePlaygroupModal">
         <div class="modal invite-modal">
             <h3>Campaign invite link copied!</h3>
@@ -705,15 +738,16 @@
                 <div class="player-profile-title-area">
                     <h2 class="player-profile-name" id="profileName">—</h2>
                     <div class="player-profile-meta" id="profileMeta"></div>
+                    <div class="player-profile-plan-info" id="profilePlanInfo" style="display:none;"></div>
                     <button class="player-profile-claim-btn" id="profileClaimBtn" style="display:none;">
-                        This is me — link my account
+                        Claim this meeple!
                     </button>
                     <button class="player-profile-unlink-btn" id="profileUnlinkBtn" style="display:none;">
                         Unlink my account
                     </button>
                     <div class="player-profile-actions" id="profileActionsRow" style="display:none;">
-                        <button type="button" class="player-profile-action-btn" id="profileCustomizeBtn" title="Customize avatar and color">⚙️ Customize meeple</button>
-                        <button type="button" class="player-profile-action-btn player-profile-action-danger" id="profileDeleteBtn" title="Delete this player">🗑️ Delete player</button>
+                        <button type="button" class="player-profile-action-btn" id="profileCustomizeBtn" title="Customize avatar and color">⚙️ Customize</button>
+                        <button type="button" class="player-profile-action-btn player-profile-action-danger" id="profileDeleteBtn" title="Eliminate this meeple">🗑️ Eliminate Meeple</button>
                     </div>
                 </div>
                 <button class="player-profile-close" id="playerProfileClose" aria-label="Close">✕</button>

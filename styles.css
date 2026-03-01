@@ -51,7 +51,56 @@ header {
 .playgroup-area { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .playgroup-select-row { display: flex; align-items: center; gap: 10px; }
 .playgroup-meta-row { align-self: flex-end; font-size: 0.8rem; color: var(--text-muted); margin-top: -2px; }
+.plan-summary {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px;
+}
+.plan-pill {
+    display: inline-flex; align-items: center; padding: 4px 12px;
+    font-size: 0.78rem; font-weight: 500; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06); border: 1px solid var(--border);
+    color: var(--text-secondary); white-space: nowrap;
+}
+.plan-pill-tier { background: rgba(139, 92, 246, 0.12); border-color: rgba(139, 92, 246, 0.35); color: var(--accent-secondary); }
+.plan-pill-tier.plan-pill-tier-royal { background: rgba(245, 158, 11, 0.14); border-color: rgba(245, 158, 11, 0.4); color: var(--accent-gold); }
+.plan-pill-campaigns { background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.3); color: var(--accent-primary); }
+.plan-pill-party-permit { background: rgba(99, 102, 241, 0.08); border-color: rgba(99, 102, 241, 0.25); color: var(--text-secondary); }
+/* Tier-based pill colors (follow user class) */
+.plan-summary-tier-commoner .plan-pill-tier,
+.plan-summary-tier-commoner .plan-pill-campaigns,
+.plan-summary-tier-commoner .plan-pill-party-permit {
+    background: rgba(148, 163, 184, 0.12); border-color: rgba(148, 163, 184, 0.35); color: var(--text-secondary);
+}
+.plan-summary-tier-noble .plan-pill-tier,
+.plan-summary-tier-noble .plan-pill-campaigns,
+.plan-summary-tier-noble .plan-pill-party-permit {
+    background: rgba(139, 92, 246, 0.14); border-color: rgba(139, 92, 246, 0.4); color: var(--accent-secondary);
+}
+.plan-summary-tier-royal .plan-pill-tier,
+.plan-summary-tier-royal .plan-pill-campaigns,
+.plan-summary-tier-royal .plan-pill-party-permit {
+    background: rgba(245, 158, 11, 0.14); border-color: rgba(245, 158, 11, 0.4); color: var(--accent-gold);
+}
+.playgroup-meeples-row {
+    font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px; line-height: 1.6;
+}
+.playgroup-meeples-line1 {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.playgroup-meeples-line2 {
+    margin-top: 4px;
+}
+.playgroup-change-btn {
+    display: inline-flex; align-items: center; padding: 2px 8px;
+    font-size: 0.72rem; font-weight: 600; border-radius: 6px;
+    background: rgba(148, 163, 184, 0.15); border: 1px solid rgba(148, 163, 184, 0.5);
+    color: var(--text-secondary); cursor: pointer; white-space: nowrap;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.playgroup-change-btn:hover {
+    background: rgba(148, 163, 184, 0.25); color: var(--text-primary); border-color: rgba(148, 163, 184, 0.7);
+}
 .playgroup-actions-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.playgroup-actions-row .btn-auth { font-size: 0.73rem; }
 .playgroup-label { font-size: 0.85rem; color: var(--text-secondary); }
 .playgroup-count { font-size: 0.8rem; color: inherit; margin-left: 0; }
 .playgroup-select {
@@ -298,7 +347,8 @@ body.screen-shake {
 .player-info-section { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
 .player-name-section { flex: 1; min-width: 0; }
 .player-name { font-size: 1.43rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; }
-.meeple-unclaimed-badge {
+.meeple-unclaimed-badge,
+.meeple-traveller-badge {
     margin-left: 6px;
     padding: 1px 5px;
     border-radius: 999px;
@@ -311,6 +361,67 @@ body.screen-shake {
     color: var(--text-muted);
     white-space: nowrap;
     flex-shrink: 0;
+}
+.player-tier-pill {
+    margin-left: 6px;
+    padding: 1px 5px;
+    border-radius: 999px;
+    font-size: 0.58rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.player-tier-commoner { background: rgba(148, 163, 184, 0.12); border: 1px solid rgba(148, 163, 184, 0.35); color: var(--text-secondary); }
+.player-tier-noble { background: rgba(139, 92, 246, 0.14); border: 1px solid rgba(139, 92, 246, 0.4); color: var(--accent-secondary); }
+.player-tier-royal { background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.4); color: var(--accent-gold); }
+.campaign-creator-pill {
+    margin-left: 6px;
+    padding: 1px 5px;
+    border-radius: 999px;
+    font-size: 0.58rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    color: var(--accent-primary);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.campaign-edit-requirements-btn {
+    margin-left: 8px;
+    padding: 2px 8px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid var(--accent-primary);
+    color: var(--accent-primary);
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.campaign-edit-requirements-btn:hover {
+    background: var(--accent-primary);
+    color: white;
+}
+.campaign-settings-tier-checks {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.campaign-settings-tier-checks label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 0.95rem;
+}
+.campaign-settings-tier-checks input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent-primary);
 }
 .player-card-quote {
     font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; font-style: italic;
@@ -1027,7 +1138,7 @@ html { overflow-x: hidden; }
     .playgroup-meta-row { align-self: flex-start; margin-top: 2px; }
     .playgroup-select { flex: 1; min-width: 0; }
     .playgroup-actions-row { gap: 8px; justify-content: stretch; }
-    .playgroup-actions-row .btn-auth { flex: 1; padding: 10px 6px; font-size: 0.8rem; text-align: center; }
+    .playgroup-actions-row .btn-auth { flex: 1; padding: 10px 6px; font-size: 0.65rem; text-align: center; }
 
     /* Nav tabs — shrink text so "Add a Game Win" fits */
     .nav-tab { padding: 10px 6px; font-size: 0.78rem; }
@@ -1463,6 +1574,23 @@ html { overflow-x: hidden; }
     color: var(--text-muted);
     margin-bottom: 8px;
 }
+.player-profile-plan-info.profile-plan-pills {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;
+}
+.profile-plan-pill {
+    display: inline-flex; align-items: center; padding: 4px 10px;
+    font-size: 0.75rem; font-weight: 500; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06); border: 1px solid var(--border);
+    color: var(--text-secondary); white-space: nowrap;
+}
+.profile-plan-pill-commoner { background: rgba(148, 163, 184, 0.12); border-color: rgba(148, 163, 184, 0.35); color: var(--text-secondary); }
+.profile-plan-pill-noble { background: rgba(139, 92, 246, 0.14); border-color: rgba(139, 92, 246, 0.4); color: var(--accent-secondary); }
+.profile-plan-pill-royal { background: rgba(245, 158, 11, 0.14); border-color: rgba(245, 158, 11, 0.4); color: var(--accent-gold); }
+.profile-plan-pill-meeples { background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.35); color: var(--accent-success); }
+.profile-plan-pill-accepts { background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.35); color: var(--accent-primary); }
+.profile-plan-pill-limit { background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.4); color: var(--accent-warning); }
+.profile-plan-pill-muted { color: var(--text-muted); }
+.profile-plan-pill-traveller { background: rgba(148, 163, 184, 0.12); border-color: rgba(148, 163, 184, 0.35); color: var(--text-muted); }
 .player-profile-claim-btn {
     display: inline-flex;
     align-items: center;

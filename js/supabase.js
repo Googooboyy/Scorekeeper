@@ -210,6 +210,17 @@ export async function fetchPlayers(playgroupId) {
 }
 
 /**
+ * Fetch players with tier for a playgroup (for tier pill on player cards).
+ * Returns same shape as fetchPlayers plus tier (1=Commoner, 2=Noble, 3=Royal).
+ */
+export async function fetchPlayersWithTiers(playgroupId) {
+    const { data, error } = await getActiveClient()
+        .rpc('get_playgroup_players_with_tiers', { p_playgroup_id: playgroupId });
+    if (error) throw error;
+    return (data || []).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+}
+
+/**
  * Fetch a single player by ID (includes user_id for profile linking)
  */
 export async function fetchPlayerById(playerId) {
@@ -476,9 +487,16 @@ export async function fetchPlayerMetadata(playerIds) {
  * Load full playgroup data into the app's data shape
  */
 export async function loadPlaygroupData(playgroupId) {
-    const [games, players, entries, participantsByEntry] = await Promise.all([
+    let players;
+    try {
+        players = await fetchPlayersWithTiers(playgroupId);
+    } catch (err) {
+        // Fallback if migration 030 not applied: use fetchPlayers (tier pills won't show)
+        players = await fetchPlayers(playgroupId);
+        players.forEach(p => { p.tier = 1; });
+    }
+    const [games, entries, participantsByEntry] = await Promise.all([
         fetchGames(playgroupId),
-        fetchPlayers(playgroupId),
         fetchEntries(playgroupId),
         fetchEntryParticipants(playgroupId)
     ]);
@@ -506,10 +524,11 @@ export async function loadPlaygroupData(playgroupId) {
         if (m) playerData[p.name] = { image: m.image, color: m.color };
     });
 
-    // Merge user_id into playerData so profile modal can access it
+    // Merge user_id and tier into playerData so profile modal and player cards can access them
     players.forEach(p => {
         if (!playerData[p.name]) playerData[p.name] = {};
         playerData[p.name].userId = p.user_id || null;
+        playerData[p.name].tier = p.tier != null ? p.tier : 1;
     });
 
     // Merge participants into each entry
@@ -818,6 +837,91 @@ export async function fetchAppConfig() {
         .from('app_config').select('key, value');
     if (error) throw error;
     return Object.fromEntries((data || []).map(r => [r.key, r.value]));
+}
+
+// ── User tiers (Phase 1) ────────────────────────────────────────────────────
+
+/** Ensure current user has a tier row (for new signups). Call once after login. */
+export async function ensureUserTier() {
+    const supabase = getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase.rpc('ensure_user_tier');
+    if (error) throw error;
+}
+
+/** Fetch current user's tier (1, 2, or 3). Returns 1 if not found (default Free). */
+export async function fetchUserTier() {
+    const supabase = getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { tier: 1 };
+    const { data, error } = await supabase
+        .from('user_tiers')
+        .select('tier')
+        .eq('user_id', user.id)
+        .maybeSingle();
+    if (error) throw error;
+    return { tier: (data?.tier ?? 1) };
+}
+
+/** Fetch user_id -> tier map (admin only). */
+export async function fetchUserTiersMap() {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { data, error } = await ac.from('user_tiers')
+        .select('user_id, tier');
+    if (error) throw error;
+    return Object.fromEntries((data || []).map(r => [r.user_id, r.tier]));
+}
+
+/** Update a user's tier (admin only). */
+export async function updateUserTier(userId, tier) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    const { error } = await ac.from('user_tiers').upsert(
+        { user_id: userId, tier: parseInt(tier, 10) || 1, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' }
+    );
+    if (error) throw error;
+}
+
+/** Fetch campaign owner's tier and limits (for meeple limit display). */
+export async function fetchCampaignOwnerLimits(playgroupId) {
+    const { data, error } = await getActiveClient()
+        .rpc('get_campaign_owner_limits', { p_playgroup_id: playgroupId });
+    if (error) throw error;
+    const row = Array.isArray(data) && data[0] ? data[0] : data;
+    const tier = row?.owner_tier ?? 1;
+    const maxCampaigns = row?.max_campaigns ?? 2;
+    const maxMeeples = row?.max_meeples ?? 5;
+    return { tier, maxCampaigns, maxMeeples };
+}
+
+/** Fetch campaign join info (linked count, allowed tiers, owner, travellers, tier breakdown). Callable by anon for invite page. */
+export async function fetchCampaignJoinInfo(playgroupId) {
+    const { data, error } = await getActiveClient()
+        .rpc('get_campaign_join_info', { p_playgroup_id: playgroupId });
+    if (error) throw error;
+    const row = Array.isArray(data) && data[0] ? data[0] : data;
+    return {
+        linkedCount: row?.linked_count ?? 0,
+        allowedTiers: row?.allowed_tiers ?? [1, 2, 3],
+        ownerId: row?.owner_id ?? null,
+        travellers: row?.travellers ?? 0,
+        tier1Count: row?.tier_1_count ?? 0,
+        tier2Count: row?.tier_2_count ?? 0,
+        tier3Count: row?.tier_3_count ?? 0
+    };
+}
+
+/** Update campaign join requirements (owner only). */
+export async function updateCampaignJoinRequirements(playgroupId, allowedTiers) {
+    const tiers = Array.isArray(allowedTiers) ? allowedTiers : [1, 2, 3];
+    const { error } = await getActiveClient()
+        .from('playgroups')
+        .update({ join_allowed_tiers: tiers })
+        .eq('id', playgroupId);
+    if (error) throw error;
 }
 
 export async function setAppConfig(key, value) {

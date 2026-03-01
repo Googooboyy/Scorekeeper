@@ -6,9 +6,9 @@ import { onAuthStateChange, getSession, getInviteTokenFromStorage, saveInviteTok
 function hasInviteToken() {
     return !!getInviteTokenFromUrl() || !!getInviteTokenFromStorage();
 }
-import { loadPlaygroups, setActivePlaygroup, setOnPlaygroupChange, setupPlaygroupUI, getActivePlaygroup, ensureLastCampaignSelected } from './playgroups.js';
+import { loadPlaygroups, setActivePlaygroup, setOnPlaygroupChange, setupPlaygroupUI, getActivePlaygroup, ensureLastCampaignSelected, updateUserPlanLabelFromTier } from './playgroups.js';
 import { setupAuthButtons, updateAuthUI, updateEditability, syncReadOnlyBanner, updateAdminUI } from './auth-ui.js';
-import { redeemInviteToken, resolveInviteToken, fetchPlaygroupName, fetchActiveAnnouncement, fetchAppConfig, fetchUserProfile } from './supabase.js';
+import { redeemInviteToken, resolveInviteToken, fetchPlaygroupName, fetchActiveAnnouncement, fetchAppConfig, fetchUserProfile, ensureUserTier, fetchUserTier, fetchCampaignJoinInfo } from './supabase.js';
 import { showNotification, fireConfetti } from './modals.js';
 import { isAdminConfigured, isAdminEmail, isAdminMode, activateAdminMode, deactivateAdminMode, showAdminPassphraseModal, hasAdminPromptDismissed, clearAdminPromptDismissed } from './admin.js';
 
@@ -35,15 +35,50 @@ async function loadAnnouncement() {
     } catch {}
 }
 
+/** Tier labels: Commoner (1), Noble (2), Royal (3). */
+export function getTierLabel(tier) {
+    const t = parseInt(tier, 10) || 1;
+    if (t === 2) return 'Noble';
+    if (t === 3) return 'Royal';
+    return 'Commoner';
+}
+
+/** Tier limits: T1=2,5 T2=4,10 T3=unlimited. */
+const TIER_LIMITS = { 1: { campaigns: 2, meeples: 5 }, 2: { campaigns: 4, meeples: 10 }, 3: { campaigns: 999999, meeples: 999999 } };
+
 async function loadBetaLimits() {
     try {
         const config = await fetchAppConfig();
-        if (config.max_meeples_per_campaign) {
-            window._scorekeeperMaxMeeples = parseInt(config.max_meeples_per_campaign, 10) || 4;
+        let maxCampaigns = null, maxMeeples = null;
+        let userTier = 1;
+
+        const session = await getSession();
+        if (session?.user) {
+            try {
+                await ensureUserTier();
+                const { tier } = await fetchUserTier();
+                userTier = tier ?? 1;
+                window._scorekeeperUserTier = userTier;
+                const limits = TIER_LIMITS[userTier] || TIER_LIMITS[1];
+                maxCampaigns = limits.campaigns;
+                maxMeeples = limits.meeples;
+            } catch (e) { /* fallback to config */ }
         }
+
         if (config.max_campaigns_per_user) {
-            window._scorekeeperMaxCampaigns = parseInt(config.max_campaigns_per_user, 10) || 2;
+            const override = parseInt(config.max_campaigns_per_user, 10);
+            if (!isNaN(override) && override > 0) maxCampaigns = override;
         }
+        if (config.max_meeples_per_campaign) {
+            const override = parseInt(config.max_meeples_per_campaign, 10);
+            if (!isNaN(override) && override > 0) maxMeeples = override;
+        }
+
+        window._scorekeeperMaxCampaigns = maxCampaigns ?? 2;
+        window._scorekeeperMaxMeeples = maxMeeples ?? 5;
+        if (session?.user && typeof window._scorekeeperUserTier === 'undefined') window._scorekeeperUserTier = userTier;
+        updateUserPlanLabelFromTier();
+
         if (config.leaderboard_quotes) {
             try {
                 window._scorekeeperLeaderboardQuotes = JSON.parse(config.leaderboard_quotes);
@@ -61,13 +96,17 @@ function getInviteTokenFromUrl() {
     return new URLSearchParams(window.location.search).get('invite');
 }
 
-/** Load campaign as guest by invite token (resolve token then load data). Returns campaign name or null. */
+/** Load campaign as guest by invite token (resolve token then load data). Returns { name, joinInfo } or null. */
 async function loadGuestCampaignByInvite(token) {
     try {
         const res = await resolveInviteToken(token);
         if (!res?.playgroup_id) return null;
         await loadData(res.playgroup_id);
-        return res.playgroup_name || null;
+        let joinInfo = null;
+        try {
+            joinInfo = await fetchCampaignJoinInfo(res.playgroup_id);
+        } catch { /* ignore */ }
+        return { name: res.playgroup_name || null, joinInfo };
     } catch (err) {
         const is404 = (typeof err?.status === 'number' && err.status === 404) || (err?.message && String(err.message).includes('Could not find'));
         if (is404) {
@@ -198,9 +237,9 @@ document.addEventListener('DOMContentLoaded', async function () {
             setupPlaygroupUI();
 
             // If viewing via invite link, load campaign as guest first (so they always see it)
-            let guestPgName = null;
+            let guestPg = null;
             if (viewingViaInvite) {
-                guestPgName = await loadGuestCampaignByInvite(token);
+                guestPg = await loadGuestCampaignByInvite(token);
             }
 
             // Only auto-redeem when user chose "Login and join campaign" (intent set before OAuth)
@@ -216,7 +255,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 }
                 const canEdit = !!getActivePlaygroup();
                 updateEditability(canEdit);
-                syncReadOnlyBanner(canEdit, true, hasInviteToken(), guestPgName, viewingViaInvite);
+                syncReadOnlyBanner(canEdit, true, hasInviteToken(), guestPg?.name ?? null, viewingViaInvite, guestPg?.joinInfo ?? null);
                 const pg = getActivePlaygroup();
                 if (pg && !viewingViaInvite) await loadData(pg.id);
                 else if (!viewingViaInvite) {
@@ -246,8 +285,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             renderAll();
             updateEditability(false);
             if (viewingViaInvite) {
-                const guestPgName = await loadGuestCampaignByInvite(token);
-                syncReadOnlyBanner(false, false, true, guestPgName, true);
+                const guestPg = await loadGuestCampaignByInvite(token);
+                syncReadOnlyBanner(false, false, true, guestPg?.name ?? null, true, guestPg?.joinInfo ?? null);
             } else {
                 syncReadOnlyBanner(false, false, hasInviteToken());
             }
@@ -284,9 +323,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         updateAdminUI(userEmail, () => doActivateAdmin(userEmail));
         setupPlaygroupUI();
 
-        let guestPgName = null;
+        let guestPg = null;
         if (viewingViaInvite) {
-            guestPgName = await loadGuestCampaignByInvite(token);
+            guestPg = await loadGuestCampaignByInvite(token);
         }
         const redeemed = await tryRedeemInvite(sess);
         if (redeemed) {
@@ -301,7 +340,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             else if (!viewingViaInvite) { resetData(); renderAll(); }
             const canEdit = !!getActivePlaygroup();
             updateEditability(canEdit);
-            syncReadOnlyBanner(canEdit, true, hasInviteToken(), guestPgName, viewingViaInvite);
+            syncReadOnlyBanner(canEdit, true, hasInviteToken(), guestPg?.name ?? null, viewingViaInvite, guestPg?.joinInfo ?? null);
         }
         if (sess?.user?.id) {
             fetchUserProfile(sess.user.id).then(p => {
@@ -328,8 +367,8 @@ document.addEventListener('DOMContentLoaded', async function () {
         renderAll();
         updateEditability(false);
         if (viewingViaInvite) {
-            const guestPgName = await loadGuestCampaignByInvite(token);
-            syncReadOnlyBanner(false, false, true, guestPgName, true);
+            const guestPg = await loadGuestCampaignByInvite(token);
+            syncReadOnlyBanner(false, false, true, guestPg?.name ?? null, true, guestPg?.joinInfo ?? null);
             showSection('dashboard');
         } else {
             syncReadOnlyBanner(false, false, hasInviteToken());

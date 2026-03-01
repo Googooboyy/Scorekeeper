@@ -1,6 +1,13 @@
-import { fetchPlaygroups, createPlaygroup, getOrCreateInviteToken, leavePlaygroup, fetchPlaygroupMemberCount } from './supabase.js';
+import { fetchPlaygroups, createPlaygroup, getOrCreateInviteToken, leavePlaygroup, fetchCampaignOwnerLimits, fetchCampaignJoinInfo, updateCampaignJoinRequirements } from './supabase.js';
 import { showNotification, showModal } from './modals.js';
 import { isAdminMode } from './admin.js';
+
+function getTierLabel(tier) {
+    const t = parseInt(tier, 10) || 1;
+    if (t === 2) return 'Noble';
+    if (t === 3) return 'Royal';
+    return 'Commoner';
+}
 
 let activePlaygroup = null;
 let playgroups = [];
@@ -74,28 +81,148 @@ function renderPlaygroupSelect() {
     updatePlaygroupActionButtons();
 }
 
-async function updatePlaygroupCountBadge() {
-    const countEl = document.getElementById('playgroupCount');
-    if (!countEl) return;
-
-    const maxCampaigns = window._scorekeeperMaxCampaigns || 2;
-    const campaignsText = playgroups.length + ' of ' + maxCampaigns + ' campaigns';
-
-    const pg = activePlaygroup;
-    if (!pg) {
-        countEl.textContent = campaignsText;
-        countEl.title = '';
+function updateUserPlanLabel() {
+    const pill = document.getElementById('planPillTier');
+    const summary = document.getElementById('planSummary');
+    if (!pill) return;
+    const tier = window._scorekeeperUserTier;
+    if (tier == null || tier === undefined) {
+        pill.textContent = '';
+        pill.style.display = 'none';
+        if (summary) {
+            summary.classList.remove('plan-summary-tier-commoner', 'plan-summary-tier-noble', 'plan-summary-tier-royal');
+        }
         return;
     }
-
-    try {
-        const meepleCount = await fetchPlaygroupMemberCount(pg.id);
-        const meepleLabel = meepleCount === 1 ? 'meeple' : 'meeples';
-        countEl.textContent = `${campaignsText} · ${meepleCount} ${meepleLabel} joined`;
-        countEl.title = 'Number of meeples (users) joined to this campaign.';
-    } catch {
-        countEl.textContent = campaignsText;
+    pill.textContent = 'Class: ' + getTierLabel(tier);
+    pill.title = 'Your membership tier';
+    pill.style.display = '';
+    if (summary) {
+        summary.classList.remove('plan-summary-tier-commoner', 'plan-summary-tier-noble', 'plan-summary-tier-royal');
+        const t = parseInt(tier, 10) || 1;
+        if (t === 1) summary.classList.add('plan-summary-tier-commoner');
+        else if (t === 2) summary.classList.add('plan-summary-tier-noble');
+        else if (t === 3) summary.classList.add('plan-summary-tier-royal');
     }
+}
+
+export function updateUserPlanLabelFromTier() {
+    updateUserPlanLabel();
+}
+
+function formatAcceptsRequirement(allowedTiers) {
+    if (!allowedTiers || allowedTiers.length === 0) return 'Commoners, Nobles and Royals';
+    const labels = allowedTiers
+        .slice()
+        .sort((a, b) => a - b)
+        .map(t => t === 1 ? 'Commoners' : t === 2 ? 'Nobles' : 'Royals');
+    if (labels.length === 1) return labels[0];
+    if (labels.length === 2) return labels[0] + ' and ' + labels[1];
+    return labels[0] + ', ' + labels[1] + ' and ' + labels[2];
+}
+
+function formatPopulationBreakdown(tier1Count, tier2Count, tier3Count, allowedTiers) {
+    const allowed = new Set(allowedTiers || [1, 2, 3]);
+    const parts = [];
+    if (allowed.has(1) && tier1Count > 0) parts.push(tier1Count + ' Commoner' + (tier1Count === 1 ? '' : 's'));
+    if (allowed.has(2) && tier2Count > 0) parts.push(tier2Count + ' Noble' + (tier2Count === 1 ? '' : 's'));
+    if (allowed.has(3) && tier3Count > 0) parts.push(tier3Count + ' Royal' + (tier3Count === 1 ? '' : 's'));
+    if (parts.length === 0) return null;
+    const total = (allowed.has(1) ? tier1Count : 0) + (allowed.has(2) ? tier2Count : 0) + (allowed.has(3) ? tier3Count : 0);
+    const phrase = parts.length === 1 ? parts[0] : parts.length === 2 ? parts[0] + ' and ' + parts[1] : parts[0] + ', ' + parts[1] + ', and ' + parts[2];
+    return { total, phrase };
+}
+
+function formatLine2(travellers, tier1Count, tier2Count, tier3Count, allowedTiers) {
+    const travellerLabel = travellers === 1 ? '1 Traveller' : travellers + ' Travellers';
+    const breakdown = formatPopulationBreakdown(tier1Count, tier2Count, tier3Count, allowedTiers);
+    if (!breakdown) {
+        return 'There are currently ' + travellerLabel + '.';
+    }
+    const meepleLabel = breakdown.total === 1 ? 'Meeple' : 'Meeples';
+    return 'There are currently ' + travellerLabel + ' and an active party of ' + breakdown.total + ' ' + meepleLabel + ': ' + breakdown.phrase + '.';
+}
+
+async function updatePlaygroupCountBadge() {
+    const tierPill = document.getElementById('planPillTier');
+    const campaignsPill = document.getElementById('planPillCampaigns');
+    const meeplesRow = document.getElementById('meeplesRow');
+    const summary = document.getElementById('planSummary');
+    const pg = activePlaygroup;
+    if (!campaignsPill || !summary) return;
+
+    updateUserPlanLabel();
+
+    const maxCampaigns = window._scorekeeperMaxCampaigns || 2;
+    const campaignsText = 'Engagement: ' + playgroups.length + ' of ' + maxCampaigns + ' campaigns';
+    campaignsPill.textContent = campaignsText;
+    campaignsPill.title = 'Campaigns you belong to vs plan limit';
+
+    const partyPermitPill = document.getElementById('planPillPartyPermit');
+    if (partyPermitPill && pg) {
+        try {
+            const limits = await fetchCampaignOwnerLimits(pg.id);
+            const max = limits?.maxMeeples ?? 5;
+            const UNLIMITED = 999999;
+            if (max >= UNLIMITED) {
+                partyPermitPill.textContent = 'Party Permit: unlimited meeples';
+                partyPermitPill.title = 'This campaign has no meeple limit';
+            } else {
+                partyPermitPill.textContent = 'Party Permit: ' + max + ' meeples limit';
+                partyPermitPill.title = 'Max meeples for this campaign';
+            }
+            partyPermitPill.style.display = '';
+        } catch {
+            partyPermitPill.textContent = '';
+            partyPermitPill.style.display = 'none';
+        }
+    } else if (partyPermitPill) {
+        partyPermitPill.textContent = '';
+        partyPermitPill.style.display = 'none';
+    }
+
+    const acceptsText = document.getElementById('meeplesAcceptsText');
+    const populationText = document.getElementById('meeplesPopulationText');
+    const changeBtn = document.getElementById('meeplesChangeBtn');
+
+    if (!pg) {
+        if (meeplesRow) { meeplesRow.style.display = 'none'; }
+        if (acceptsText) acceptsText.textContent = '';
+        if (populationText) populationText.textContent = '';
+        if (changeBtn) changeBtn.style.display = 'none';
+    } else {
+        try {
+            const joinInfo = await fetchCampaignJoinInfo(pg.id);
+            const travellers = joinInfo.travellers ?? 0;
+            const tier1 = joinInfo.tier1Count ?? 0;
+            const tier2 = joinInfo.tier2Count ?? 0;
+            const tier3 = joinInfo.tier3Count ?? 0;
+            const allowedTiers = joinInfo.allowedTiers ?? [1, 2, 3];
+
+            const acceptsAll = allowedTiers && allowedTiers.length >= 3 &&
+                allowedTiers.includes(1) && allowedTiers.includes(2) && allowedTiers.includes(3);
+            const acceptsPhrase = acceptsAll ? 'everyone' : 'only ' + formatAcceptsRequirement(allowedTiers);
+            if (acceptsText) acceptsText.textContent = 'This campaign accepts ' + acceptsPhrase + '. ';
+            if (populationText) populationText.textContent = formatLine2(travellers, tier1, tier2, tier3, allowedTiers);
+
+            const isOwner = pg.role === 'owner';
+            if (changeBtn) {
+                changeBtn.style.display = isOwner ? 'inline-flex' : 'none';
+                if (isOwner) {
+                    changeBtn.onclick = () => openCampaignSettingsModal();
+                }
+            }
+            if (meeplesRow) meeplesRow.style.display = 'block';
+        } catch {
+            if (meeplesRow) meeplesRow.style.display = 'none';
+            if (acceptsText) acceptsText.textContent = '';
+            if (populationText) populationText.textContent = '';
+            if (changeBtn) changeBtn.style.display = 'none';
+        }
+    }
+
+    const hasTier = tierPill && tierPill.textContent;
+    summary.style.display = (hasTier || campaignsPill.textContent) ? 'flex' : 'none';
 }
 
 function updatePlaygroupActionButtons() {
@@ -301,4 +428,60 @@ export function ensureLastCampaignSelected() {
     if (activePlaygroup && activePlaygroup.id === lastId) return;
     const pg = playgroups.find(pg => pg.id === lastId);
     if (pg) setActivePlaygroup(pg);
+}
+
+/** Open campaign settings modal (join requirements). Owner only. */
+export async function openCampaignSettingsModal() {
+    const pg = getActivePlaygroup();
+    if (!pg) return;
+    const modal = document.getElementById('campaignSettingsModal');
+    const checksContainer = document.getElementById('campaignSettingsTierChecks');
+    const saveBtn = document.getElementById('campaignSettingsSave');
+    const cancelBtn = document.getElementById('campaignSettingsCancel');
+    if (!modal || !checksContainer || !saveBtn || !cancelBtn) return;
+
+    try {
+        const joinInfo = await fetchCampaignJoinInfo(pg.id);
+        const allowed = joinInfo.allowedTiers ?? [1, 2, 3];
+        checksContainer.querySelectorAll('input[data-tier]').forEach(cb => {
+            const tier = parseInt(cb.dataset.tier, 10);
+            cb.checked = allowed.includes(tier);
+        });
+    } catch {
+        checksContainer.querySelectorAll('input[data-tier]').forEach(cb => { cb.checked = true; });
+    }
+
+    modal.classList.add('active');
+    const close = () => modal.classList.remove('active');
+
+    const doSave = async () => {
+        const selected = [];
+        checksContainer.querySelectorAll('input[data-tier]:checked').forEach(cb => {
+            selected.push(parseInt(cb.dataset.tier, 10));
+        });
+        if (selected.length === 0) {
+            showNotification('Select at least one tier.');
+            return;
+        }
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving…';
+        try {
+            await updateCampaignJoinRequirements(pg.id, selected);
+            if (activePlaygroup && activePlaygroup.id === pg.id) {
+                activePlaygroup.join_allowed_tiers = selected;
+            }
+            close();
+            showNotification('Join requirements updated.');
+            updatePlaygroupCountBadge();
+        } catch (err) {
+            showNotification('Could not update: ' + (err.message || err));
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save';
+        }
+    };
+
+    saveBtn.onclick = doSave;
+    cancelBtn.onclick = close;
+    modal.onclick = (e) => { if (e.target === modal) close(); };
 }

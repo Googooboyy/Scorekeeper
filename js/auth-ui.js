@@ -162,7 +162,17 @@ function _updateAdminControls(email, onAdminActivated) {
     }
 }
 
-export function syncReadOnlyBanner(canEdit, isLoggedIn, hasInviteToken, guestCampaignName = null, viewingViaInvite = false) {
+function formatTierLabels(tiers) {
+    if (!tiers || tiers.length === 0) return 'Commoners, Nobles and Royals';
+    const labels = tiers.map(t => {
+        if (t === 2) return 'Noble';
+        if (t === 3) return 'Royal';
+        return 'Commoner';
+    });
+    return labels.join(', ');
+}
+
+export function syncReadOnlyBanner(canEdit, isLoggedIn, hasInviteToken, guestCampaignName = null, viewingViaInvite = false, joinInfo = null) {
     const banner = document.getElementById('readOnlyBanner');
     if (!banner) return;
 
@@ -173,14 +183,17 @@ export function syncReadOnlyBanner(canEdit, isLoggedIn, hasInviteToken, guestCam
 
     if (guestCampaignName && viewingViaInvite) {
         const btnText = isLoggedIn ? 'Join campaign' : 'Login and join campaign';
+        const acceptLabel = joinInfo ? formatTierLabels(joinInfo.allowedTiers) : 'Commoners, Nobles and Royals';
         banner.classList.add('guest-banner');
-        banner.innerHTML = 'Viewing <strong>' + guestCampaignName + '</strong> as guest. <button type="button" class="btn-accept-invite" id="joinOrLoginInviteBtn">' + btnText + '</button>';
+        banner.innerHTML = 'Viewing <strong>' + guestCampaignName + '</strong> as guest. Accepts: ' + acceptLabel + '. <button type="button" class="btn-accept-invite" id="joinOrLoginInviteBtn">' + btnText + '</button>';
         banner.style.display = 'block';
         return;
     }
 
     if (guestCampaignName) {
-        banner.innerHTML = 'Viewing <strong>' + guestCampaignName + '</strong> as guest — sign in to add wins and track your glory!';
+        const acceptLabel = joinInfo ? formatTierLabels(joinInfo.allowedTiers) : '';
+        banner.innerHTML = 'Viewing <strong>' + guestCampaignName + '</strong> as guest — sign in to add wins and track your glory!' +
+            (acceptLabel ? ' <span class="guest-accepts">Accepts: ' + acceptLabel + '</span>' : '');
         banner.classList.add('guest-banner');
         banner.style.display = 'block';
         return;
