@@ -1634,9 +1634,22 @@ async function saveQuotes() {
 async function loadConfig() {
     if (!guardAdmin()) return;
     try { _config = await fetchAppConfig(); } catch (e) { console.error(e); return; }
-    document.getElementById('cfgMaxCampaigns').value = _config.max_campaigns_per_user || '2';
-    document.getElementById('cfgMaxMeeples').value = _config.max_meeples_per_campaign || '4';
-    document.getElementById('cfgPersonalMessageDays').value = _config.personal_message_days || '';
+    const maxCampVal = _config.max_campaigns_per_user || '';
+    const maxMeeplesVal = _config.max_meeples_per_campaign || '';
+    const pmDaysVal = _config.personal_message_days || '';
+    document.getElementById('cfgMaxCampaignsEnabled').checked = !!maxCampVal && parseInt(maxCampVal, 10) > 0;
+    document.getElementById('cfgMaxMeeplesEnabled').checked = !!maxMeeplesVal && parseInt(maxMeeplesVal, 10) > 0;
+    document.getElementById('cfgPersonalMessageDaysEnabled').checked = !!pmDaysVal && parseInt(pmDaysVal, 10) > 0;
+    document.getElementById('cfgMaxCampaigns').value = maxCampVal || '5';
+    document.getElementById('cfgMaxMeeples').value = maxMeeplesVal || '10';
+    document.getElementById('cfgPersonalMessageDays').value = pmDaysVal || '7';
+    syncConfigToggleInputs();
+    if (!loadConfig._toggleListenersAttached) {
+        ['cfgMaxCampaignsEnabled', 'cfgMaxMeeplesEnabled', 'cfgPersonalMessageDaysEnabled'].forEach(id => {
+            document.getElementById(id)?.addEventListener('change', syncConfigToggleInputs);
+        });
+        loadConfig._toggleListenersAttached = true;
+    }
     document.getElementById('cfgDefaultUserTier').value = _config.default_user_tier || '1';
     document.getElementById('cfgAnnouncementExpiryDays').value = _config.announcement_expiry_days || '';
     document.getElementById('cfgLeaderboardQuotesEnabled').checked = _config.leaderboard_quotes_enabled !== 'false';
@@ -1645,14 +1658,27 @@ async function loadConfig() {
     document.getElementById('cfgShowCampaignAcceptsText').checked = _config.show_campaign_accepts_text !== 'false';
 }
 
+function syncConfigToggleInputs() {
+    const toggleIds = ['cfgMaxCampaigns', 'cfgMaxMeeples', 'cfgPersonalMessageDays'];
+    const enableIds = ['cfgMaxCampaignsEnabled', 'cfgMaxMeeplesEnabled', 'cfgPersonalMessageDaysEnabled'];
+    enableIds.forEach((enId, i) => {
+        const enabled = document.getElementById(enId)?.checked;
+        const input = document.getElementById(toggleIds[i]);
+        if (input) input.style.display = enabled ? '' : 'none';
+    });
+}
+
 async function saveConfig() {
     const btn = document.getElementById('saveConfigBtn');
     const status = document.getElementById('configStatus');
     btn.disabled = true; btn.textContent = 'Saving…';
     try {
-        await setAppConfig('max_campaigns_per_user', document.getElementById('cfgMaxCampaigns').value);
-        await setAppConfig('max_meeples_per_campaign', document.getElementById('cfgMaxMeeples').value);
-        await setAppConfig('personal_message_days', document.getElementById('cfgPersonalMessageDays').value || '7');
+        const maxCampEnabled = document.getElementById('cfgMaxCampaignsEnabled').checked;
+        const maxMeeplesEnabled = document.getElementById('cfgMaxMeeplesEnabled').checked;
+        const pmDaysEnabled = document.getElementById('cfgPersonalMessageDaysEnabled').checked;
+        await setAppConfig('max_campaigns_per_user', maxCampEnabled ? document.getElementById('cfgMaxCampaigns').value : '');
+        await setAppConfig('max_meeples_per_campaign', maxMeeplesEnabled ? document.getElementById('cfgMaxMeeples').value : '');
+        await setAppConfig('personal_message_days', pmDaysEnabled ? (document.getElementById('cfgPersonalMessageDays').value || '7') : '');
         await setAppConfig('default_user_tier', document.getElementById('cfgDefaultUserTier').value || '1');
         await setAppConfig('announcement_expiry_days', document.getElementById('cfgAnnouncementExpiryDays').value || '0');
         await setAppConfig('leaderboard_quotes_enabled', document.getElementById('cfgLeaderboardQuotesEnabled').checked ? 'true' : 'false');

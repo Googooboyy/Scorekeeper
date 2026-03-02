@@ -259,17 +259,26 @@
                 <h2 class="admin-panel-title">Global Config</h2>
                 <p style="color:var(--text-muted); margin-bottom:16px;">These settings override tier limits and control app-wide behavior.</p>
                 <div class="admin-config-form">
-                    <div class="admin-config-field">
-                        <label>Max campaigns per user</label>
-                        <input type="number" id="cfgMaxCampaigns" class="admin-config-input" min="1" max="100">
+                    <div class="admin-config-field admin-config-toggle-row">
+                        <label class="admin-config-toggle-label">
+                            <input type="checkbox" id="cfgMaxCampaignsEnabled" class="admin-config-toggle">
+                            <span>Max campaigns per user</span>
+                        </label>
+                        <input type="number" id="cfgMaxCampaigns" class="admin-config-input admin-config-input-inline" min="1" max="100" placeholder="e.g. 5">
                     </div>
-                    <div class="admin-config-field">
-                        <label>Max meeples per campaign</label>
-                        <input type="number" id="cfgMaxMeeples" class="admin-config-input" min="1" max="100">
+                    <div class="admin-config-field admin-config-toggle-row">
+                        <label class="admin-config-toggle-label">
+                            <input type="checkbox" id="cfgMaxMeeplesEnabled" class="admin-config-toggle">
+                            <span>Max meeples per campaign</span>
+                        </label>
+                        <input type="number" id="cfgMaxMeeples" class="admin-config-input admin-config-input-inline" min="1" max="100" placeholder="e.g. 10">
                     </div>
-                    <div class="admin-config-field">
-                        <label>Personal message default days</label>
-                        <input type="number" id="cfgPersonalMessageDays" class="admin-config-input" min="1" max="365" placeholder="7">
+                    <div class="admin-config-field admin-config-toggle-row">
+                        <label class="admin-config-toggle-label">
+                            <input type="checkbox" id="cfgPersonalMessageDaysEnabled" class="admin-config-toggle">
+                            <span>Personal message default days</span>
+                        </label>
+                        <input type="number" id="cfgPersonalMessageDays" class="admin-config-input admin-config-input-inline" min="1" max="365" placeholder="7">
                         <span class="admin-config-hint">Default when sending personal messages</span>
                     </div>
                     <div class="admin-config-field">

@@ -269,15 +269,16 @@ header .subtitle {
     padding: 6px 14px;
     font-size: 0.8rem;
     font-weight: 500;
-    color: var(--text-muted);
+    color: var(--text-primary);
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--border);
     border-radius: 999px;
     cursor: pointer;
     transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.15));
 }
 .celebration-pill:hover {
-    color: var(--text-secondary);
+    color: var(--text-primary);
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.12);
 }
@@ -533,6 +534,9 @@ body.screen-shake {
 .victory-roster-wins {
     font-size: 0.95rem; font-weight: 700; color: var(--accent-success);
     text-align: left;
+}
+.players-grid .player-card:not(:first-child) .victory-roster-wins {
+    color: var(--text-muted);
 }
 .victory-roster-title { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; }
 .victory-roster-toggle-group {
@@ -2626,6 +2630,10 @@ html { overflow-x: hidden; }
 .admin-config-hint { display: block; margin-top: 4px; font-size: 0.8rem; color: var(--text-muted); }
 .admin-config-checkbox label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .admin-config-checkbox input[type="checkbox"] { width: auto; }
+.admin-config-toggle-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.admin-config-toggle-row .admin-config-toggle-label { display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 0; flex-shrink: 0; }
+.admin-config-toggle-row .admin-config-input-inline { width: 100px; flex-shrink: 0; }
+.admin-config-toggle-row .admin-config-hint { flex-basis: 100%; margin-top: 4px; }
 .admin-config-status { margin-left: 12px; font-size: 0.85rem; }
 
 /* Tier definitions */
