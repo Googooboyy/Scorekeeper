@@ -1215,6 +1215,15 @@ function renderConsolidatedGames() {
     });
 
     let rows = Object.values(groups).sort((a, b) => b.totalWins - a.totalWins);
+
+    // Only show rows that are actually consolidated/canonical:
+    // - groups with more than one game row, or
+    // - any group that is attached to a global_game (has global_game_id).
+    rows = rows.filter(row => {
+        const hasGlobal = row.games.some(g => g.global_game_id);
+        const isMulti = row.games.length > 1;
+        return hasGlobal || isMulti;
+    });
     const consolidatedQ = (document.getElementById('consolidatedSearch')?.value || '').toLowerCase();
     if (consolidatedQ) {
         rows = rows.filter(row => {
@@ -1226,21 +1235,28 @@ function renderConsolidatedGames() {
 
     tbody.innerHTML = rows.map((row, idx) => {
         const campaigns = [...row.campaigns].map(pgId => pgName(pgId)).join(', ');
-        const linked = row.games[0]?.global_game_id;
         const campaignCounts = {};
         row.games.forEach(g => { campaignCounts[g.playgroup_id] = (campaignCounts[g.playgroup_id] || 0) + 1; });
         const hasSameCampaignDuplicates = Object.values(campaignCounts).some(c => c > 1);
         const sourceForMerge = hasSameCampaignDuplicates
             ? row.games.find(g => campaignCounts[g.playgroup_id] > 1)
             : null;
+
+        const firstWithGlobal = row.games.find(g => g.global_game_id);
+        const linkedGlobalGame = firstWithGlobal
+            ? globalGames.find(gg => gg.id === firstWithGlobal.global_game_id)
+            : null;
+        const isBggLinked = !!(linkedGlobalGame && typeof linkedGlobalGame.bgg_id === 'number' && linkedGlobalGame.bgg_id > 0);
+
         return `<tr data-consolidated-row="${idx}">
             <td>${esc(row.canonicalName)}</td>
             <td>${esc(campaigns)}</td>
             <td>${row.totalWins}</td>
             <td>${row.games.length}</td>
             <td>
-                ${linked ? '<span class="admin-badge admin-badge-ok">Linked</span>' : ''}
+                ${isBggLinked ? '<span class="admin-badge admin-badge-ok">BGG linked</span>' : ''}
                 ${sourceForMerge ? `<button type="button" class="admin-action-btn admin-action-success" data-consolidated-merge="${sourceForMerge.id}">Merge</button>` : ''}
+                ${!isBggLinked ? `<button type="button" class="admin-action-btn" data-consolidated-bgg-link="${idx}">Link to BGG</button>` : ''}
             </td>
         </tr>`;
     }).join('') || '<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No games.</td></tr>';
@@ -1250,6 +1266,71 @@ function renderConsolidatedGames() {
             e.preventDefault();
             const sourceId = btn.dataset.consolidatedMerge;
             if (sourceId) showMergeModal(sourceId);
+        });
+    });
+
+    tbody.querySelectorAll('[data-consolidated-bgg-link]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const rowIndex = parseInt(btn.dataset.consolidatedBggLink, 10);
+            const row = rows[rowIndex];
+            if (!row) return;
+
+            const defaultQuery = (row.canonicalName || '').trim();
+            const query = prompt('Search BGG for this game:', defaultQuery);
+            if (!query || query.trim().length < 2) return;
+
+            const q = query.trim();
+            const url = SUPABASE_URL + '/functions/v1/bgg-search?q=' + encodeURIComponent(q);
+            let results;
+            try {
+                const resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } });
+                if (!resp.ok) {
+                    const status = resp.status;
+                    const friendly = describeBggStatus(status);
+                    adminToast('BGG search failed: ' + friendly);
+                    return;
+                }
+                results = await resp.json();
+            } catch (e) {
+                adminToast('BGG search error: ' + (e.message || e));
+                return;
+            }
+
+            if (!results || !results.length) {
+                adminToast('No BGG results found.');
+                return;
+            }
+
+            // For now, use the first result from BGG; admin can refine the query if needed.
+            const bgg = results[0];
+
+            try {
+                const globalGame = await upsertGlobalGame(
+                    bgg.bgg_id,
+                    bgg.name,
+                    bgg.year_published,
+                    bgg.thumbnail_url
+                );
+
+                for (const g of row.games) {
+                    await linkGameToGlobal(g.id, globalGame.id, globalGame.name);
+                    const local = _games.find(x => x.id === g.id);
+                    if (local) {
+                        local.global_game_id = globalGame.id;
+                        local.name = globalGame.name || local.name;
+                    }
+                }
+
+                if (!_globalGames.find(gg => gg.id === globalGame.id)) {
+                    _globalGames.push(globalGame);
+                }
+
+                adminToast(`Linked "${globalGame.name}" to BGG for ${row.games.length} game(s).`);
+                renderGamesTable();
+                renderConsolidatedGames();
+            } catch (e) {
+                adminToast('Link failed: ' + (e.message || e));
+            }
         });
     });
 }
