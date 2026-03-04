@@ -14,7 +14,7 @@ import {
     fetchAllAnnouncements, publishAnnouncement, clearAnnouncement, fetchActiveAnnouncement,
     deleteAnnouncement, reactivateAnnouncement, updateAnnouncement,
     fetchLastPersonalMessagePerUser,
-    sendPersonalMessages,
+    sendPersonalMessages, clearPersonalMessages,
     fetchUnlinkedGames, fetchGlobalGames, upsertGlobalGame, linkGameToGlobal, createGlobalGameByName,
     deletePlaygroupAdmin, deleteInviteToken, replaceInviteToken,
     adminDeleteEntry, adminDeleteGame, adminDeletePlayer, adminMergeGames, adminUpdateGame,
@@ -586,6 +586,7 @@ function renderUsers() {
 
     setupBulkSelect('users', 'usersBulkBar', 'usersBulkCount', 'usersTable');
     const sendMsgBtn = document.getElementById('usersBulkSendMessage');
+    const clearMsgBtn = document.getElementById('usersBulkClearMessages');
     const removeBtn = document.getElementById('usersBulkRemoveCampaigns');
     const deleteBtn = document.getElementById('usersBulkDeleteAccounts');
     const clearBtn = document.getElementById('usersBulkClear');
@@ -595,6 +596,21 @@ function renderUsers() {
             const ids = getChecked('users');
             if (!ids.length) { adminToast('Select users first.'); return; }
             openSendMessageModal(ids);
+        };
+    }
+
+    if (clearMsgBtn) {
+        clearMsgBtn.onclick = async () => {
+            const ids = getChecked('users');
+            if (!ids.length) { adminToast('Select users first.'); return; }
+            if (!confirm(`Clear the personal message banner for ${ids.length} user(s)? They will no longer see any active personal message.`)) return;
+            try {
+                await clearPersonalMessages(ids);
+                clearChecked('users', 'usersBulkBar', 'usersBulkCount', 'usersTable');
+                adminToast('Personal message banners cleared.');
+            } catch (e) {
+                adminToast('Error clearing messages: ' + (e.message || e));
+            }
         };
     }
 

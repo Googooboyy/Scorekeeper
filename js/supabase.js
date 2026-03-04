@@ -1169,6 +1169,25 @@ export async function sendPersonalMessages(userIds, message, daysToPersist) {
 }
 
 /**
+ * Clear active personal messages for the given users by expiring them.
+ * Does not delete history; it just sets expires_at to now or earlier.
+ * Admin only.
+ * @param {string[]} userIds - User IDs to clear messages for
+ */
+export async function clearPersonalMessages(userIds) {
+    const ac = getAdminClient();
+    if (!ac) throw new Error('Admin client not available');
+    if (!Array.isArray(userIds) || !userIds.length) return;
+    const now = new Date().toISOString();
+    const { error } = await ac
+        .from('user_personal_messages')
+        .update({ expires_at: now })
+        .in('user_id', userIds)
+        .gt('expires_at', now);
+    if (error) throw error;
+}
+
+/**
  * Fetch last personal message date per user. Admin only.
  * Returns map of userId -> lastMessageAt (ISO string).
  */
