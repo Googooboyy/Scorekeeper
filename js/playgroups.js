@@ -1,5 +1,5 @@
 import { fetchPlaygroups, createPlaygroup, getOrCreateInviteToken, leavePlaygroup, fetchCampaignJoinInfo, updateCampaignJoinRequirements } from './supabase.js';
-import { showNotification, showModal } from './modals.js';
+import { showNotification, showModal, openTierInfoModal } from './modals.js';
 import { isAdminMode } from './admin.js';
 
 function getTierLabel(tier) {
@@ -95,8 +95,13 @@ function updateUserPlanLabel() {
         return;
     }
     pill.textContent = getTierLabel(tier);
-    pill.title = 'Your membership tier';
+    pill.title = 'Your membership tier (tap for details)';
     pill.style.display = '';
+    pill.style.cursor = 'pointer';
+    pill.onclick = () => {
+        const t = window._scorekeeperUserTier != null ? window._scorekeeperUserTier : tier;
+        openTierInfoModal(t || 1);
+    };
     if (summary) {
         summary.classList.remove('plan-summary-tier-commoner', 'plan-summary-tier-noble', 'plan-summary-tier-royal');
         const t = parseInt(tier, 10) || 1;

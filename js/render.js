@@ -13,7 +13,7 @@ import {
     saveData
 } from './data.js';
 import { deletePlayer, deleteGame, deleteEntryById } from './actions.js';
-import { openPlayerImageModal, openGameImageModal, openEditEntryModal, openPlayerProfileModal } from './modals.js';
+import { openPlayerImageModal, openGameImageModal, openEditEntryModal, openPlayerProfileModal, openImageLightbox } from './modals.js';
 import { getActivePlaygroup } from './playgroups.js';
 import { fetchGamesFromOtherCampaigns, insertGame, upsertGameMetadata } from './supabase.js';
 
@@ -190,7 +190,7 @@ export function renderPlayers() {
             : '';
         const imageHtml = stat.image ?
             '<div class="player-card-image-container">' + crownHtml + '<img src="' + escapeHtml(stat.image) + '" alt="' + escapeHtml(stat.player) + '" class="player-card-image" onerror="this.style.display=\'none\'; this.parentElement.querySelector(\'.player-card-image-placeholder\').style.display=\'flex\';"><div class="player-card-image-placeholder" style="display: none;">👤</div></div>' :
-            '<div class="player-card-image-container">' + crownHtml + '<div class="player-card-image-placeholder">👤</div></div>';
+            '<div class="player-card-image-container"><div class="player-card-image-placeholder">👤</div></div>';
         const displayQuote = (currentUserId && stat.userId === currentUserId && data.currentUserFavouriteQuote)
             ? data.currentUserFavouriteQuote
             : pickRandomQuote();
@@ -221,6 +221,39 @@ export function renderPlayers() {
         el.addEventListener('click', function (e) {
             e.stopPropagation();
             openPlayerProfileModal(this.getAttribute('data-player'));
+        });
+    });
+
+    // Player avatar image lightbox from leaderboard card (clicking image only)
+    container.querySelectorAll('.player-card-image').forEach(imgEl => {
+        imgEl.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const card = this.closest('.player-card');
+            if (!card) return;
+            const playerName = card.getAttribute('data-player') || '';
+            const imageUrl = this.getAttribute('src');
+            if (!imageUrl) return;
+            const pg = getActivePlaygroup();
+            const canCustomize = !!pg;
+            openImageLightbox(imageUrl, playerName, canCustomize, () => openPlayerImageModal(playerName));
+        });
+    });
+
+    // Tier pills and Traveller badge open tier info modal
+    container.querySelectorAll('.player-tier-pill').forEach(pill => {
+        pill.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const label = (this.textContent || '').trim();
+            let t = 1;
+            if (label === 'Noble') t = 2;
+            else if (label === 'Royal') t = 3;
+            import('./modals.js').then(m => m.openTierInfoModal(t)).catch(() => {});
+        });
+    });
+    container.querySelectorAll('.meeple-traveller-badge').forEach(badge => {
+        badge.addEventListener('click', function (e) {
+            e.stopPropagation();
+            import('./modals.js').then(m => m.openTierInfoModal('traveller')).catch(() => {});
         });
     });
 

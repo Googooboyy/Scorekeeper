@@ -868,6 +868,65 @@
         </div>
     </div>
 
+    <!-- Player Image Lightbox -->
+    <div class="modal-overlay" id="playerImageLightbox" aria-hidden="true">
+        <div class="modal modal-player-lightbox" role="dialog" aria-modal="true" aria-labelledby="playerImageLightboxCaption">
+            <button type="button" class="modal-lightbox-close" id="playerImageLightboxClose" aria-label="Close">✕</button>
+            <div class="modal-player-lightbox-inner">
+                <img id="playerImageLightboxImg" class="modal-player-lightbox-img" alt="">
+                <div class="modal-player-lightbox-caption">
+                    <div id="playerImageLightboxCaption" class="modal-player-lightbox-title">Meeple</div>
+                    <button type="button" class="about-cta-btn about-cta-btn--ghost modal-player-lightbox-customize" id="playerImageLightboxCustomize" style="display:none;">
+                        Customize meeple
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tier Info Modal -->
+    <div class="modal-overlay" id="tierInfoModal" aria-hidden="true">
+        <div class="modal modal-tier-info" role="dialog" aria-modal="true" aria-labelledby="tierInfoTitle">
+            <button type="button" class="modal-lightbox-close" id="tierInfoClose" aria-label="Close">✕</button>
+            <h3 id="tierInfoTitle">Membership classes</h3>
+            <p class="tier-info-intro">
+                Classes control how many campaigns you can run and how many meeples you can have in each campaign.
+            </p>
+            <div class="tier-info-pills" id="tierInfoPills">
+                <button type="button" class="tier-info-pill" data-tier="traveller">Traveller</button>
+                <button type="button" class="tier-info-pill" data-tier="1">Commoner</button>
+                <button type="button" class="tier-info-pill" data-tier="2">Noble</button>
+                <button type="button" class="tier-info-pill" data-tier="3">Royal</button>
+            </div>
+            <div class="tier-info-body" id="tierInfoBody">
+                <section class="tier-info-section" data-tier-section="traveller">
+                    <h4 class="tier-info-section-title">Traveller</h4>
+                    <p class="tier-info-copy">
+                        Unlinked meeples that belong only to this campaign. Claiming a meeple links it to your account so it can appear across campaigns.
+                    </p>
+                </section>
+                <section class="tier-info-section" data-tier-section="1">
+                    <h4 class="tier-info-section-title">Commoner</h4>
+                    <p class="tier-info-copy" id="tierInfoCommonerCopy">
+                        Free class for most players. Great for casual groups with a small number of campaigns and meeples.
+                    </p>
+                </section>
+                <section class="tier-info-section" data-tier-section="2">
+                    <h4 class="tier-info-section-title">Noble</h4>
+                    <p class="tier-info-copy" id="tierInfoNobleCopy">
+                        Extra breathing room for more campaigns and meeples, plus access to custom meeple photos where enabled.
+                    </p>
+                </section>
+                <section class="tier-info-section" data-tier-section="3">
+                    <h4 class="tier-info-section-title">Royal</h4>
+                    <p class="tier-info-copy" id="tierInfoRoyalCopy">
+                        Designed for heavy players and organisers with many campaigns. Typically offers the most generous limits.
+                    </p>
+                </section>
+            </div>
+        </div>
+    </div>
+
     <!-- Score Tabulator Modal -->
     <div class="modal-overlay tally-overlay" id="scoreTallyModal">
         <div class="modal tally-modal">

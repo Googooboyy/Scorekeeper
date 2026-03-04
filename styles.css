@@ -442,10 +442,26 @@ body.screen-shake {
     letter-spacing: 0.04em;
     white-space: nowrap;
     flex-shrink: 0;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
 }
 .player-tier-commoner { background: rgba(148, 163, 184, 0.12); border: 1px solid rgba(148, 163, 184, 0.35); color: var(--text-secondary); }
 .player-tier-noble { background: rgba(139, 92, 246, 0.14); border: 1px solid rgba(139, 92, 246, 0.4); color: var(--accent-secondary); }
 .player-tier-royal { background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.4); color: var(--accent-gold); }
+.player-tier-pill:hover {
+    transform: translateY(-0.5px);
+    box-shadow: 0 0 0 1px rgba(148,163,184,0.5);
+    filter: brightness(1.05);
+}
+.meeple-traveller-badge {
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+.meeple-traveller-badge:hover {
+    transform: translateY(-0.5px);
+    box-shadow: 0 0 0 1px rgba(148,163,184,0.5);
+    filter: brightness(1.05);
+}
 .campaign-creator-pill {
     margin-left: 6px;
     padding: 1px 5px;
@@ -1109,6 +1125,147 @@ body.tally-add-game-mode #step3 {
 .modal-btn.cancel { background: var(--bg-tertiary); color: var(--text-secondary); }
 .modal-btn.cancel:hover { background: var(--border); color: var(--text-primary); }
 @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* Modal close icon (shared) */
+.modal-lightbox-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    border: none;
+    background: rgba(0,0,0,0.35);
+    color: #f9fafb;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    transition: background 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
+}
+.modal-lightbox-close:hover {
+    background: rgba(0,0,0,0.6);
+    transform: translateY(-1px);
+}
+
+/* Player image lightbox */
+.modal-player-lightbox {
+    max-width: min(720px, 100%);
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 0;
+    box-shadow: none;
+    position: relative;
+}
+.modal-player-lightbox-inner {
+    background: linear-gradient(145deg, rgba(15,23,42,0.98), rgba(17,24,39,0.98));
+    border-radius: 20px;
+    border: 1px solid rgba(148,163,184,0.3);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+.modal-player-lightbox-img {
+    max-width: 100%;
+    max-height: min(70vh, 520px);
+    border-radius: 16px;
+    object-fit: contain;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.65);
+}
+.modal-player-lightbox-caption {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.modal-player-lightbox-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.modal-player-lightbox-customize {
+    padding-inline: 14px;
+    font-size: 0.9rem;
+}
+
+/* Tier info modal */
+.modal-tier-info {
+    max-width: 540px;
+    width: 100%;
+    position: relative;
+}
+.tier-info-intro {
+    margin-top: 4px;
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+}
+.tier-info-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.tier-info-pill {
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+.tier-info-pill:hover {
+    background: var(--bg-tertiary);
+    transform: translateY(-1px);
+}
+.tier-info-pill.tier-info-pill-active {
+    background: var(--accent-primary);
+    border-color: transparent;
+    color: #fff;
+}
+.tier-info-body {
+    max-height: 260px;
+    overflow-y: auto;
+    padding-right: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.tier-info-section {
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--bg-secondary);
+    border: 1px solid rgba(148,163,184,0.35);
+}
+.tier-info-section-title {
+    margin: 0 0 4px 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.tier-info-copy {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+@media (max-width: 640px) {
+    .modal-player-lightbox-inner {
+        padding: 16px;
+    }
+    .modal-player-lightbox-img {
+        max-height: min(60vh, 420px);
+    }
+}
 
 /* Player Image Modal */
 .modal-player { max-width: 500px; }

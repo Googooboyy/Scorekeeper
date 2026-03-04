@@ -682,6 +682,21 @@ async function _renderProfilePlanInfo(currentUser, player, playerMeta) {
         el.innerHTML = pills.join('');
         el.className = 'player-profile-plan-info profile-plan-pills';
         el.style.display = 'flex';
+
+        // Make pills clickable to open tier info
+        const pillEl = el.querySelector('.profile-plan-pill');
+        const travellerEl = el.querySelector('.profile-plan-pill-traveller');
+        if (pillEl) {
+            pillEl.style.cursor = 'pointer';
+            pillEl.onclick = () => {
+                const t = playerMeta?.tier != null ? playerMeta.tier : (player.user_id ? 1 : null);
+                openTierInfoModal(t || 1);
+            };
+        }
+        if (travellerEl) {
+            travellerEl.style.cursor = 'pointer';
+            travellerEl.onclick = () => openTierInfoModal('traveller');
+        }
     } else {
         el.innerHTML = '';
         el.style.display = 'none';
@@ -972,6 +987,26 @@ function _renderProfileUnlinked(player, playerName, meta, currentEntries, curren
         .map(e => ({ date: e.date, game: e.game, campaign: null }));
     document.getElementById('profileHistoryList').innerHTML = _renderRecentHistoryHtml(recentEntries, false);
 }
+
+// Make avatar in profile open the image lightbox
+document.addEventListener('DOMContentLoaded', () => {
+    const wrap = document.getElementById('profileAvatarWrap');
+    if (!wrap) return;
+    wrap.style.cursor = 'pointer';
+    wrap.addEventListener('click', () => {
+        const img = document.getElementById('profileAvatarImg');
+        const nameEl = document.getElementById('profileName');
+        if (!img || !nameEl) return;
+        const src = img.getAttribute('src');
+        if (!src) return;
+        const playerName = nameEl.textContent || '';
+        const pg = getActivePlaygroup();
+        const canCustomize = !!pg;
+        openImageLightbox(src, playerName, canCustomize, () => {
+            if (playerName) openPlayerImageModal(playerName);
+        });
+    });
+});
 
 function _renderGamesWinRateHtml(rows) {
     if (!rows.length) return '<div class="profile-empty">No games played yet.</div>';
@@ -1742,4 +1777,197 @@ export function showNotification(message) {
         notification.style.animation = 'slideDown 0.3s ease';
         setTimeout(() => notification.remove(), 300);
     }, 2000);
+}
+
+// ─── Simple image lightbox for player avatars ──────────────────────────────────
+
+let _lightboxCleanup = null;
+
+export function openImageLightbox(imageUrl, playerName, canCustomize, onCustomize) {
+    const overlay = document.getElementById('playerImageLightbox');
+    const img = document.getElementById('playerImageLightboxImg');
+    const caption = document.getElementById('playerImageLightboxCaption');
+    const closeBtn = document.getElementById('playerImageLightboxClose');
+    const customizeBtn = document.getElementById('playerImageLightboxCustomize');
+    if (!overlay || !img || !caption || !closeBtn) return;
+
+    img.src = imageUrl;
+    img.alt = playerName || '';
+    caption.textContent = playerName || '';
+
+    if (customizeBtn) {
+        if (canCustomize && typeof onCustomize === 'function') {
+            customizeBtn.style.display = '';
+            customizeBtn.onclick = () => {
+                onCustomize();
+                closeImageLightbox();
+            };
+        } else {
+            customizeBtn.style.display = 'none';
+            customizeBtn.onclick = null;
+        }
+    }
+
+    const onOverlayClick = (e) => {
+        if (e.target === overlay) {
+            closeImageLightbox();
+        }
+    };
+    const onKeydown = (e) => {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            closeImageLightbox();
+        }
+    };
+    const onClose = () => closeImageLightbox();
+
+    closeBtn.addEventListener('click', onClose);
+    overlay.addEventListener('click', onOverlayClick);
+    document.addEventListener('keydown', onKeydown);
+
+    _lightboxCleanup = () => {
+        closeBtn.removeEventListener('click', onClose);
+        overlay.removeEventListener('click', onOverlayClick);
+        document.removeEventListener('keydown', onKeydown);
+    };
+
+    overlay.classList.add('active');
+    overlay.setAttribute('aria-hidden', 'false');
+    closeBtn.focus();
+}
+
+export function closeImageLightbox() {
+    const overlay = document.getElementById('playerImageLightbox');
+    if (!overlay) return;
+    overlay.classList.remove('active');
+    overlay.setAttribute('aria-hidden', 'true');
+    const img = document.getElementById('playerImageLightboxImg');
+    if (img) img.removeAttribute('src');
+    if (_lightboxCleanup) {
+        _lightboxCleanup();
+        _lightboxCleanup = null;
+    }
+}
+
+// ─── Tier info modal (classes explanation) ────────────────────────────────────
+
+let _tierModalCleanup = null;
+
+function formatTierLimitsForCopy(tier, maxCampaigns, maxMeeples) {
+    const parts = [];
+    if (maxCampaigns && maxCampaigns > 0) {
+        const campaignsLabel = maxCampaigns >= 999999 ? 'unlimited campaigns' : maxCampaigns + ' campaign' + (maxCampaigns === 1 ? '' : 's');
+        parts.push(campaignsLabel);
+    }
+    if (maxMeeples && maxMeeples > 0) {
+        const isUnlimited = maxMeeples >= 999999;
+        const meepleLabel = isUnlimited ? 'unlimited meeples per campaign' : maxMeeples + ' meeples per campaign';
+        parts.push(meepleLabel);
+    }
+    if (!parts.length) return '';
+    return 'Typically around ' + parts.join(' · ') + '. ';
+}
+
+export function openTierInfoModal(tierOrType) {
+    const overlay = document.getElementById('tierInfoModal');
+    const pillsWrap = document.getElementById('tierInfoPills');
+    const body = document.getElementById('tierInfoBody');
+    if (!overlay || !pillsWrap || !body) return;
+
+    const FALLBACK_TIER_LIMITS = { 1: { campaigns: 2, meeples: 5 }, 2: { campaigns: 4, meeples: 10 }, 3: { campaigns: 999999, meeples: 999999 } };
+
+    const currentTier = typeof window !== 'undefined' ? window._scorekeeperUserTier : null;
+    const maxCampaignsGlobal = typeof window !== 'undefined' ? window._scorekeeperMaxCampaigns : null;
+    const maxMeeplesTier = typeof window !== 'undefined' ? (window._scorekeeperMaxMeeplesTier ?? window._scorekeeperMaxMeeples) : null;
+
+    const ensureCopyForTier = (tier, elementId) => {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        const fallback = FALLBACK_TIER_LIMITS[tier] || FALLBACK_TIER_LIMITS[1];
+        let campaigns = fallback.campaigns;
+        let meeples = fallback.meeples;
+
+        if (currentTier && parseInt(currentTier, 10) === tier) {
+            if (typeof maxCampaignsGlobal === 'number' && maxCampaignsGlobal > 0) campaigns = maxCampaignsGlobal;
+            if (typeof maxMeeplesTier === 'number' && maxMeeplesTier > 0) meeples = maxMeeplesTier;
+        }
+
+        const prefix = tier === 1
+            ? 'Free class for most players. '
+            : tier === 2
+                ? 'For active groups and organisers. '
+                : 'For heavy players and campaign hosts. ';
+
+        const limits = formatTierLimitsForCopy(tier, campaigns, meeples);
+        const avatarLine = tier === 1
+            ? 'Commoners usually choose from preset avatars where enabled.'
+            : 'Nobles and Royals usually unlock custom meeple photos where enabled.';
+
+        el.textContent = (prefix + (limits || '') + avatarLine).trim();
+    };
+
+    ensureCopyForTier(1, 'tierInfoCommonerCopy');
+    ensureCopyForTier(2, 'tierInfoNobleCopy');
+    ensureCopyForTier(3, 'tierInfoRoyalCopy');
+
+    const allPills = Array.from(pillsWrap.querySelectorAll('.tier-info-pill'));
+    const normalised = tierOrType === 'traveller' ? 'traveller' : String(tierOrType || '').trim() || 'traveller';
+    allPills.forEach(p => {
+        const isActive = p.getAttribute('data-tier') === normalised;
+        p.classList.toggle('tier-info-pill-active', isActive);
+    });
+
+    const targetSection = body.querySelector('[data-tier-section="' + normalised + '"]') ||
+        body.querySelector('[data-tier-section="traveller"]');
+    if (targetSection) {
+        targetSection.scrollIntoView({ block: 'nearest' });
+    }
+
+    const closeBtn = document.getElementById('tierInfoClose');
+    const onOverlayClick = (e) => {
+        if (e.target === overlay) {
+            closeTierInfoModal();
+        }
+    };
+    const onKeydown = (e) => {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            closeTierInfoModal();
+        }
+    };
+    const onClose = () => closeTierInfoModal();
+
+    const onPillsClick = (e) => {
+        const pill = e.target.closest('.tier-info-pill');
+        if (!pill) return;
+        const t = pill.getAttribute('data-tier');
+        openTierInfoModal(t);
+    };
+
+    closeBtn.addEventListener('click', onClose);
+    overlay.addEventListener('click', onOverlayClick);
+    document.addEventListener('keydown', onKeydown);
+    pillsWrap.addEventListener('click', onPillsClick);
+
+    _tierModalCleanup = () => {
+        closeBtn.removeEventListener('click', onClose);
+        overlay.removeEventListener('click', onOverlayClick);
+        document.removeEventListener('keydown', onKeydown);
+        pillsWrap.removeEventListener('click', onPillsClick);
+    };
+
+    overlay.classList.add('active');
+    overlay.setAttribute('aria-hidden', 'false');
+    closeBtn.focus();
+}
+
+export function closeTierInfoModal() {
+    const overlay = document.getElementById('tierInfoModal');
+    if (!overlay) return;
+    overlay.classList.remove('active');
+    overlay.setAttribute('aria-hidden', 'true');
+    if (_tierModalCleanup) {
+        _tierModalCleanup();
+        _tierModalCleanup = null;
+    }
 }
