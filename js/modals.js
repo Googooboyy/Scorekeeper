@@ -1919,9 +1919,15 @@ export function openTierInfoModal(tierOrType) {
 
     const targetSection = body.querySelector('[data-tier-section="' + normalised + '"]') ||
         body.querySelector('[data-tier-section="traveller"]');
-    if (targetSection) {
-        targetSection.scrollIntoView({ block: 'nearest' });
-    }
+
+    // Show only the selected tier section; hide others until selected
+    body.querySelectorAll('.tier-info-section').forEach(sec => {
+        if (sec === targetSection) {
+            sec.style.display = 'block';
+        } else {
+            sec.style.display = 'none';
+        }
+    });
 
     const closeBtn = document.getElementById('tierInfoClose');
     const onOverlayClick = (e) => {
