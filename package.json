@@ -1,0 +1,27 @@
+{
+  "name": "260219---the-scorekeeper",
+  "version": "1.0.0",
+  "description": "Track your board game wins and bragging rights. A simple web app for running campaigns with friends: log wins, see leaderboards, and share invite or view-only links.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Googooboyy/Scorekeeper.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Googooboyy/Scorekeeper/issues"
+  },
+  "homepage": "https://github.com/Googooboyy/Scorekeeper#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.98.0"
+  }
+}
