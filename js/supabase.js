@@ -5,6 +5,43 @@ import { SUPABASE_URL } from './config.js';
 
 let _adminClient = null;
 
+// ── Storage configuration ─────────────────────────────────────────────────────
+
+export const STORAGE_BUCKET = 'scorekpr-media';
+
+function getStorageBucketClient(useAdmin = false) {
+    const baseClient = useAdmin ? getAdminClient() : getSupabase();
+    if (!baseClient) throw new Error('Supabase client not available for Storage');
+    return baseClient.storage.from(STORAGE_BUCKET);
+}
+
+/**
+ * Upload an image file/blob to Supabase Storage.
+ * Returns the Storage path that was written (suitable for saving in image_storage_path).
+ */
+export async function uploadImageToStorage(path, file, { contentType, upsert = true, useAdmin = false } = {}) {
+    if (!path) throw new Error('Storage path is required');
+    if (!file) throw new Error('File/Blob is required for upload');
+    const bucket = getStorageBucketClient(useAdmin);
+    const options = {};
+    if (contentType) options.contentType = contentType;
+    if (upsert) options.upsert = true;
+    const { error } = await bucket.upload(path, file, options);
+    if (error) throw error;
+    return path;
+}
+
+/**
+ * Get a public URL for a stored image path in the public bucket.
+ * For private buckets, this would instead create a signed URL.
+ */
+export function getPublicImageUrl(path) {
+    if (!path) return null;
+    const bucket = getStorageBucketClient(false);
+    const { data } = bucket.getPublicUrl(path);
+    return data?.publicUrl || null;
+}
+
 /** Returns a Supabase client with the service role key (bypasses all RLS).
  *  persistSession/autoRefreshToken must be false so the client never picks up
  *  the logged-in user's JWT from localStorage and overrides the service role key. */
