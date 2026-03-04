@@ -489,34 +489,45 @@ export async function fetchEntryParticipants(playgroupId) {
 }
 
 /**
- * Fetch game metadata (images)
+ * Fetch game metadata (images and storage paths)
  */
 export async function fetchGameMetadata(gameIds) {
     if (!gameIds?.length) return {};
     const { data, error } = await getActiveClient()
         .from('game_metadata')
-        .select('game_id, image')
+        .select('game_id, image, image_storage_path')
         .in('game_id', gameIds);
 
     if (error) throw error;
     const out = {};
-    (data || []).forEach(r => { out[r.game_id] = { image: r.image }; });
+    (data || []).forEach(r => {
+        out[r.game_id] = {
+            image: r.image,
+            image_storage_path: r.image_storage_path || null
+        };
+    });
     return out;
 }
 
 /**
- * Fetch player metadata
+ * Fetch player metadata (images, colors, storage paths)
  */
 export async function fetchPlayerMetadata(playerIds) {
     if (!playerIds?.length) return {};
     const { data, error } = await getActiveClient()
         .from('player_metadata')
-        .select('player_id, image, color')
+        .select('player_id, image, color, image_storage_path')
         .in('player_id', playerIds);
 
     if (error) throw error;
     const out = {};
-    (data || []).forEach(r => { out[r.player_id] = { image: r.image, color: r.color }; });
+    (data || []).forEach(r => {
+        out[r.player_id] = {
+            image: r.image,
+            color: r.color,
+            image_storage_path: r.image_storage_path || null
+        };
+    });
     return out;
 }
 
@@ -552,13 +563,24 @@ export async function loadPlaygroupData(playgroupId) {
     const gameData = {};
     games.forEach(g => {
         const m = gameMeta[g.id];
-        if (m?.image) gameData[g.name] = { image: m.image };
+        if (m?.image) {
+            gameData[g.name] = {
+                image: m.image,
+                image_storage_path: m.image_storage_path || null
+            };
+        }
     });
 
     const playerData = {};
     players.forEach(p => {
         const m = playerMeta[p.id];
-        if (m) playerData[p.name] = { image: m.image, color: m.color };
+        if (m) {
+            playerData[p.name] = {
+                image: m.image,
+                color: m.color,
+                image_storage_path: m.image_storage_path || null
+            };
+        }
     });
 
     // Merge user_id and tier into playerData so profile modal and player cards can access them
@@ -723,10 +745,17 @@ export async function deletePlayerById(playerId) {
 /**
  * Upsert game metadata
  */
-export async function upsertGameMetadata(gameId, image) {
+export async function upsertGameMetadata(gameId, image, imageStoragePath) {
+    const payload = {
+        game_id: gameId,
+        image: image || null
+    };
+    if (imageStoragePath !== undefined) {
+        payload.image_storage_path = imageStoragePath || null;
+    }
     const { error } = await getActiveClient()
         .from('game_metadata')
-        .upsert({ game_id: gameId, image }, { onConflict: 'game_id' });
+        .upsert(payload, { onConflict: 'game_id' });
 
     if (error) throw error;
 }
@@ -734,10 +763,18 @@ export async function upsertGameMetadata(gameId, image) {
 /**
  * Upsert player metadata
  */
-export async function upsertPlayerMetadata(playerId, image, color) {
+export async function upsertPlayerMetadata(playerId, image, color, imageStoragePath) {
+    const payload = {
+        player_id: playerId,
+        image: image || null,
+        color: color || '#6366f1'
+    };
+    if (imageStoragePath !== undefined) {
+        payload.image_storage_path = imageStoragePath || null;
+    }
     const { error } = await getActiveClient()
         .from('player_metadata')
-        .upsert({ player_id: playerId, image: image || null, color: color || '#6366f1' }, { onConflict: 'player_id' });
+        .upsert(payload, { onConflict: 'player_id' });
 
     if (error) throw error;
 }

@@ -25,7 +25,9 @@ import {
     insertPlayer,
     fetchGamesFromOtherCampaigns,
     insertGame,
-    fetchCampaignOwnerLimits
+    fetchCampaignOwnerLimits,
+    uploadImageToStorage,
+    getPublicImageUrl
 } from './supabase.js';
 import { getSupabase } from './auth.js';
 import { renderGames, renderGameSelection, renderAll } from './render.js';
@@ -59,6 +61,7 @@ export function showJoinRejectionModal(message) {
 
 export function openGameImageModal(game) {
     uiState.currentGameForImage = game;
+    uiState.tempGameImageFile = null;
     document.getElementById('gameImageGameName').textContent = game;
     const currentImage = data.gameData && data.gameData[game] ? data.gameData[game].image : '';
 
@@ -97,16 +100,30 @@ export async function saveGameImage() {
     const btn = document.getElementById('gameImageSave');
     if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
     try {
-        await upsertGameMetadata(gameId, uiState.tempGameImage || null);
+        let imageUrl = uiState.tempGameImage || null;
+        let storagePath = null;
+
+        const file = uiState.tempGameImageFile || null;
+        if (file) {
+            const ext = (file.type && file.type.split('/')[1]) || 'jpg';
+            storagePath = `images/games/${gameId}.${ext}`;
+            const contentType = file.type || 'image/jpeg';
+            await uploadImageToStorage(storagePath, file, { contentType });
+            const publicUrl = getPublicImageUrl(storagePath);
+            if (publicUrl) imageUrl = publicUrl;
+        }
+
+        await upsertGameMetadata(gameId, imageUrl || null, storagePath);
         if (!data.gameData) data.gameData = {};
         if (!data.gameData[uiState.currentGameForImage]) data.gameData[uiState.currentGameForImage] = {};
-        if (uiState.tempGameImage) {
-            data.gameData[uiState.currentGameForImage].image = uiState.tempGameImage;
+        if (imageUrl) {
+            data.gameData[uiState.currentGameForImage].image = imageUrl;
             showNotification('Image set for "' + uiState.currentGameForImage + '"');
         } else {
             delete data.gameData[uiState.currentGameForImage].image;
             showNotification('Image removed from "' + uiState.currentGameForImage + '"');
         }
+        uiState.tempGameImageFile = null;
         saveData();
         renderGames();
         renderGameSelection();
@@ -120,6 +137,7 @@ export async function saveGameImage() {
 
 export async function openPlayerImageModal(player) {
     uiState.currentPlayerForImage = player;
+    uiState.tempPlayerImageFile = null;
     document.getElementById('playerImagePlayerName').textContent = player;
 
     const playerData = data.playerData && data.playerData[player] ? data.playerData[player] : {};
@@ -221,15 +239,29 @@ export async function savePlayerImage() {
     const btn = document.getElementById('playerImageSave');
     if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
     try {
-        await upsertPlayerMetadata(playerId, uiState.tempPlayerImage || null, uiState.selectedColor);
+        let imageUrl = uiState.tempPlayerImage || null;
+        let storagePath = null;
+
+        const file = uiState.tempPlayerImageFile || null;
+        if (file) {
+            const ext = (file.type && file.type.split('/')[1]) || 'jpg';
+            storagePath = `avatars/players/${playerId}.${ext}`;
+            const contentType = file.type || 'image/jpeg';
+            await uploadImageToStorage(storagePath, file, { contentType });
+            const publicUrl = getPublicImageUrl(storagePath);
+            if (publicUrl) imageUrl = publicUrl;
+        }
+
+        await upsertPlayerMetadata(playerId, imageUrl || null, uiState.selectedColor, storagePath);
         if (!data.playerData) data.playerData = {};
         if (!data.playerData[uiState.currentPlayerForImage]) data.playerData[uiState.currentPlayerForImage] = {};
-        if (uiState.tempPlayerImage) {
-            data.playerData[uiState.currentPlayerForImage].image = uiState.tempPlayerImage;
+        if (imageUrl) {
+            data.playerData[uiState.currentPlayerForImage].image = imageUrl;
         } else {
             delete data.playerData[uiState.currentPlayerForImage].image;
         }
         data.playerData[uiState.currentPlayerForImage].color = uiState.selectedColor;
+        uiState.tempPlayerImageFile = null;
         saveData();
         showNotification('Customization saved for "' + uiState.currentPlayerForImage + '"');
     } catch (err) {
@@ -267,7 +299,7 @@ export async function resetPlayerCustomization() {
     const playerId = data._playerIdByName?.[uiState.currentPlayerForImage];
     if (!playerId) { closePlayerImageModal(); return; }
     try {
-        await upsertPlayerMetadata(playerId, null, '#6366f1');
+        await upsertPlayerMetadata(playerId, null, '#6366f1', null);
         if (data.playerData && data.playerData[uiState.currentPlayerForImage]) {
             delete data.playerData[uiState.currentPlayerForImage];
             saveData();

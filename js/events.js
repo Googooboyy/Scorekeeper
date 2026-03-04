@@ -19,7 +19,9 @@ import {
     upsertPlayerMetadata,
     upsertGlobalGame,
     fetchAppConfig,
-    fetchPresetAvatars
+    fetchPresetAvatars,
+    uploadImageToStorage,
+    getPublicImageUrl
 } from './supabase.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 import { showModal, hideModal, handleImageFileSelect, showNotification, fireConfetti, playVictoryFanfare, closeGameImageModal, closePlayerImageModal, resetPlayerCustomization, closeEditEntryModal, saveGameImage, savePlayerImage, saveEditedEntry, closePlayerProfileModal, openScoreTabulator, showJoinRejectionModal } from './modals.js';
@@ -278,8 +280,10 @@ export function setupEventListeners() {
     });
 
     document.getElementById('gameImageFileInput').addEventListener('change', function (e) {
-        handleImageFileSelect(e.target.files[0], 'gameImagePreview', function (result) {
+        const file = e.target.files[0];
+        handleImageFileSelect(file, 'gameImagePreview', function (result) {
             uiState.tempGameImage = result;
+            uiState.tempGameImageFile = file || null;
             document.getElementById('gameImageUrlInput').value = '';
         });
     });
@@ -287,6 +291,7 @@ export function setupEventListeners() {
     document.getElementById('gameImageUrlInput').addEventListener('input', function () {
         _handleImageUrl(this.value.trim(), 'gameImagePreview', function (url) {
             uiState.tempGameImage = url;
+            uiState.tempGameImageFile = null;
             document.getElementById('gameImageFileInput').value = '';
         });
     });
@@ -305,8 +310,10 @@ export function setupEventListeners() {
             e.target.value = '';
             return;
         }
-        handleImageFileSelect(e.target.files[0], 'playerImagePreview', function (result) {
+        const file = e.target.files[0];
+        handleImageFileSelect(file, 'playerImagePreview', function (result) {
             uiState.tempPlayerImage = result;
+            uiState.tempPlayerImageFile = file || null;
             const removeBtn = document.getElementById('playerImageRemoveInSection');
             if (removeBtn) removeBtn.style.display = 'inline-block';
         });
@@ -314,6 +321,7 @@ export function setupEventListeners() {
 
     document.getElementById('playerImageRemoveInSection').addEventListener('click', function () {
         uiState.tempPlayerImage = null;
+        uiState.tempPlayerImageFile = null;
         const preview = document.getElementById('playerImagePreview');
         const fileInput = document.getElementById('playerImageFileInput');
         const removeBtn = document.getElementById('playerImageRemoveInSection');
@@ -332,8 +340,10 @@ export function setupEventListeners() {
     });
 
     document.getElementById('newGameImage').addEventListener('change', function (e) {
-        handleImageFileSelect(e.target.files[0], 'newGameImagePreview', function (result) {
+        const file = e.target.files[0];
+        handleImageFileSelect(file, 'newGameImagePreview', function (result) {
             uiState.tempGameImage = result;
+            uiState.tempGameImageFile = file || null;
             document.getElementById('newGameImageUrl').value = ''; // clear URL input
         });
     });
@@ -341,6 +351,7 @@ export function setupEventListeners() {
     document.getElementById('newGameImageUrl').addEventListener('input', function () {
         _handleImageUrl(this.value.trim(), 'newGameImagePreview', function (url) {
             uiState.tempGameImage = url;
+            uiState.tempGameImageFile = null;
             document.getElementById('newGameImage').value = ''; // clear file input
         });
     });
@@ -352,8 +363,10 @@ export function setupEventListeners() {
             e.target.value = '';
             return;
         }
-        handleImageFileSelect(e.target.files[0], 'newPlayerImagePreview', function (result) {
+        const file = e.target.files[0];
+        handleImageFileSelect(file, 'newPlayerImagePreview', function (result) {
             uiState.tempPlayerImage = result;
+            uiState.tempPlayerImageFile = file || null;
             document.getElementById('newPlayerImageUrl').value = ''; // clear URL input
         });
     });
@@ -370,6 +383,7 @@ export function setupEventListeners() {
         }
         _handleImageUrl(this.value.trim(), 'newPlayerImagePreview', function (url) {
             uiState.tempPlayerImage = url;
+            uiState.tempPlayerImageFile = null;
             document.getElementById('newPlayerImage').value = ''; // clear file input
         });
     });
@@ -529,10 +543,21 @@ async function addNewGame() {
         const row = await insertGame(pg.id, name, globalGameId);
         data.games.push(name);
         data._gameIdByName[name] = row.id;
-        if (uiState.tempGameImage) {
-            await upsertGameMetadata(row.id, uiState.tempGameImage);
+        let imageUrl = uiState.tempGameImage || null;
+        let storagePath = null;
+        const file = uiState.tempGameImageFile || null;
+        if (file) {
+            const ext = (file.type && file.type.split('/')[1]) || 'jpg';
+            storagePath = `images/games/${row.id}.${ext}`;
+            const contentType = file.type || 'image/jpeg';
+            await uploadImageToStorage(storagePath, file, { contentType });
+            const publicUrl = getPublicImageUrl(storagePath);
+            if (publicUrl) imageUrl = publicUrl;
+        }
+        if (imageUrl) {
+            await upsertGameMetadata(row.id, imageUrl, storagePath);
             if (!data.gameData) data.gameData = {};
-            data.gameData[name] = { image: uiState.tempGameImage };
+            data.gameData[name] = { image: imageUrl };
         }
         saveData();
         input.value = '';
@@ -607,10 +632,20 @@ async function addNewPlayer() {
         const row = await insertPlayer(pg.id, name);
         data.players.push(name);
         data._playerIdByName[name] = row.id;
-        const img = uiState.tempPlayerImage;
+        let img = uiState.tempPlayerImage;
         const color = uiState.selectedColor;
+        let storagePath = null;
+        const file = uiState.tempPlayerImageFile || null;
+        if (file) {
+            const ext = (file.type && file.type.split('/')[1]) || 'jpg';
+            storagePath = `avatars/players/${row.id}.${ext}`;
+            const contentType = file.type || 'image/jpeg';
+            await uploadImageToStorage(storagePath, file, { contentType });
+            const publicUrl = getPublicImageUrl(storagePath);
+            if (publicUrl) img = publicUrl;
+        }
         if (img || color) {
-            await upsertPlayerMetadata(row.id, img, color);
+            await upsertPlayerMetadata(row.id, img, color, storagePath);
             if (!data.playerData) data.playerData = {};
             data.playerData[name] = {};
             if (img) data.playerData[name].image = img;
